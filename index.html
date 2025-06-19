@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Eternal Momentum (Enhanced)</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Eternal Momentum (Multi-Platform)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0, user-scalable=no"/>
   <style>
-    html, body { margin:0; padding:0; overflow:hidden; background:#1e1e2f; }
+    html, body { margin:0; padding:0; overflow:hidden; background:#1e1e2f; -webkit-user-select: none; user-select: none; } /* ADDED: user-select none to prevent text highlighting */
     canvas { display:block; width:100vw; height:100vh; }
     .ui {
       position:absolute; bottom:0; width:100%; background:rgba(0,0,0,0.6);
@@ -21,6 +21,7 @@
       border:2px solid white; border-radius:6px;
       display:flex; align-items:center; justify-content:center;
       font-size:24px; user-select:none; transition: transform 0.2s;
+      cursor: pointer; /* MODIFIED: Added cursor pointer */
     }
     .hint { text-align:left; color:#ccc; font-size:0.9rem; margin-top:8px; width: 90%; max-width: 800px; }
     .hint div { padding: 2px 0; }
@@ -119,8 +120,8 @@
       </div>
     </div>
     <div class="hint">
-        <div id="offHint">Offensive (L-Click) ▶️ [ None ]</div>
-        <div id="defHint">Defensive (R-Click) ▶️ [ None ]</div>
+        <div id="offHint">Offensive ▶️ [ None ]</div>
+        <div id="defHint">Defensive ▶️ [ None ]</div>
     </div>
     <div class="top-bar" style="justify-content:center; gap:20px;">
       <button id="restartBtn">Restart</button>
@@ -146,17 +147,57 @@
     function resize(){ canvas.width=innerWidth; canvas.height=innerHeight; }
     window.addEventListener("resize",resize); resize();
 
-    // Mouse
+    // --- MODIFIED: Input Handling for Mouse and Touch ---
     let mx=canvas.width/2, my=canvas.height/2;
-    canvas.addEventListener("mousemove",e=>{ mx=e.clientX; my=e.clientY; });
+    function setPlayerTarget(e) {
+      const rect = canvas.getBoundingClientRect();
+      // Use touch coordinates if available, otherwise use mouse coordinates
+      if (e.touches && e.touches.length > 0) {
+        mx = e.touches[0].clientX - rect.left;
+        my = e.touches[0].clientY - rect.top;
+      } else {
+        mx = e.clientX - rect.left;
+        my = e.clientY - rect.top;
+      }
+    }
+    canvas.addEventListener("mousemove", setPlayerTarget);
+    // Add touch listeners
+    canvas.addEventListener("touchmove", e => {
+      e.preventDefault(); // Prevent scrolling
+      setPlayerTarget(e);
+    }, { passive: false });
+    canvas.addEventListener("touchstart", e => {
+      e.preventDefault(); // Prevent zoom/tap artifacts
+      setPlayerTarget(e);
+    }, { passive: false });
 
-    // Audio Elements
+
+    // --- MODIFIED: Audio Handling ---
     const pickupS = document.getElementById("pickupSound"), hitS = document.getElementById("hitSound"),
           shockS = document.getElementById("shockwaveSound"), chainS = document.getElementById("chainSound"),
           gravityS = document.getElementById("gravitySound"),
           music = document.getElementById("bgMusic"), soundBtn = document.getElementById("soundToggle"),
           restartBtn = document.getElementById("restartBtn"), arenaBtn = document.getElementById("arenaBtn");
+    const allAudio = [pickupS, hitS, shockS, chainS, gravityS, music];
     let soundOn=true;
+    let audioInitialized = false; // ADDED: Flag to ensure audio is only initialized once
+
+    // ADDED: Function to initialize audio on first user interaction
+    function initAudio() {
+        if (audioInitialized) return;
+        audioInitialized = true;
+        
+        // This gesture-unlocked context is the key to reliable mobile audio
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const audioCtx = new AudioContext();
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+
+        // Try to play background music
+        music.play().catch(e => console.warn("Music autoplay was blocked, but should work now."));
+        console.log("Audio Initialized.");
+    }
     
     // Game State
     const state={
@@ -173,7 +214,7 @@
     let gameLoopId;
 
     // --- CORE FUNCTIONS ---
-    function play(a){ if(soundOn){ a.currentTime=0; a.play(); }}
+    function play(a){ if(soundOn && audioInitialized){ a.currentTime=0; a.play().catch(()=>{}); }} // MODIFIED: Check if audio is initialized
     function drawCircle(x,y,r,c){ ctx.fillStyle=c; ctx.beginPath(); ctx.arc(x,y,r,0,2*Math.PI); ctx.fill(); }
 
     // --- PARTICLE AND EFFECTS FUNCTIONS ---
@@ -253,8 +294,11 @@
 
         state.offensiveInventory.forEach((p,i)=>{ document.getElementById(`slot-off-${i}`).innerText = p ? powers[p].emoji : "[ ]"; });
         state.defensiveInventory.forEach((p,i)=>{ document.getElementById(`slot-def-${i}`).innerText = p ? powers[p].emoji : "[ ]"; });
-        const offP = state.offensiveInventory[0]; document.getElementById("offHint").innerText = `Offensive (L-Click) ▶️ ${offP ? powers[offP].desc : "[ None ]"}`;
-        const defP = state.defensiveInventory[0]; document.getElementById("defHint").innerText = `Defensive (R-Click) ▶️ ${defP ? powers[defP].desc : "[ None ]"}`;
+        
+        // MODIFIED: Updated hint text to be more universal (works for tap and click)
+        const offP = state.offensiveInventory[0]; document.getElementById("offHint").innerHTML = `Offensive (Tap 👆) ▶️ ${offP ? powers[offP].desc : "[ None ]"}`;
+        const defP = state.defensiveInventory[0]; document.getElementById("defHint").innerHTML = `Defensive (Tap 👇) ▶️ ${defP ? powers[defP].desc : "[ None ]"}`;
+        
         if(state.level > 10 && !state.arenaMode) document.getElementById('arenaBtn').style.display = 'inline-block'; else document.getElementById('arenaBtn').style.display = 'none';
 
         const bossContainer = document.getElementById("bossHpContainer");
@@ -574,15 +618,24 @@
     // --- INITIALIZATION ---
     soundBtn.addEventListener("click",()=>{
       soundOn=!soundOn;
-      [pickupS,hitS,shockS,chainS,gravityS,music].forEach(a=>a.muted=!soundOn);
+      allAudio.forEach(a=>a.muted=!soundOn); // MODIFIED: Use the allAudio array
       soundBtn.innerText = soundOn?"🔊":"🔇";
     });
-    document.body.addEventListener("click",()=>music.play().catch(()=>{}),{once:true});
-    canvas.addEventListener("click",(e)=>{ if(e.target.id === 'gameCanvas' && state.offensiveInventory[0]) usePower('offensive'); });
-    canvas.addEventListener("contextmenu", e => { e.preventDefault(); if(state.defensiveInventory[0]) usePower('defensive'); });
+
+    // --- MODIFIED: New Event Listeners ---
+    // Listen for the first user interaction to initialize audio
+    document.body.addEventListener("click", initAudio, { once: true });
+    document.body.addEventListener("touchstart", initAudio, { once: true });
+
+    // Listen for taps/clicks on the first inventory slots to use powers
+    document.getElementById('slot-off-0').addEventListener('click', () => { if(state.offensiveInventory[0]) usePower('offensive'); });
+    document.getElementById('slot-def-0').addEventListener('click', () => { if(state.defensiveInventory[0]) usePower('defensive'); });
+
+    // Restart and Arena button listeners
     restartBtn.addEventListener("click",() => startNewGame(false));
     arenaBtn.addEventListener("click", () => startNewGame(true));
     
+    // Start the game
     startNewGame(false);
   });
   </script>
