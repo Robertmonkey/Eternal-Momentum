@@ -98,11 +98,12 @@
     .core-display { position: relative; display: flex; justify-content: center; align-items: center; flex-grow: 1; }
     .ability-cluster { display: flex; justify-content: center; align-items: flex-end; gap: 4px; }
     
-    #playerHealthArc { position: absolute; top: 5px; left: 50%; transform: translateX(-50%); width: 380px; height: 80px; pointer-events: none; }
+    /* FIX: Reworked Health Gauge Positioning */
+    #playerHealthArc { position: absolute; top: 0px; left: 50%; transform: translateX(-50%); width: 340px; height: 60px; pointer-events: none; }
     #healthArcBackground, #healthArcValue { stroke-width: 8; stroke-linecap: round; }
     #healthArcBackground { stroke: var(--health-bar-bg); }
     #healthArcValue { stroke: var(--health-bar); transition: stroke-dashoffset 0.3s ease-out, stroke 0.3s; }
-    #playerHealthText { fill: var(--font-color); font-size: 16px; font-weight: bold; text-shadow: 1px 1px 2px #000; }
+    #playerHealthText { fill: var(--font-color); font-size: 16px; font-weight: bold; }
     
     .abilities { display: flex; align-items: flex-end; gap: 10px; margin: 0 10px; }
     .ability-slot {
@@ -194,10 +195,10 @@
         </div>
 
         <div class="core-display">
-            <svg id="playerHealthArc" viewBox="0 0 380 80">
-                <path id="healthArcBackground" d="M 20 70 A 170 170 0 0 1 360 70" fill="none" />
-                <path id="healthArcValue" d="M 20 70 A 170 170 0 0 1 360 70" fill="none" />
-                <text id="playerHealthText" x="190" y="60" text-anchor="middle">100/100</text>
+                        <svg id="playerHealthArc" viewBox="0 0 340 60">
+                <path id="healthArcBackground" d="M 20 55 A 150 150 0 0 1 320 55" fill="none" />
+                <path id="healthArcValue" d="M 20 55 A 150 150 0 0 1 320 55" fill="none" />
+                <text id="playerHealthText" x="170" y="45" text-anchor="middle">100/100</text>
             </svg>
             <div class="ability-cluster">
                 <div class="ability-queue defensive">
@@ -340,18 +341,19 @@
     function applyScreenShake() { if (Date.now() < screenShakeEnd) { const x = (Math.random() - 0.5) * screenShakeMagnitude; const y = (Math.random() - 0.5) * screenShakeMagnitude; ctx.translate(x, y); } }
     function drawLightning(x1, y1, x2, y2, color, width = 2) { ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = Math.random() * width + 1; ctx.globalAlpha = Math.random() * 0.5 + 0.5; ctx.beginPath(); ctx.moveTo(x1, y1); const dx = x2 - x1, dy = y2 - y1; const dist = Math.hypot(dx, dy); const segments = Math.floor(dist / 15); const perpAngle = Math.atan2(dy, dx) + Math.PI / 2; for (let i = 1; i < segments; i++) { const pos = i / segments; const offset = (Math.random() - 0.5) * dist * 0.15; ctx.lineTo(x1 + dx * pos + Math.cos(perpAngle) * offset, y1 + dy * pos + Math.sin(perpAngle) * offset); } ctx.lineTo(x2, y2); ctx.stroke(); ctx.restore(); }
 
+    // FIX: Hide status bar when there are no effects
     function updateStatusEffectsUI() {
         const now = Date.now();
         state.player.statusEffects = state.player.statusEffects.filter(effect => now < effect.endTime);
         const statusBar = document.getElementById('status-effects-bar');
-        
+
         if (state.player.statusEffects.length === 0) {
             statusBar.style.display = 'none';
             return;
         }
+
         statusBar.style.display = 'flex';
         statusBar.innerHTML = '';
-        
         state.player.statusEffects.forEach(effect => {
             const remaining = effect.endTime - now;
             const duration = effect.endTime - effect.startTime;
@@ -524,6 +526,7 @@
       return e;
     }
     function spawnPickup() {
+        // FIX: Added 'black_hole' to the high-level power-up pool
         const midLevelPowers = ['ricochetShot', 'bulletNova'];
         const highLevelPowers = ['repulsion', 'orbitalStrike', 'berserk', 'black_hole'];
         let type;
