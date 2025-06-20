@@ -1,668 +1,658 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Eternal Momentum (Multi-Platform)</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0, user-scalable=no"/>
-  <style>
-    :root {
-      --primary-glow: #00ffff;
-      --secondary-glow: #f000ff;
-      --dark-bg: #1e1e2f;
-      --ui-bg: rgba(20, 20, 40, 0.85);
-      --border-color: rgba(0, 255, 255, 0.4);
-      --font-color: #eaf2ff;
-      --health-bar: #3498db;
-      --health-bar-berserk: #e74c3c;
-      --health-bar-bg: #444;
-      --disabled-color: rgba(255, 255, 255, 0.2);
-    }
-    html, body { 
-      margin:0; padding:0; overflow:hidden; background:var(--dark-bg);
-      font-family: 'Segoe UI', 'Roboto', sans-serif;
-      -webkit-user-select: none; user-select: none;
-    }
-    canvas { display:block; width:100vw; height:100vh; }
-    
-    /* Main UI Container */
-    #ui-container {
-      position: absolute;
-      bottom: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 95%;
-      max-width: 900px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-      pointer-events: none; /* Let clicks pass through to canvas unless on a specific element */
-    }
-    
-    /* Buffs and Debuffs Bar */
-    #status-effects-bar {
-      display: flex;
-      gap: 8px;
-      height: 40px;
-      padding: 4px 10px;
-      background: rgba(0,0,0,0.4);
-      border-radius: 20px;
-      border: 1px solid var(--border-color);
-      backdrop-filter: blur(5px);
-      pointer-events: all;
-    }
-    .status-icon {
-      width: 32px; height: 32px;
-      font-size: 24px;
-      display: flex; align-items: center; justify-content: center;
-      position: relative;
-      background: rgba(0,0,0,0.5);
-      border-radius: 50%;
-      overflow: hidden;
-    }
-    .status-icon .cooldown-overlay {
-      position: absolute;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.7);
-      transform-origin: bottom;
-      transition: transform 0.2s linear;
-    }
-    .status-icon[data-tooltip-text]:hover::before {
-        content: attr(data-tooltip-text);
-        position: absolute; bottom: 110%;
-        background: black; color: white; padding: 4px 8px; border-radius: 4px;
-        font-size: 0.8rem; white-space: nowrap;
-    }
+  <meta charset="UTF-8" />
+  <title>Eternal Momentum (Multi-Platform)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0, user-scalable=no"/>
+  <style>
+    :root {
+      --primary-glow: #00ffff;
+      --secondary-glow: #f000ff;
+      --dark-bg: #1e1e2f;
+      --ui-bg: rgba(20, 20, 40, 0.85);
+      --border-color: rgba(0, 255, 255, 0.4);
+      --font-color: #eaf2ff;
+      --health-bar: #3498db;
+      --health-bar-berserk: #e74c3c;
+      --health-bar-bg: #444;
+      --disabled-color: rgba(255, 255, 255, 0.2);
+    }
+    html, body { 
+      margin:0; padding:0; overflow:hidden; background:var(--dark-bg);
+      font-family: 'Segoe UI', 'Roboto', sans-serif;
+      -webkit-user-select: none; user-select: none;
+    }
+    canvas { display:block; width:100vw; height:100vh; }
+    
+    /* Main UI Container */
+    #ui-container {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 95%;
+      max-width: 900px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      pointer-events: none; /* Let clicks pass through to canvas unless on a specific element */
+    }
+    
+    /* Buffs and Debuffs Bar */
+    #status-effects-bar {
+      display: flex;
+      gap: 8px;
+      height: 40px;
+      padding: 4px 10px;
+      background: rgba(0,0,0,0.4);
+      border-radius: 20px;
+      border: 1px solid var(--border-color);
+      backdrop-filter: blur(5px);
+      pointer-events: all;
+    }
+    .status-icon {
+      width: 32px; height: 32px;
+      font-size: 24px;
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+      background: rgba(0,0,0,0.5);
+      border-radius: 50%;
+      overflow: hidden;
+    }
+    .status-icon .cooldown-overlay {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7);
+      transform-origin: bottom;
+      transition: transform 0.2s linear;
+    }
+    .status-icon[data-tooltip-text]:hover::before {
+        content: attr(data-tooltip-text);
+        position: absolute; bottom: 110%;
+        background: black; color: white; padding: 4px 8px; border-radius: 4px;
+        font-size: 0.8rem; white-space: nowrap;
+    }
 
-    /* Main Command Bar */
-    .command-bar {
-      width: 100%;
-      height: 120px;
-      background: var(--ui-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 12px;
-      box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
-      backdrop-filter: blur(10px);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0 20px;
-      color: var(--font-color);
-      pointer-events: all;
-    }
-    .ui-pod { text-align: center; font-size: 1.1rem; line-height: 1.5; flex-basis: 250px; }
-    .left-pod { text-align: left; }
-    .right-pod { text-align: right; display: flex; gap: 10px; justify-content: flex-end; }
+    /* Main Command Bar */
+    .command-bar {
+      width: 100%;
+      height: 120px;
+      background: var(--ui-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+      backdrop-filter: blur(10px);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 20px;
+      color: var(--font-color);
+      pointer-events: all;
+    }
+    .ui-pod { text-align: center; font-size: 1.1rem; line-height: 1.5; flex-basis: 250px; }
+    .left-pod { text-align: left; }
+    .right-pod { text-align: right; display: flex; gap: 10px; justify-content: flex-end; }
 
-    /* Central Health & Abilities */
-    .core-display { position: relative; display: flex; justify-content: center; align-items: center; flex-grow: 1; }
-    .ability-cluster { display: flex; justify-content: center; align-items: flex-end; gap: 4px; }
-    
-    /* FIX: Reworked Health Gauge Positioning */
-    #playerHealthArc { position: absolute; top: 0px; left: 50%; transform: translateX(-50%); width: 340px; height: 60px; pointer-events: none; }
-    #healthArcBackground, #healthArcValue { stroke-width: 8; stroke-linecap: round; }
-    #healthArcBackground { stroke: var(--health-bar-bg); }
-    #healthArcValue { stroke: var(--health-bar); transition: stroke-dashoffset 0.3s ease-out, stroke 0.3s; }
-    #playerHealthText { fill: var(--font-color); font-size: 16px; font-weight: bold; }
-    
-    .abilities { display: flex; align-items: flex-end; gap: 10px; margin: 0 10px; }
-    .ability-slot {
-      width: 64px; height: 72px;
-      border: 2px solid var(--border-color);
-      cursor: pointer;
-      position: relative;
-      background-color: rgba(0, 255, 255, 0.05);
-      clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-      transition: background-color 0.2s, transform 0.2s;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 36px;
-    }
-    .ability-slot.main { width: 80px; height: 90px; border-color: var(--secondary-glow); background-color: rgba(240, 0, 255, 0.05); font-size: 44px;}
-    .ability-slot:hover { background-color: rgba(0, 255, 255, 0.2); transform: translateY(-5px); }
-    .ability-slot.main:hover { background-color: rgba(240, 0, 255, 0.2); }
-    .ability-slot.empty { font-size: 24px; color: var(--disabled-color); }
-    .ability-slot .ability-key {
-      position: absolute;
-      bottom: -18px;
-      font-size: 0.7rem;
-      color: #aaa;
-      display: none; /* Hidden by default, shown for non-touch devices */
-    }
-    .ability-slot.activated {
-      transform: translateY(-5px) scale(1.1);
-      box-shadow: 0 0 15px #fff;
-    }
-    
-    .ability-queue { display: flex; flex-direction: column; justify-content: center; gap: 4px; }
-    .queue-slot {
-      width: 40px; height: 46px;
-      border: 1px solid var(--border-color);
-      clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 20px;
-      background: rgba(0,0,0,0.5);
-      opacity: 0;
-      transform: scale(0.8);
-      transition: opacity 0.3s, transform 0.3s;
-    }
-    .queue-slot.visible { opacity: 1; transform: scale(1); }
+    /* Central Health & Abilities */
+    .core-display { position: relative; display: flex; justify-content: center; align-items: center; flex-grow: 1; }
+    .ability-cluster { display: flex; justify-content: center; align-items: flex-end; gap: 4px; }
+    
+    #playerHealthArc { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); width: 340px; height: 70px; pointer-events: none; }
+    #healthArcBackground, #healthArcValue { stroke-width: 8; stroke-linecap: round; }
+    #healthArcBackground { stroke: var(--health-bar-bg); }
+    #healthArcValue { stroke: var(--health-bar); transition: stroke-dashoffset 0.3s ease-out, stroke 0.3s; }
+    #playerHealthText { fill: var(--font-color); font-size: 16px; font-weight: bold; }
+    
+    .abilities { display: flex; align-items: flex-end; gap: 10px; margin: 0 10px; }
+    .ability-slot {
+      width: 64px; height: 72px;
+      border: 2px solid var(--border-color);
+      cursor: pointer;
+      position: relative;
+      background-color: rgba(0, 255, 255, 0.05);
+      clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+      transition: background-color 0.2s, transform 0.2s;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 36px;
+    }
+    .ability-slot.main { width: 80px; height: 90px; border-color: var(--secondary-glow); background-color: rgba(240, 0, 255, 0.05); font-size: 44px;}
+    .ability-slot:hover { background-color: rgba(0, 255, 255, 0.2); transform: translateY(-5px); }
+    .ability-slot.main:hover { background-color: rgba(240, 0, 255, 0.2); }
+    .ability-slot.empty { font-size: 24px; color: var(--disabled-color); }
+    .ability-slot .ability-key {
+      position: absolute;
+      bottom: -18px;
+      font-size: 0.7rem;
+      color: #aaa;
+      display: none; /* Hidden by default, shown for non-touch devices */
+    }
+    .ability-slot.activated {
+      transform: translateY(-5px) scale(1.1);
+      box-shadow: 0 0 15px #fff;
+    }
+    
+    .ability-queue { display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+    .queue-slot {
+      width: 40px; height: 46px;
+      border: 1px solid var(--border-color);
+      clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      background: rgba(0,0,0,0.5);
+      opacity: 0;
+      transform: scale(0.8);
+      transition: opacity 0.3s, transform 0.3s;
+    }
+    .queue-slot.visible { opacity: 1; transform: scale(1); }
 
-    /* Tooltips */
-    [data-tooltip-text]:hover::before {
-      content: attr(data-tooltip-text);
-      position: absolute; top: -30px; left: 50%; transform: translateX(-50%);
-      background: black; color: white; padding: 4px 8px; border-radius: 4px;
-      font-size: 0.9rem; white-space: nowrap; z-index: 10;
-    }
+    /* Tooltips */
+    [data-tooltip-text]:hover::before {
+      content: attr(data-tooltip-text);
+      position: absolute; top: -30px; left: 50%; transform: translateX(-50%);
+      background: black; color: white; padding: 4px 8px; border-radius: 4px;
+      font-size: 0.9rem; white-space: nowrap; z-index: 10;
+    }
 
-    /* Control Buttons */
-    button {
-      background: rgba(0, 255, 255, 0.2); border: 1px solid var(--border-color);
-      padding: 6px; width: 40px; height: 40px; border-radius: 8px;
-      color: white; font-size: 1.2rem; cursor: pointer;
-      transition: background-color 0.2s;
-    }
-    button:hover { background: rgba(0, 255, 255, 0.4); }
-    #arenaBtn { background: rgba(155, 89, 182, 0.4); border-color: rgba(155, 89, 182, 1); }
-    #arenaBtn:hover { background: rgba(155, 89, 182, 0.6); }
+    /* Control Buttons */
+    button {
+      background: rgba(0, 255, 255, 0.2); border: 1px solid var(--border-color);
+      padding: 6px; width: 40px; height: 40px; border-radius: 8px;
+      color: white; font-size: 1.2rem; cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    button:hover { background: rgba(0, 255, 255, 0.4); }
+    #arenaBtn { background: rgba(155, 89, 182, 0.4); border-color: rgba(155, 89, 182, 1); }
+    #arenaBtn:hover { background: rgba(155, 89, 182, 0.6); }
 
-    /* Other UI Elements */
-    #bossBanner, #levelSelectModal, #bossHpContainer, #vignette { position:absolute; }
-    #bossBanner { top:30%; width:100%; text-align:center; font-size:2rem; color:#f1c40f; text-shadow:2px 2px 4px black; opacity:0; transition:opacity 1s; pointer-events: none; }
-    #bossHpContainer { top: 8px; left: 50%; transform: translateX(-50%); width: 80%; max-width: 400px; display: flex; flex-direction: column; gap: 5px; }
-    .boss-hp-bar-wrapper { width: 100%; background: rgba(0,0,0,0.5); border: 1px solid #fff; border-radius: 6px; padding: 2px; box-sizing: border-box; }
-    .boss-hp-bar { height: 15px; width: 100%; border-radius: 4px; transition: width 0.3s ease-out; }
-    .boss-hp-label { font-size: 0.8rem; color: white; text-shadow: 1px 1px 2px black; margin-bottom: 2px; text-align: center; }
-    #vignette { top: 0; left: 0; width: 100%; height: 100%; box-shadow: inset 0 0 150px 50px rgba(0,0,0,0); pointer-events: none; transition: box-shadow 0.3s ease-out; }
-    #arenaBtn { display: none; } 
-    #levelSelectModal { top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; flex-direction: column; align-items: center; justify-content: center; color: white; font-family: sans-serif; pointer-events: all; }
-    #levelSelectGrid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; padding: 20px; max-width: 500px; }
-    #levelSelectGrid button { padding: 15px; font-size: 1.1rem; background: #2c3e50; width: auto; height: auto;}
-    #levelSelectGrid button:hover { background: #34495e; }
-    #closeModalBtn { margin-top: 20px; background: #c0392b; width: auto; height: auto; padding: 10px 20px;}
-  </style>
+    /* Other UI Elements */
+    #bossBanner, #levelSelectModal, #bossHpContainer, #vignette { position:absolute; }
+    #bossBanner { top:30%; width:100%; text-align:center; font-size:2rem; color:#f1c40f; text-shadow:2px 2px 4px black; opacity:0; transition:opacity 1s; pointer-events: none; }
+    #bossHpContainer { top: 8px; left: 50%; transform: translateX(-50%); width: 80%; max-width: 400px; display: flex; flex-direction: column; gap: 5px; }
+    .boss-hp-bar-wrapper { width: 100%; background: rgba(0,0,0,0.5); border: 1px solid #fff; border-radius: 6px; padding: 2px; box-sizing: border-box; }
+    .boss-hp-bar { height: 15px; width: 100%; border-radius: 4px; transition: width 0.3s ease-out; }
+    .boss-hp-label { font-size: 0.8rem; color: white; text-shadow: 1px 1px 2px black; margin-bottom: 2px; text-align: center; }
+    #vignette { top: 0; left: 0; width: 100%; height: 100%; box-shadow: inset 0 0 150px 50px rgba(0,0,0,0); pointer-events: none; transition: box-shadow 0.3s ease-out; }
+    #arenaBtn { display: none; } 
+    #levelSelectModal { top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; flex-direction: column; align-items: center; justify-content: center; color: white; font-family: sans-serif; pointer-events: all; }
+    #levelSelectGrid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; padding: 20px; max-width: 500px; }
+    #levelSelectGrid button { padding: 15px; font-size: 1.1rem; background: #2c3e50; width: auto; height: auto;}
+    #levelSelectGrid button:hover { background: #34495e; }
+    #closeModalBtn { margin-top: 20px; background: #c0392b; width: auto; height: auto; padding: 10px 20px;}
+  </style>
 </head>
 <body>
-  <canvas id="gameCanvas"></canvas>
-  <div id="vignette"></div>
+  <canvas id="gameCanvas"></canvas>
+  <div id="vignette"></div>
 
-  <div id="ui-container">
-    <div id="status-effects-bar"></div>
-    <div class="command-bar">
-        <div class="ui-pod left-pod">
-            <div id="score">Score: 0</div>
-            <div id="level">Level: 1</div>
-        </div>
+  <div id="ui-container">
+    <div id="status-effects-bar"></div>
+    <div class="command-bar">
+        <div class="ui-pod left-pod">
+            <div id="score">Score: 0</div>
+            <div id="level">Level: 1</div>
+        </div>
 
-        <div class="core-display">
-                        <svg id="playerHealthArc" viewBox="0 0 340 60">
-                <path id="healthArcBackground" d="M 20 55 A 150 150 0 0 1 320 55" fill="none" />
-                <path id="healthArcValue" d="M 20 55 A 150 150 0 0 1 320 55" fill="none" />
-                <text id="playerHealthText" x="170" y="45" text-anchor="middle">100/100</text>
-            </svg>
-            <div class="ability-cluster">
-                <div class="ability-queue defensive">
-                    <div class="queue-slot" id="q-def-1"></div>
-                    <div class="queue-slot" id="q-def-2"></div>
-                </div>
-                <div class="abilities">
-                    <div class="ability-slot" id="slot-def-0" data-tooltip-text="Defensive">
-                        <span class="ability-key">R-Click</span>
-                    </div>
-                    <div class="ability-slot main" id="slot-off-0" data-tooltip-text="Offensive">
-                        <span class="ability-key">L-Click</span>
-                    </div>
-                </div>
-                <div class="ability-queue offensive">
-                    <div class="queue-slot" id="q-off-1"></div>
-                    <div class="queue-slot" id="q-off-2"></div>
-                </div>
-            </div>
-        </div>
+        <div class="core-display">
+            <svg id="playerHealthArc" viewBox="0 0 340 70">
+                <path id="healthArcBackground" d="M 20 60 A 150 150 0 0 1 320 60" fill="none" />
+                <path id="healthArcValue" d="M 20 60 A 150 150 0 0 1 320 60" fill="none" />
+                <text id="playerHealthText" x="170" y="50" text-anchor="middle">100/100</text>
+            </svg>
+            <div class="ability-cluster">
+                <div class="ability-queue defensive">
+                    <div class="queue-slot" id="q-def-1"></div>
+                    <div class="queue-slot" id="q-def-2"></div>
+                </div>
+                <div class="abilities">
+                    <div class="ability-slot" id="slot-def-0" data-tooltip-text="Defensive">
+                        <span class="ability-key">R-Click</span>
+                    </div>
+                    <div class="ability-slot main" id="slot-off-0" data-tooltip-text="Offensive">
+                        <span class="ability-key">L-Click</span>
+                    </div>
+                </div>
+                <div class="ability-queue offensive">
+                    <div class="queue-slot" id="q-off-1"></div>
+                    <div class="queue-slot" id="q-off-2"></div>
+                </div>
+            </div>
+        </div>
 
-        <div class="ui-pod right-pod">
-            <button id="levelSelectBtn" title="Level Select">⚙️</button>
-            <button id="arenaBtn" title="Arena Mode">⚔️</button>
-            <button id="soundToggle" title="Toggle Sound">🔊</button>
-            <button id="restartBtn" title="Restart Game">🔄</button>
-        </div>
-    </div>
-  </div>
+        <div class="ui-pod right-pod">
+            <button id="levelSelectBtn" title="Level Select">⚙️</button>
+            <button id="arenaBtn" title="Arena Mode">⚔️</button>
+            <button id="soundToggle" title="Toggle Sound">🔊</button>
+            <button id="restartBtn" title="Restart Game">🔄</button>
+        </div>
+    </div>
+  </div>
 
-  <div id="bossBanner"></div>
-  <div id="bossHpContainer"></div>
+  <div id="bossBanner"></div>
+  <div id="bossHpContainer"></div>
 
-  <div id="levelSelectModal">
-      <h2>Select a Level to Test</h2>
-      <div id="levelSelectGrid"></div>
-      <button id="closeModalBtn" style="margin-top: 20px;">Close</button>
-  </div>
-  
-  <audio id="pickupSound" src="assets/pickup.mp3" preload="auto"></audio>
-  <audio id="hitSound" src="assets/hit.mp3" preload="auto"></audio>
-  <audio id="shockwaveSound" src="assets/shockwave.mp3" preload="auto"></audio>
-  <audio id="chainSound" src="assets/chain.mp3" preload="auto"></audio>
-  <audio id="gravitySound" src="assets/gravity.mp3" preload="auto"></audio>
-  <audio id="bgMusic" src="assets/music.mp3" loop preload="auto"></audio>
-  <audio id="chargeUpSound" src="assets/chargeUp.mp3" preload="auto"></audio>
-  <audio id="chargeDashSound" src="assets/chargeDash.mp3" preload="auto"></audio>
-  <audio id="magicDispelSound" src="assets/magicDispel.mp3" preload="auto"></audio>
-  <audio id="glitchSound" src="assets/glitch.mp3" preload="auto"></audio>
-  <audio id="systemErrorSound" src="assets/systemError.mp3" preload="auto"></audio>
-  <audio id="beamHumSound" src="assets/beamHum.mp3" preload="auto" loop></audio>
-  <audio id="stoneCrackingSound" src="assets/stoneCracking.mp3" preload="auto"></audio>
-  <audio id="powerSirenSound" src="assets/powerSiren.mp3" preload="auto"></audio>
-  <audio id="annihilatorBeamSound" src="assets/annihilatorBeam.mp3" preload="auto"></audio>
-  <audio id="phaseShiftSound" src="assets/phaseShift.mp3" preload="auto"></audio>
-  <audio id="powerDrainSound" src="assets/powerDrain.mp3" preload="auto"></audio>
-  <audio id="finalBossPhaseSound" src="assets/finalBossPhase.mp3" preload="auto"></audio>
+  <div id="levelSelectModal">
+      <h2>Select a Level to Test</h2>
+      <div id="levelSelectGrid"></div>
+      <button id="closeModalBtn" style="margin-top: 20px;">Close</button>
+  </div>
+  
+  <audio id="pickupSound" src="assets/pickup.mp3" preload="auto"></audio>
+  <audio id="hitSound" src="assets/hit.mp3" preload="auto"></audio>
+  <audio id="shockwaveSound" src="assets/shockwave.mp3" preload="auto"></audio>
+  <audio id="chainSound" src="assets/chain.mp3" preload="auto"></audio>
+  <audio id="gravitySound" src="assets/gravity.mp3" preload="auto"></audio>
+  <audio id="bgMusic" src="assets/music.mp3" loop preload="auto"></audio>
+  <audio id="chargeUpSound" src="assets/chargeUp.mp3" preload="auto"></audio>
+  <audio id="chargeDashSound" src="assets/chargeDash.mp3" preload="auto"></audio>
+  <audio id="magicDispelSound" src="assets/magicDispel.mp3" preload="auto"></audio>
+  <audio id="glitchSound" src="assets/glitch.mp3" preload="auto"></audio>
+  <audio id="systemErrorSound" src="assets/systemError.mp3" preload="auto"></audio>
+  <audio id="beamHumSound" src="assets/beamHum.mp3" preload="auto" loop></audio>
+  <audio id="stoneCrackingSound" src="assets/stoneCracking.mp3" preload="auto"></audio>
+  <audio id="powerSirenSound" src="assets/powerSiren.mp3" preload="auto"></audio>
+  <audio id="annihilatorBeamSound" src="assets/annihilatorBeam.mp3" preload="auto"></audio>
+  <audio id="phaseShiftSound" src="assets/phaseShift.mp3" preload="auto"></audio>
+  <audio id="powerDrainSound" src="assets/powerDrain.mp3" preload="auto"></audio>
+  <audio id="finalBossPhaseSound" src="assets/finalBossPhase.mp3" preload="auto"></audio>
 
-  <script>
-  window.addEventListener("load",()=>{
-    const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  <script>
+  window.addEventListener("load",()=>{
+    const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
-    const canvas = document.getElementById("gameCanvas"),
-          ctx    = canvas.getContext("2d");
-    const pickupS = document.getElementById("pickupSound"),
-          hitS = document.getElementById("hitSound"),
-          shockS = document.getElementById("shockwaveSound"),
-          chainS = document.getElementById("chainSound"),
-          gravityS = document.getElementById("gravitySound"),
-          music = document.getElementById("bgMusic"),
-          soundBtn = document.getElementById("soundToggle"),
-          restartBtn = document.getElementById("restartBtn"),
-          arenaBtn = document.getElementById("arenaBtn"),
-          levelSelectBtn = document.getElementById("levelSelectBtn"),
-          levelSelectModal = document.getElementById("levelSelectModal"),
-          levelSelectGrid = document.getElementById("levelSelectGrid"),
-          closeModalBtn = document.getElementById("closeModalBtn"),
-          chargeUpS = document.getElementById("chargeUpSound"),
-          chargeDashS = document.getElementById("chargeDashSound"),
-          magicDispelS = document.getElementById("magicDispelSound"),
-          glitchS = document.getElementById("glitchSound"),
-          systemErrorS = document.getElementById("systemErrorSound"),
-          beamHumS = document.getElementById("beamHumSound"),
-          stoneCrackingS = document.getElementById("stoneCrackingSound"),
-          powerSirenS = document.getElementById("powerSirenSound"),
-          annihilatorBeamS = document.getElementById("annihilatorBeamSound"),
-          phaseShiftS = document.getElementById("phaseShiftSound"),
-          powerDrainS = document.getElementById("powerDrainSound"),
-          finalBossPhaseS = document.getElementById("finalBossPhaseSound");
+    const canvas = document.getElementById("gameCanvas"),
+          ctx    = canvas.getContext("2d");
+    const pickupS = document.getElementById("pickupSound"),
+          hitS = document.getElementById("hitSound"),
+          shockS = document.getElementById("shockwaveSound"),
+          chainS = document.getElementById("chainSound"),
+          gravityS = document.getElementById("gravitySound"),
+          music = document.getElementById("bgMusic"),
+          soundBtn = document.getElementById("soundToggle"),
+          restartBtn = document.getElementById("restartBtn"),
+          arenaBtn = document.getElementById("arenaBtn"),
+          levelSelectBtn = document.getElementById("levelSelectBtn"),
+          levelSelectModal = document.getElementById("levelSelectModal"),
+          levelSelectGrid = document.getElementById("levelSelectGrid"),
+          closeModalBtn = document.getElementById("closeModalBtn"),
+          chargeUpS = document.getElementById("chargeUpSound"),
+          chargeDashS = document.getElementById("chargeDashSound"),
+          magicDispelS = document.getElementById("magicDispelSound"),
+          glitchS = document.getElementById("glitchSound"),
+          systemErrorS = document.getElementById("systemErrorSound"),
+          beamHumS = document.getElementById("beamHumSound"),
+          stoneCrackingS = document.getElementById("stoneCrackingSound"),
+          powerSirenS = document.getElementById("powerSirenSound"),
+          annihilatorBeamS = document.getElementById("annihilatorBeamSound"),
+          phaseShiftS = document.getElementById("phaseShiftSound"),
+          powerDrainS = document.getElementById("powerDrainSound"),
+          finalBossPhaseS = document.getElementById("finalBossPhaseSound");
 
-    const AudioManager = {
-        unlocked: false, userMuted: false, allAudio: [], musicEl: null, soundBtn: null,
-        setup(audioElements, musicElement, buttonElement) { this.allAudio = audioElements; this.musicEl = musicElement; this.soundBtn = buttonElement; this.musicEl.volume = 0.5; this.updateAllMutedStates(); this.updateButtonIcon(); },
-        unlockAudio() { if (this.unlocked) return; this.unlocked = true; const AudioContext = window.AudioContext || window.webkitAudioContext; const audioCtx = new AudioContext(); if (audioCtx.state === 'suspended') { audioCtx.resume(); } if (!this.userMuted) { this.musicEl.play().catch(e => console.warn("Initial music playback failed.")); } },
-        toggleMute() { if (!this.unlocked) { this.unlockAudio(); } this.userMuted = !this.userMuted; if (!this.userMuted && this.musicEl.paused) { this.musicEl.play().catch(e => console.error("Secondary music playback failed.", e)); } this.updateAllMutedStates(); this.updateButtonIcon(); },
-        playSfx(sfxElement) { if (sfxElement && this.unlocked && !this.userMuted) { sfxElement.currentTime = 0; sfxElement.play().catch(e => console.warn("SFX playback failed for:", sfxElement.id, e)); } },
-        updateAllMutedStates() { this.allAudio.forEach(a => {a.muted = this.userMuted; if(a.loop && a.muted) a.pause(); }); },
-        updateButtonIcon() { this.soundBtn.innerText = this.userMuted ? "🔇" : "🔊"; }
-    };
-    
-    const allAudioElements = [pickupS, hitS, shockS, chainS, gravityS, music, chargeUpS, chargeDashS, magicDispelS, glitchS, systemErrorS, beamHumS, stoneCrackingS, powerSirenS, annihilatorBeamS, phaseShiftS, powerDrainS, finalBossPhaseS];
-    AudioManager.setup(allAudioElements, music, soundBtn);
+    const AudioManager = {
+        unlocked: false, userMuted: false, allAudio: [], musicEl: null, soundBtn: null,
+        setup(audioElements, musicElement, buttonElement) { this.allAudio = audioElements; this.musicEl = musicElement; this.soundBtn = buttonElement; this.musicEl.volume = 0.5; this.updateAllMutedStates(); this.updateButtonIcon(); },
+        unlockAudio() { if (this.unlocked) return; this.unlocked = true; const AudioContext = window.AudioContext || window.webkitAudioContext; const audioCtx = new AudioContext(); if (audioCtx.state === 'suspended') { audioCtx.resume(); } if (!this.userMuted) { this.musicEl.play().catch(e => console.warn("Initial music playback failed.")); } },
+        toggleMute() { if (!this.unlocked) { this.unlockAudio(); } this.userMuted = !this.userMuted; if (!this.userMuted && this.musicEl.paused) { this.musicEl.play().catch(e => console.error("Secondary music playback failed.", e)); } this.updateAllMutedStates(); this.updateButtonIcon(); },
+        playSfx(sfxElement) { if (sfxElement && this.unlocked && !this.userMuted) { sfxElement.currentTime = 0; sfxElement.play().catch(e => console.warn("SFX playback failed for:", sfxElement.id, e)); } },
+        updateAllMutedStates() { this.allAudio.forEach(a => {a.muted = this.userMuted; if(a.loop && a.muted) a.pause(); }); },
+        updateButtonIcon() { this.soundBtn.innerText = this.userMuted ? "🔇" : "🔊"; }
+    };
+    
+    const allAudioElements = [pickupS, hitS, shockS, chainS, gravityS, music, chargeUpS, chargeDashS, magicDispelS, glitchS, systemErrorS, beamHumS, stoneCrackingS, powerSirenS, annihilatorBeamS, phaseShiftS, powerDrainS, finalBossPhaseS];
+    AudioManager.setup(allAudioElements, music, soundBtn);
 
-    function resize(){ canvas.width=innerWidth; canvas.height=innerHeight; }
-    window.addEventListener("resize",resize); resize();
+    function resize(){ canvas.width=innerWidth; canvas.height=innerHeight; }
+    window.addEventListener("resize",resize); resize();
 
-    let mx=canvas.width/2, my=canvas.height/2;
-    function setPlayerTarget(e) { const rect = canvas.getBoundingClientRect(); const clientX = e.clientX ?? e.touches[0].clientX; const clientY = e.clientY ?? e.touches[0].clientY; mx = clientX - rect.left; my = clientY - rect.top; }
-    canvas.addEventListener("mousemove", setPlayerTarget);
-    canvas.addEventListener("touchmove", e => { e.preventDefault(); setPlayerTarget(e); }, { passive: false });
-    canvas.addEventListener("touchstart", e => { e.preventDefault(); setPlayerTarget(e); }, { passive: false });
-    
-    let isPaused = false;
+    let mx=canvas.width/2, my=canvas.height/2;
+    function setPlayerTarget(e) { const rect = canvas.getBoundingClientRect(); const clientX = e.clientX ?? e.touches[0].clientX; const clientY = e.clientY ?? e.touches[0].clientY; mx = clientX - rect.left; my = clientY - rect.top; }
+    canvas.addEventListener("mousemove", setPlayerTarget);
+    canvas.addEventListener("touchmove", e => { e.preventDefault(); setPlayerTarget(e); }, { passive: false });
+    canvas.addEventListener("touchstart", e => { e.preventDefault(); setPlayerTarget(e); }, { passive: false });
+    
+    let isPaused = false;
 
-    const state={
-      player:{
-        x:canvas.width/2,y:canvas.height/2,r:20,speed:1,shield:false, 
-        maxHealth:100, stunnedUntil: 0,
-        statusEffects: []
-      },
-      enemies:[], pickups:[], decoy:null, effects: [],
-      offensiveInventory:[null,null,null], defensiveInventory:[null,null,null],
-      currentBoss:null, bossActive:false,
-      score:0, level:1, health:100, stacked:false, gameOver:false,
-      gravityActive:false, gravityEnd:0,
-      bossSpawnCooldownEnd: 0,
-      arenaMode: false, wave: 0, lastArenaSpawn: 0,
-    };
-    
-    let gameLoopId;
+    const state={
+      player:{
+        x:canvas.width/2,y:canvas.height/2,r:20,speed:1,shield:false, 
+        maxHealth:100, stunnedUntil: 0,
+        statusEffects: []
+      },
+      enemies:[], pickups:[], decoy:null, effects: [],
+      offensiveInventory:[null,null,null], defensiveInventory:[null,null,null],
+      currentBoss:null, bossActive:false,
+      score:0, level:1, health:100, stacked:false, gameOver:false,
+      gravityActive:false, gravityEnd:0,
+      bossSpawnCooldownEnd: 0,
+      arenaMode: false, wave: 0, lastArenaSpawn: 0,
+    };
+    
+    let gameLoopId;
 
-    function play(a){ AudioManager.playSfx(a); }
-    function drawCircle(x,y,r,c){ ctx.fillStyle=c; ctx.beginPath(); ctx.arc(x,y,r,0,2*Math.PI); ctx.fill(); }
+    function play(a){ AudioManager.playSfx(a); }
+    function drawCircle(x,y,r,c){ ctx.fillStyle=c; ctx.beginPath(); ctx.arc(x,y,r,0,2*Math.PI); ctx.fill(); }
 
-    const particles=[];
-    function spawnParticles(x,y,c,n,spd,life,r=3){ for(let i=0;i<n;i++){ const a=Math.random()*2*Math.PI; particles.push({x,y,dx:Math.cos(a)*spd*(0.5+Math.random()*0.5),dy:Math.sin(a)*spd*(0.5+Math.random()*0.5),r,color:c,life,maxLife:life}); } }
-    function updateParticles(){ for(let i=particles.length-1;i>=0;i--){ const p=particles[i]; p.x+=p.dx; p.y+=p.dy; p.life--; ctx.globalAlpha=p.life/p.maxLife; ctx.fillStyle=p.color; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,2*Math.PI); ctx.fill(); if(p.life<=0) particles.splice(i,1); } ctx.globalAlpha=1; }
-    let screenShakeEnd = 0, screenShakeMagnitude = 0;
-    function triggerScreenShake(duration, magnitude) { screenShakeEnd = Date.now() + duration; screenShakeMagnitude = magnitude; }
-    function applyScreenShake() { if (Date.now() < screenShakeEnd) { const x = (Math.random() - 0.5) * screenShakeMagnitude; const y = (Math.random() - 0.5) * screenShakeMagnitude; ctx.translate(x, y); } }
-    function drawLightning(x1, y1, x2, y2, color, width = 2) { ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = Math.random() * width + 1; ctx.globalAlpha = Math.random() * 0.5 + 0.5; ctx.beginPath(); ctx.moveTo(x1, y1); const dx = x2 - x1, dy = y2 - y1; const dist = Math.hypot(dx, dy); const segments = Math.floor(dist / 15); const perpAngle = Math.atan2(dy, dx) + Math.PI / 2; for (let i = 1; i < segments; i++) { const pos = i / segments; const offset = (Math.random() - 0.5) * dist * 0.15; ctx.lineTo(x1 + dx * pos + Math.cos(perpAngle) * offset, y1 + dy * pos + Math.sin(perpAngle) * offset); } ctx.lineTo(x2, y2); ctx.stroke(); ctx.restore(); }
+    const particles=[];
+    function spawnParticles(x,y,c,n,spd,life,r=3){ for(let i=0;i<n;i++){ const a=Math.random()*2*Math.PI; particles.push({x,y,dx:Math.cos(a)*spd*(0.5+Math.random()*0.5),dy:Math.sin(a)*spd*(0.5+Math.random()*0.5),r,color:c,life,maxLife:life}); } }
+    function updateParticles(){ for(let i=particles.length-1;i>=0;i--){ const p=particles[i]; p.x+=p.dx; p.y+=p.dy; p.life--; ctx.globalAlpha=p.life/p.maxLife; ctx.fillStyle=p.color; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,2*Math.PI); ctx.fill(); if(p.life<=0) particles.splice(i,1); } ctx.globalAlpha=1; }
+    let screenShakeEnd = 0, screenShakeMagnitude = 0;
+    function triggerScreenShake(duration, magnitude) { screenShakeEnd = Date.now() + duration; screenShakeMagnitude = magnitude; }
+    function applyScreenShake() { if (Date.now() < screenShakeEnd) { const x = (Math.random() - 0.5) * screenShakeMagnitude; const y = (Math.random() - 0.5) * screenShakeMagnitude; ctx.translate(x, y); } }
+    function drawLightning(x1, y1, x2, y2, color, width = 2) { ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = Math.random() * width + 1; ctx.globalAlpha = Math.random() * 0.5 + 0.5; ctx.beginPath(); ctx.moveTo(x1, y1); const dx = x2 - x1, dy = y2 - y1; const dist = Math.hypot(dx, dy); const segments = Math.floor(dist / 15); const perpAngle = Math.atan2(dy, dx) + Math.PI / 2; for (let i = 1; i < segments; i++) { const pos = i / segments; const offset = (Math.random() - 0.5) * dist * 0.15; ctx.lineTo(x1 + dx * pos + Math.cos(perpAngle) * offset, y1 + dy * pos + Math.sin(perpAngle) * offset); } ctx.lineTo(x2, y2); ctx.stroke(); ctx.restore(); }
 
-    // FIX: Hide status bar when there are no effects
-    function updateStatusEffectsUI() {
-        const now = Date.now();
-        state.player.statusEffects = state.player.statusEffects.filter(effect => now < effect.endTime);
-        const statusBar = document.getElementById('status-effects-bar');
+    function updateStatusEffectsUI() {
+        const now = Date.now();
+        state.player.statusEffects = state.player.statusEffects.filter(effect => now < effect.endTime);
+        const statusBar = document.getElementById('status-effects-bar');
+        statusBar.innerHTML = '';
+        state.player.statusEffects.forEach(effect => {
+            const remaining = effect.endTime - now;
+            const duration = effect.endTime - effect.startTime;
+            const progress = Math.max(0, remaining) / duration;
+            const iconEl = document.createElement('div');
+            iconEl.className = 'status-icon';
+            iconEl.setAttribute('data-tooltip-text', `${effect.name} (${(remaining / 1000).toFixed(1)}s)`);
+            const emojiEl = document.createElement('span');
+            emojiEl.innerText = effect.emoji;
+            const overlayEl = document.createElement('div');
+            overlayEl.className = 'cooldown-overlay';
+            overlayEl.style.transform = `scaleY(${1 - progress})`;
+            iconEl.appendChild(emojiEl);
+            iconEl.appendChild(overlayEl);
+            statusBar.appendChild(iconEl);
+        });
+    }
 
-        if (state.player.statusEffects.length === 0) {
-            statusBar.style.display = 'none';
-            return;
-        }
+    function addStatusEffect(name, emoji, duration) {
+        const now = Date.now();
+        state.player.statusEffects = state.player.statusEffects.filter(e => e.name !== name);
+        state.player.statusEffects.push({ name, emoji, startTime: now, endTime: now + duration });
+    }
 
-        statusBar.style.display = 'flex';
-        statusBar.innerHTML = '';
-        state.player.statusEffects.forEach(effect => {
-            const remaining = effect.endTime - now;
-            const duration = effect.endTime - effect.startTime;
-            const progress = Math.max(0, remaining) / duration;
-            const iconEl = document.createElement('div');
-            iconEl.className = 'status-icon';
-            iconEl.setAttribute('data-tooltip-text', `${effect.name} (${(remaining / 1000).toFixed(1)}s)`);
-            const emojiEl = document.createElement('span');
-            emojiEl.innerText = effect.emoji;
-            const overlayEl = document.createElement('div');
-            overlayEl.className = 'cooldown-overlay';
-            overlayEl.style.transform = `scaleY(${1 - progress})`;
-            iconEl.appendChild(emojiEl);
-            iconEl.appendChild(overlayEl);
-            statusBar.appendChild(iconEl);
-        });
-    }
+    function updateUI() {
+        document.querySelectorAll('.ability-key').forEach(el => { el.style.display = isTouchDevice ? 'none' : 'block'; });
+        document.getElementById("score").innerText = state.arenaMode ? `Wave: ${state.wave}` : "Score: " + state.score;
+        document.getElementById("level").innerText = "Level: " + state.level;
+        
+        const healthPct = Math.max(0, state.health) / state.player.maxHealth;
+        const healthArc = document.getElementById('healthArcValue');
+        if (healthArc) {
+          const arcLength = healthArc.getTotalLength();
+          healthArc.style.strokeDasharray = arcLength;
+          healthArc.style.strokeDashoffset = arcLength * (1 - healthPct);
+          const isBerserk = state.player.berserkUntil > Date.now();
+          healthArc.style.stroke = isBerserk ? 'var(--health-bar-berserk)' : 'var(--health-bar)';
+        }
+        document.getElementById('playerHealthText').innerText = `${Math.max(0, Math.round(state.health))}/${Math.round(state.player.maxHealth)}`;
+        
+        // Main Abilities
+        const offP = state.offensiveInventory[0];
+        const defP = state.defensiveInventory[0];
+        const offSlot = document.getElementById('slot-off-0');
+        const defSlot = document.getElementById('slot-def-0');
+        offSlot.innerHTML = offP ? powers[offP].emoji : '<span class="ability-key">L-Click</span>';
+        defSlot.innerHTML = defP ? powers[defP].emoji : '<span class="ability-key">R-Click</span>';
+        offSlot.className = `ability-slot main ${offP ? '' : 'empty'}`;
+        defSlot.className = `ability-slot ${defP ? '' : 'empty'}`;
+        offSlot.setAttribute('data-tooltip-text', offP ? powers[offP].desc : 'Offensive Power');
+        defSlot.setAttribute('data-tooltip-text', defP ? powers[defP].desc : 'Defensive Power');
 
-    function addStatusEffect(name, emoji, duration) {
-        const now = Date.now();
-        state.player.statusEffects = state.player.statusEffects.filter(e => e.name !== name);
-        state.player.statusEffects.push({ name, emoji, startTime: now, endTime: now + duration });
-    }
+        // Queue Slots
+        for (let i = 1; i <= 2; i++) {
+            const offPower = state.offensiveInventory[i];
+            const defPower = state.defensiveInventory[i];
+            const qOffSlot = document.getElementById(`q-off-${i}`);
+            const qDefSlot = document.getElementById(`q-def-${i}`);
 
-    function updateUI() {
-        document.querySelectorAll('.ability-key').forEach(el => { el.style.display = isTouchDevice ? 'none' : 'block'; });
-        document.getElementById("score").innerText = state.arenaMode ? `Wave: ${state.wave}` : "Score: " + state.score;
-        document.getElementById("level").innerText = "Level: " + state.level;
-        
-        const healthPct = Math.max(0, state.health) / state.player.maxHealth;
-        const healthArc = document.getElementById('healthArcValue');
-        if (healthArc) {
-          const arcLength = healthArc.getTotalLength();
-          healthArc.style.strokeDasharray = arcLength;
-          healthArc.style.strokeDashoffset = arcLength * (1 - healthPct);
-          const isBerserk = state.player.berserkUntil > Date.now();
-          healthArc.style.stroke = isBerserk ? 'var(--health-bar-berserk)' : 'var(--health-bar)';
-        }
-        document.getElementById('playerHealthText').innerText = `${Math.max(0, Math.round(state.health))}/${Math.round(state.player.maxHealth)}`;
-        
-        // Main Abilities
-        const offP = state.offensiveInventory[0];
-        const defP = state.defensiveInventory[0];
-        const offSlot = document.getElementById('slot-off-0');
-        const defSlot = document.getElementById('slot-def-0');
-        offSlot.innerHTML = offP ? powers[offP].emoji : '<span class="ability-key">L-Click</span>';
-        defSlot.innerHTML = defP ? powers[defP].emoji : '<span class="ability-key">R-Click</span>';
-        offSlot.className = `ability-slot main ${offP ? '' : 'empty'}`;
-        defSlot.className = `ability-slot ${defP ? '' : 'empty'}`;
-        offSlot.setAttribute('data-tooltip-text', offP ? powers[offP].desc : 'Offensive Power');
-        defSlot.setAttribute('data-tooltip-text', defP ? powers[defP].desc : 'Defensive Power');
+            qOffSlot.innerHTML = offPower ? powers[offPower].emoji : '';
+            qOffSlot.className = `queue-slot ${offPower ? 'visible' : ''}`;
+            qOffSlot.setAttribute('data-tooltip-text', offPower ? powers[offPower].desc : '');
 
-        // Queue Slots
-        for (let i = 1; i <= 2; i++) {
-            const offPower = state.offensiveInventory[i];
-            const defPower = state.defensiveInventory[i];
-            const qOffSlot = document.getElementById(`q-off-${i}`);
-            const qDefSlot = document.getElementById(`q-def-${i}`);
+            qDefSlot.innerHTML = defPower ? powers[defPower].emoji : '';
+            qDefSlot.className = `queue-slot ${defPower ? 'visible' : ''}`;
+            qDefSlot.setAttribute('data-tooltip-text', defPower ? powers[defPower].desc : '');
+        }
 
-            qOffSlot.innerHTML = offPower ? powers[offPower].emoji : '';
-            qOffSlot.className = `queue-slot ${offPower ? 'visible' : ''}`;
-            qOffSlot.setAttribute('data-tooltip-text', offPower ? powers[offPower].desc : '');
+        document.getElementById('arenaBtn').style.display = (state.level > 10 && !state.arenaMode) ? 'inline-flex' : 'none';
+        
+        const bossContainer = document.getElementById("bossHpContainer");
+        bossContainer.innerHTML = '';
+        state.enemies.filter(e => e.boss).forEach(boss => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'boss-hp-bar-wrapper';
+            const label = document.createElement('div');
+            label.className = 'boss-hp-label';
+            label.innerText = boss.name;
+            const bar = document.createElement('div');
+            bar.className = 'boss-hp-bar';
+            bar.style.backgroundColor = boss.color;
+            bar.style.width = `${(boss.hp / boss.maxHP) * 100}%`;
+            wrapper.appendChild(label);
+            wrapper.appendChild(bar);
+            bossContainer.appendChild(wrapper);
+        });
+        updateStatusEffectsUI();
+    }
+    
+    function showBoss(boss){ const b=document.getElementById("bossBanner"); b.innerText="🚨 "+boss.name+" 🚨"; b.style.opacity=1; setTimeout(()=>b.style.opacity=0,2500); }
+    
+    const offensivePowers = ['shockwave', 'missile', 'chain', 'orbitalStrike', 'ricochetShot', 'bulletNova'];
+    const powers={
+      shield:{emoji:"🛡️",desc:"Blocks damage for 6s",apply:()=>{ state.player.shield=true; addStatusEffect('Shield', '🛡️', 6000); spawnParticles(state.player.x,state.player.y,"#f1c40f",30,4,30); setTimeout(()=>state.player.shield=false,6000); }},
+      heal:{emoji:"❤️",desc:"+30 HP",apply:()=>{ state.health=Math.min(state.player.maxHealth,state.health+30); }},
+      shockwave:{emoji:"💥",desc:"Expanding wave damages enemies",apply:()=>{ let damage = (state.player.berserkUntil > Date.now()) ? 30 : 15; state.effects.push({ type: 'shockwave', x: state.player.x, y: state.player.y, radius: 0, maxRadius: Math.max(canvas.width, canvas.height), speed: 800, startTime: Date.now(), hitEnemies: new Set(), damage: damage }); play(shockS); }},
+      missile:{emoji:"🎯",desc:"AoE explosion damages nearby",apply:()=>{ play(shockS); let damage = (state.player.berserkUntil > Date.now()) ? 20 : 10; const explosionRadius = 250; triggerScreenShake(200, 8); spawnParticles(state.player.x, state.player.y, "#ff9944", 150, 8, 40, 5); state.enemies.forEach(e => { if (Math.hypot(e.x - state.player.x, e.y - state.player.y) < explosionRadius) { e.hp -= e.boss ? damage : 1000; } }); }},
+      gravity:{emoji:"🌀",desc:"Pulls enemies for 1s",apply:()=>{ play(gravityS); state.gravityActive=true; state.gravityEnd=Date.now()+1000; spawnParticles(canvas.width/2, canvas.height/2,"#9b59b6",100,4,40); }},
+      speed:{emoji:"🚀",desc:"Speed Boost for 5s",apply:()=>{ state.player.speed*=1.5; addStatusEffect('Speed Boost', '🚀', 5000); spawnParticles(state.player.x,state.player.y,"#00f5ff",40,3,30); setTimeout(()=>state.player.speed/=1.5,5000); }},
+      freeze:{emoji:"🧊",desc:"Freeze enemies for 4s",apply:()=>{ state.enemies.forEach(e=>{ if (e.frozen) return; e.frozen=true; e._dx=e.dx; e._dy=e.dy; e.dx=e.dy=0; }); spawnParticles(state.player.x,state.player.y,"#0ff",60,3,30); setTimeout(()=>{ state.enemies.forEach(e=>{ if (!e.frozen) return; e.frozen=false; e.dx=e._dx; e.dy=e._dy; }); },4000); }},
+      decoy:{emoji:"🔮",desc:"Decoy lasts 5s",apply:()=>{ state.decoy={x:state.player.x,y:state.player.y,r:20,expires:Date.now()+5000}; spawnParticles(state.player.x,state.player.y,"#8e44ad",50,3,30); }},
+      stack:{emoji:"🧠",desc:"Double next power-up",apply:()=>{ state.stacked=true; spawnParticles(state.player.x,state.player.y,"#aaa",40,4,30); }},
+      score: {emoji: "⭐", desc: "Permanently +LVL to Max Health", apply: () => { const healthGain = Math.max(1, state.level); state.player.maxHealth += healthGain; state.health += healthGain; spawnParticles(state.player.x, state.player.y, "#f1c40f", 20, 4, 30); }},
+      chain:{emoji:"⚡",desc:"Chain lightning hits 6 targets",apply:()=>{ play(chainS); const targets = []; let currentTarget = state.player; for (let i = 0; i < 6; i++) { let closest = null; let minDist = Infinity; state.enemies.forEach(e => { if (!targets.includes(e)) { const dist = Math.hypot(e.x - currentTarget.x, e.y - currentTarget.y); if (dist < minDist) { minDist = dist; closest = e; } } }); if (closest) { targets.push(closest); currentTarget = closest; } else { break; } } let damage = (state.player.berserkUntil > Date.now()) ? 30 : 15; state.effects.push({ type: 'chain_lightning', targets: targets, links: [], startTime: Date.now(), durationPerLink: 80, damage: damage }); }},
+      repulsion: {emoji: "🖐️", desc: "Pushes enemies away for 5s", apply: () => { state.effects.push({ type: 'repulsion_field', x: state.player.x, y: state.player.y, radius: 250, endTime: Date.now() + 5000 }); play(shockS); }},
+      orbitalStrike: {emoji: "☄️", desc: "Calls 3 meteors on random enemies", apply: () => { const availableTargets = state.enemies.filter(e => !e.boss); for (let i = 0; i < 3; i++) { if (availableTargets.length > 0) { const targetIndex = Math.floor(Math.random() * availableTargets.length); const target = availableTargets.splice(targetIndex, 1)[0]; state.effects.push({type: 'orbital_target', x: target.x, y: target.y, startTime: Date.now()}); } } }},
+      black_hole: {emoji: "⚫", desc: "Pulls and damages enemies for 4s", apply: () => { let damage = (state.player.berserkUntil > Date.now()) ? 6 : 3; state.effects.push({ type: 'black_hole', x: state.player.x, y: state.player.y, radius: 20, maxRadius: 350, damageRate: 200, lastDamage: 0, endTime: Date.now() + 4000, damage: damage }); play(gravityS); }},
+      berserk: {emoji: "💢", desc: "8s: Deal 2x damage, take 2x damage", apply: () => { state.player.berserkUntil = Date.now() + 8000; addStatusEffect('Berserk', '💢', 8000); spawnParticles(state.player.x, state.player.y, "#e74c3c", 40, 3, 30); }},
+      ricochetShot: {emoji: "🔄", desc: "Fires a shot that bounces 6 times", apply: () => { const angle = Math.atan2(my - state.player.y, mx - state.player.x); const speed = 10; state.effects.push({ type: 'ricochet_projectile', x: state.player.x, y: state.player.y, dx: Math.cos(angle) * speed, dy: Math.sin(angle) * speed, r: 8, bounces: 6, hitEnemies: new Set() }); }},
+      bulletNova: {emoji: "💫", desc: "Unleashes a spiral of bullets", apply: () => { state.effects.push({ type: 'nova_controller', startTime: Date.now(), duration: 2000, lastShot: 0, angle: Math.random() * Math.PI * 2 }); }},
+    };
 
-            qDefSlot.innerHTML = defPower ? powers[defPower].emoji : '';
-            qDefSlot.className = `queue-slot ${defPower ? 'visible' : ''}`;
-            qDefSlot.setAttribute('data-tooltip-text', defPower ? powers[defPower].desc : '');
-        }
+    const bossData=[
+        { id:"splitter", name:"Splitter Sentinel", color:"#ff4500", maxHP: 150, onDeath: b => { spawnParticles(b.x, b.y, "#ff4500", 100, 6, 40, 5); const spawnInCircle = (count, radius, center) => { for(let i=0; i<count; i++) { const angle = (i / count) * 2 * Math.PI + Math.random() * 0.5; const spawnX = center.x + Math.cos(angle) * radius; const spawnY = center.y + Math.sin(angle) * radius; const newEnemy = spawnEnemy(false, null, { x: spawnX, y: spawnY }); if (state.arenaMode && newEnemy) newEnemy.targetBosses = true; } }; spawnInCircle(6, 60, b); setTimeout(() => spawnInCircle(6, 120, b), 1000); } },
+        { id:"reflector", name:"Reflector Warden", color:"#2ecc71", maxHP: 175, init:b=>{b.phase="idle";b.last=Date.now(); b.cycles=0; b.reflecting=false;}, logic:(b, ctx)=>{ ctx.save(); if(Date.now()-b.last>2000){ b.phase=b.phase==="idle"?"moving":"idle"; b.last=Date.now(); if(b.phase==="moving") { b.cycles++; if(b.cycles % 3 === 0) { b.reflecting = true; spawnParticles(b.x, b.y, "#fff", 50, 4, 30); setTimeout(() => b.reflecting = false, 2000); } } } if(b.phase==="moving") { ctx.fillStyle = "rgba(46, 204, 113, 0.3)"; ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 10, 0, 2 * Math.PI); ctx.fill(); } else { ctx.fillStyle = "rgba(255, 255, 255, 0.5)"; ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 5, 0, 2 * Math.PI); ctx.fill(); } ctx.restore(); }, onDamage:(b,dmg)=>{ if(b.phase!=="idle") b.hp += dmg; if(b.reflecting) state.health -=10; } },
+        { id: "vampire", name: "Vampire Veil", color: "#800020", maxHP: 200, init: b => { b.lastHit = Date.now(); b.lastHeal = Date.now(); }, logic: (b, ctx) => { const now = Date.now(); if (now - b.lastHit > 3000 && now - b.lastHeal > 5000) { b.hp = Math.min(b.maxHP, b.hp + 5); b.lastHeal = now; spawnParticles(b.x, b.y, "#800020", 20, 1, 40); } }, onDamage: (b, dmg, isReal, p) => { b.lastHit = Date.now(); if (Math.random() < 0.3) { state.pickups.push({ x: b.x, y: b.y, dx: 0, dy: 0, r: 10, type: 'heal', emoji: '🩸', life: Date.now() + 8000, customApply: () => { state.health = Math.min(state.player.maxHealth, state.health + 10); spawnParticles(state.player.x, state.player.y, "#800020", 20, 3, 30); } }); } } },
+        { id:"gravity", name:"Gravity Tyrant", color:"#9b59b6", maxHP: 230, init:b=>{ b.wells=[]; for(let i=0; i<8; i++) { b.wells.push({ angle: i * (Math.PI/4), dist: 150, r: 30 }); } }, logic:(b, ctx)=>{ b.wells.forEach(w => { const wellX = b.x + Math.cos(w.angle) * w.dist; const wellY = b.y + Math.sin(w.angle) * w.dist; drawCircle(wellX, wellY, w.r, "rgba(155, 89, 182, 0.3)"); const dx = state.player.x - wellX, dy = state.player.y - wellY; if (Math.hypot(dx, dy) < w.r + state.player.r) { state.player.x -= dx * 0.05; state.player.y -= dy * 0.05; } }); } },
+        { id:"swarm", name:"Swarm Link", color:"#c0392b", maxHP: 250, init:b=>{b.chain=[]; for(let i=0;i<150;i++)b.chain.push({x:b.x,y:b.y});}, logic:(b, ctx)=>{ let prev = b; b.chain.forEach(c=>{ c.x+=(prev.x-c.x)*0.2; c.y+=(prev.y-c.y)*0.2; drawCircle(c.x,c.y,8,"orange"); prev = c; }); } },
+        { id:"mirror", name:"Mirror Mirage", color:"#ff00ff", maxHP: 300, init:b=>{b.clones=[]; for(let i=0;i<5;i++)b.clones.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,r:b.r}); b.lastSwap = Date.now();}, logic:(b, ctx)=>{ b.clones.forEach(c=>drawCircle(c.x,c.y,c.r,"rgba(255,0,255,0.5)")); if(Date.now() - b.lastSwap > 2000){ b.lastSwap = Date.now(); const i = Math.floor(Math.random()*b.clones.length); [b.x,b.clones[i].x]=[b.clones[i].x,b.x]; [b.y,b.clones[i].y]=[b.clones[i].y,b.y]; } }, onDamage:(b,dmg,isReal)=>{if(isReal) spawnParticles(b.x,b.y,"#f00",10,3,20);} },
+        { id:"emp", name:"EMP Overload", color:"#3498db", maxHP: 325, init:b=>{b.lastEMP = Date.now(); b.bolts = [];}, logic:(b, ctx)=>{ if(Date.now() - b.lastEMP > 8000){ b.lastEMP = Date.now(); state.offensiveInventory = [null,null,null]; state.defensiveInventory = [null,null,null]; state.player.stunnedUntil = Date.now() + 500; state.player.speed *= 0.5; setTimeout(() => state.player.speed = state.player.speed / 0.5, 1000); b.bolts = []; for (let i=0; i<7; i++) { b.bolts.push({ x1: Math.random() * canvas.width, y1: 0, x2: Math.random() * canvas.width, y2: canvas.height, life: Date.now() + 300 }); b.bolts.push({ x1: 0, y1: Math.random() * canvas.height, x2: canvas.width, y2: Math.random() * canvas.height, life: Date.now() + 300 }); } } b.bolts = b.bolts.filter(bolt => Date.now() < bolt.life); b.bolts.forEach(bolt => drawLightning(bolt.x1, bolt.y1, bolt.x2, bolt.y2, "#3498db")); } },
+        { id:"architect", name:"The Architect", color:"#7f8c8d", maxHP: 350, init:b=>{b.pillars=[]; b.lastBuild=0;}, logic:(b, ctx)=>{ if(Date.now() - b.lastBuild > 8000) { b.lastBuild = Date.now(); b.pillars=[]; for(let i=0; i<10; i++) { const angle = Math.random() * 2 * Math.PI; const startX = b.x + Math.cos(angle) * 100; const startY = b.y + Math.sin(angle) * 100; for(let j=0; j<8; j++) { b.pillars.push({x:startX+Math.cos(angle)*j*40, y:startY+Math.sin(angle)*j*40, r:15}); } } } b.pillars.forEach(p => drawCircle(p.x, p.y, p.r, "#444")); } },
+        { id:"twins", name:"Vortex Twins", color:"#f39c12", maxHP: 350, init:b=>{ if (!state.enemies.find(e => e.id === 'twins' && e !== b)) { spawnEnemy(true, 'twins'); } }, onDeath:b=>{ const remainingTwins = state.enemies.filter(e => e.id === 'twins' && e.hp > 0 && e !== b); if (remainingTwins.length > 0) { remainingTwins.forEach(twin => { twin.enraged = true; }); } } },
+        { id:"looper", name:"Looping Eye", color:"#ecf0f1", maxHP: 400, init:b=>{b.lastTeleport = 0;}, logic:(b, ctx)=>{ const interval = b.hp < b.maxHP*0.25 ? 1500 : (b.hp < b.maxHP*0.5 ? 2000 : 2500); if(Date.now() - b.lastTeleport > interval) { b.lastTeleport = Date.now(); spawnParticles(b.x, b.y, "#fff", 30, 4, 20); b.x=Math.random()*canvas.width; b.y=Math.random()*canvas.height; spawnParticles(b.x, b.y, "#fff", 30, 4, 20); } } },
+        { id: "juggernaut", name: "The Juggernaut", color: "#636e72", maxHP: 450, init: b => { b.lastCharge = Date.now(); b.isCharging = false; b.baseDx = (Math.random()-0.5)*0.5; b.baseDy = (Math.random()-0.5)*0.5;}, logic: (b, ctx) => { const speedMultiplier = 1 + (1 - b.hp / b.maxHP) * 2.5; if (!b.isCharging) { b.dx = b.baseDx * speedMultiplier; b.dy = b.baseDy * speedMultiplier; if (Date.now() - b.lastCharge > 7000) { b.isCharging = true; b.dx=0; b.dy=0; state.effects.push({type:'juggernaut_charge_ring', source:b, startTime:Date.now(), duration:1000}); play(chargeUpS); setTimeout(() => { const angle = Math.atan2(state.player.y - b.y, state.player.x - b.x); b.dx = Math.cos(angle) * 15; b.dy = Math.sin(angle) * 15; triggerScreenShake(150, 3); play(chargeDashS); setTimeout(() => { b.isCharging = false; b.lastCharge = Date.now(); b.baseDx = (Math.random()-0.5)*0.5; b.baseDy = (Math.random()-0.5)*0.5;}, 500); }, 1000); } } else { state.enemies.forEach(e => { if(e !== b && !e.boss) { const dist = Math.hypot(b.x-e.x, b.y-e.y); if(dist < b.r + e.r){ const angle = Math.atan2(e.y - b.y, e.x - b.x); e.dx = Math.cos(angle) * 10; e.dy = Math.sin(angle) * 10; } } }); } }},
+        { id: "puppeteer", name: "The Puppeteer", color: "#a29bfe", maxHP: 400, init: b => { b.lastConvert = Date.now(); }, logic: (b, ctx) => { if (Date.now() - b.lastConvert > 1000) { let farthestEnemy = null; let maxDist = 0; state.enemies.forEach(e => { if (!e.boss && !e.isPuppet) { const d = Math.hypot(b.x - e.x, b.y - e.y); if (d > maxDist) { maxDist = d; farthestEnemy = e; } } }); if (farthestEnemy) { b.lastConvert = Date.now(); farthestEnemy.isPuppet = true; farthestEnemy.customColor = b.color; farthestEnemy.r *= 1.5; farthestEnemy.hp = 10; farthestEnemy.dx *= 2; farthestEnemy.dy *= 2; drawLightning(b.x, b.y, farthestEnemy.x, farthestEnemy.y, b.color, 5); } } }, onDeath: b => { play(magicDispelS); state.enemies.forEach(e => { if (e.isPuppet) e.hp = 0; }); } },
+        { id: "glitch", name: "The Glitch", color: "#fd79a8", maxHP: 420, hasCustomDraw: true, init: b => { b.lastTeleport = Date.now(); }, logic: (b, ctx) => { if (Date.now() - b.lastTeleport > 3000) { b.lastTeleport = Date.now(); play(glitchS); spawnParticles(b.x, b.y, b.color, 40, 4, 30); const oldX = b.x; const oldY = b.y; b.x = Math.random() * canvas.width; b.y = Math.random() * canvas.height; state.effects.push({ type: 'glitch_zone', x: oldX, y: oldY, r: 100, endTime: Date.now() + 5000 }); } const size = b.r * 0.4; for(let i=0; i<10; i++) { const glitchX = b.x + (Math.random() - 0.5) * b.r * 1.5; const glitchY = b.y + (Math.random() - 0.5) * b.r * 1.5; ctx.fillStyle = ['#fd79a8', '#81ecec', '#f1c40f'][Math.floor(Math.random()*3)]; ctx.fillRect(glitchX - size/2, glitchY-size/2, size, size); } }, onDeath: b => { state.player.controlsInverted = false; } },
+        { id: "sentinel_pair", name: "Sentinel Pair", color: "#f1c40f", maxHP: 500, hasCustomMovement: true, init: b => { if (!state.enemies.find(e => e.id === 'sentinel_pair' && e !== b)) { const partner = spawnEnemy(true, 'sentinel_pair'); if(partner) {b.partner = partner; partner.partner = b;} } }, logic: (b, ctx) => { if (b.partner && b.partner.hp > 0) { const P_VEC = {x: state.player.x - b.x, y: state.player.y - b.y}; const PERP_VEC = {x: -P_VEC.y, y: P_VEC.x}; const dist = Math.hypot(PERP_VEC.x, PERP_VEC.y) || 1; PERP_VEC.x /= dist; PERP_VEC.y /= dist; const offset = 200; const targetPos = {x: state.player.x + PERP_VEC.x * offset, y: state.player.y + PERP_VEC.y * offset}; b.dx = (targetPos.x - b.x) * 0.01; b.dy = (targetPos.y - b.y) * 0.01; const partnerDist = Math.hypot(b.x - b.partner.x, b.y - b.partner.y); if(partnerDist < 300) { b.dx -= (b.partner.x - b.x) * 0.01; b.dy -= (b.partner.y - b.y) * 0.01; } if (!b.frozen) { b.x += b.dx; b.y += b.dy; } if (!b.frozen && !b.partner.frozen) { const p1 = b; const p2 = b.partner; const p0 = state.player; drawLightning(p1.x, p1.y, p2.x, p2.y, b.color, 5); const L2 = Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2); if (L2 !== 0) { let t = ((p0.x - p1.x) * (p2.x - p1.x) + (p0.y - p1.y) * (p2.y - p1.y)) / L2; t = Math.max(0, Math.min(1, t)); const closestX = p1.x + t * (p2.x - p1.x); const closestY = p1.y + t * (p2.y - p1.y); if (Math.hypot(p0.x - closestX, p0.y - closestY) < p0.r + 5 && !p0.shield) { let damage = (state.player.berserkUntil > Date.now()) ? 2 : 1; state.health -= damage; } } if (beamHumS.paused) play(beamHumS); } } else { if (!beamHumS.paused) beamHumS.pause(); } }, onDeath: b => { if (!beamHumS.paused) beamHumS.pause(); if(b.partner) b.partner.hp = 0; }, onDamage: (b, dmg) => { if (b.partner) { b.partner.hp -= dmg; b.hp = b.partner.hp; } } },
+        { id: "basilisk", name: "The Basilisk", color: "#00b894", maxHP: 480, init: b => { b.lastPetrifyZone = Date.now(); }, logic: (b, ctx) => { if (Date.now() - b.lastPetrifyZone > 7000) { b.lastPetrifyZone = Date.now(); for (let i = 0; i < 4; i++) { state.effects.push({ type: 'petrify_zone', x: Math.random() * canvas.width, y: Math.random() * canvas.height, r: 120, startTime: Date.now() }); } } } },
+        { id: "annihilator", name: "The Annihilator", color: "#d63031", maxHP: 600, init: b => { b.lastBeam = Date.now(); b.isChargingBeam = false; b.pillar = { x: canvas.width/2, y: canvas.height/2, r: 75 }; }, logic: (b, ctx) => { if (Date.now() - b.lastBeam > 12000 && !b.isChargingBeam) { b.isChargingBeam = true; play(powerSirenS); setTimeout(() => { play(annihilatorBeamS); state.effects.push({ type: 'annihilator_beam', source: b, pillar: b.pillar, endTime: Date.now() + 1200 }); b.lastBeam = Date.now(); b.isChargingBeam = false; }, 4000); } if (b.pillar) { drawCircle(b.pillar.x, b.pillar.y, b.pillar.r, "#2d3436"); } }, onDeath: b => { b.pillar = null; } },
+        { id: "parasite", name: "The Parasite", color: "#55efc4", maxHP: 520, onCollision: (b, p) => { if (!p.infected) addStatusEffect('Infected', '☣️', 10000); p.infected = true; p.infectionEnd = Date.now() + 10000; }, logic: (b, ctx) => { state.enemies.forEach(e => { if (e !== b && !e.boss && !e.isInfected) { const dist = Math.hypot(b.x - e.x, b.y - e.y); if (dist < b.r + e.r) { e.isInfected = true; e.infectionEnd = Date.now() + 10000; e.lastSpore = Date.now(); } } }); }, onDeath: b => { state.player.infected = false; } },
+        { id: "quantum_shadow", name: "Quantum Shadow", color: "#81ecec", maxHP: 450, hasCustomDraw: true, init: b => { b.phase = 'seeking'; b.lastPhaseChange = Date.now(); b.echoes = []; b.invulnerable = false; }, logic: (b, ctx) => { if (b.phase === 'seeking' && Date.now() - b.lastPhaseChange > 7000) { b.phase = 'superposition'; b.lastPhaseChange = Date.now(); b.invulnerable = true; play(phaseShiftS); for(let i=0; i<3; i++) { b.echoes.push({ x:Math.random() * canvas.width, y:Math.random() * canvas.height, r: b.r }); } } else if (b.phase === 'superposition') { ctx.globalAlpha = 0.5; drawCircle(b.x, b.y, b.r, b.color); ctx.globalAlpha = 1; b.echoes.forEach(e => { ctx.globalAlpha = 0.3 + Math.sin(Date.now()/200)*0.2; drawCircle(e.x, e.y, e.r, b.color); ctx.globalAlpha = 1; }); if (Date.now() - b.lastPhaseChange > 3000) { b.phase = 'seeking'; b.lastPhaseChange = Date.now(); b.invulnerable = false; const targetEcho = b.echoes.splice(Math.floor(Math.random() * b.echoes.length), 1)[0]; b.x = targetEcho.x; b.y = targetEcho.y; b.echoes.forEach(e => { spawnParticles(e.x, e.y, '#ff4757', 50, 6, 40); state.effects.push({ type: 'shockwave', x: e.x, y: e.y, radius: 0, maxRadius: 250, speed: 600, startTime: Date.now(), hitEnemies: new Set(), damage: 10 }); }); b.echoes = []; } } if (!b.invulnerable) { drawCircle(b.x, b.y, b.r, b.color); } }, onDamage:(b,dmg)=>{ if(b.invulnerable) b.hp+=dmg; } },
+        { id: "time_eater", name: "Time Eater", color: "#dfe6e9", maxHP: 550, init: b => { b.lastAbility = Date.now(); }, logic: (b, ctx) => { if (Date.now() - b.lastAbility > 5000) { b.lastAbility = Date.now(); for(let i=0; i<4; i++) state.effects.push({ type: 'slow_zone', x: Math.random() * canvas.width, y: Math.random() * canvas.height, r: 150, endTime: Date.now() + 6000 }); } } },
+        { id: "singularity", name: "The Singularity", color: "#000000", maxHP: 750, init: b => { b.phase = 1; b.lastAction = 0; b.wells = []; b.beamTarget = null; }, logic: (b, ctx) => { const hpPercent = b.hp / b.maxHP; if (hpPercent <= 0.33 && b.phase < 3) { b.phase = 3; play(finalBossPhaseS); triggerScreenShake(500,15); spawnParticles(b.x, b.y, "#d63031", 150, 8, 50); b.lastAction = Date.now(); b.wells=[]; } else if (hpPercent <= 0.66 && b.phase < 2) { b.phase = 2; play(finalBossPhaseS); triggerScreenShake(500,10); spawnParticles(b.x, b.y, "#6c5ce7", 150, 8, 50); b.lastAction = Date.now(); b.wells=[]; } switch (b.phase) { case 1: if (Date.now() - b.lastAction > 5000) { b.lastAction = Date.now(); b.wells = []; for (let i = 0; i < 4; i++) { b.wells.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, r: 40, endTime: Date.now() + 4000 }); } } b.wells.forEach(w => { if (Date.now() < w.endTime) { drawCircle(w.x, w.y, w.r, "rgba(155, 89, 182, 0.3)"); const dx = state.player.x - w.x, dy = state.player.y - w.y; if (Math.hypot(dx, dy) < w.r + state.player.r) { state.player.x -= dx * 0.08; state.player.y -= dy * 0.08; } } }); break; case 2: if (Date.now() - b.lastAction > 4000) { b.lastAction = Date.now(); state.effects.push({ type: 'glitch_zone', x: Math.random() * canvas.width, y: Math.random() * canvas.height, r: 100, endTime: Date.now() + 3000 }); b.beamTarget = { x: Math.random() * canvas.width, y: Math.random() * canvas.height }; } if (b.beamTarget) { drawLightning(b.x, b.y, b.beamTarget.x, b.beamTarget.y, '#fd79a8', 8); } break; case 3: if (Date.now() - b.lastAction > 1000) { b.lastAction = Date.now(); spawnParticles(b.x, b.y, "#fff", 30, 4, 20); b.x = Math.random() * canvas.width; b.y = Math.random() * canvas.height; spawnParticles(b.x, b.y, "#fff", 30, 4, 20); for(let i=0; i<3; i++) { const spore = spawnEnemy(false, null, {x: b.x, y: b.y}); if (spore) { spore.r=10; spore.hp=1; spore.dx = (Math.random() - 0.5) * 8; spore.dy = (Math.random() - 0.5) * 8; spore.ignoresPlayer = true; } } } break; } } }
+    ];
+    const spawnWeights={ shield:1, heal:1, shockwave:3, missile:3, gravity:1, speed:1, freeze:1, decoy:1, stack:1, score:1, chain:3 };
 
-        document.getElementById('arenaBtn').style.display = (state.level > 10 && !state.arenaMode) ? 'inline-flex' : 'none';
-        
-        const bossContainer = document.getElementById("bossHpContainer");
-        bossContainer.innerHTML = '';
-        state.enemies.filter(e => e.boss).forEach(boss => {
-            const wrapper = document.createElement('div');
-            wrapper.className = 'boss-hp-bar-wrapper';
-            const label = document.createElement('div');
-            label.className = 'boss-hp-label';
-            label.innerText = boss.name;
-            const bar = document.createElement('div');
-            bar.className = 'boss-hp-bar';
-            bar.style.backgroundColor = boss.color;
-            bar.style.width = `${(boss.hp / boss.maxHP) * 100}%`;
-            wrapper.appendChild(label);
-            wrapper.appendChild(bar);
-            bossContainer.appendChild(wrapper);
-        });
-        updateStatusEffectsUI();
-    }
-    
-    function showBoss(boss){ const b=document.getElementById("bossBanner"); b.innerText="🚨 "+boss.name+" 🚨"; b.style.opacity=1; setTimeout(()=>b.style.opacity=0,2500); }
-    
-    const offensivePowers = ['shockwave', 'missile', 'chain', 'orbitalStrike', 'ricochetShot', 'bulletNova', 'black_hole'];
-    const powers={
-      shield:{emoji:"🛡️",desc:"Blocks damage for 6s",apply:()=>{ state.player.shield=true; addStatusEffect('Shield', '🛡️', 6000); spawnParticles(state.player.x,state.player.y,"#f1c40f",30,4,30); setTimeout(()=>state.player.shield=false,6000); }},
-      heal:{emoji:"❤️",desc:"+30 HP",apply:()=>{ state.health=Math.min(state.player.maxHealth,state.health+30); }},
-      shockwave:{emoji:"💥",desc:"Expanding wave damages enemies",apply:()=>{ let damage = (state.player.berserkUntil > Date.now()) ? 30 : 15; state.effects.push({ type: 'shockwave', x: state.player.x, y: state.player.y, radius: 0, maxRadius: Math.max(canvas.width, canvas.height), speed: 800, startTime: Date.now(), hitEnemies: new Set(), damage: damage }); play(shockS); }},
-      missile:{emoji:"🎯",desc:"AoE explosion damages nearby",apply:()=>{ play(shockS); let damage = (state.player.berserkUntil > Date.now()) ? 20 : 10; const explosionRadius = 250; triggerScreenShake(200, 8); spawnParticles(state.player.x, state.player.y, "#ff9944", 150, 8, 40, 5); state.enemies.forEach(e => { if (Math.hypot(e.x - state.player.x, e.y - state.player.y) < explosionRadius) { e.hp -= e.boss ? damage : 1000; } }); }},
-      gravity:{emoji:"🌀",desc:"Pulls enemies for 1s",apply:()=>{ play(gravityS); state.gravityActive=true; state.gravityEnd=Date.now()+1000; spawnParticles(canvas.width/2, canvas.height/2,"#9b59b6",100,4,40); }},
-      speed:{emoji:"🚀",desc:"Speed Boost for 5s",apply:()=>{ state.player.speed*=1.5; addStatusEffect('Speed Boost', '🚀', 5000); spawnParticles(state.player.x,state.player.y,"#00f5ff",40,3,30); setTimeout(()=>state.player.speed/=1.5,5000); }},
-      freeze:{emoji:"🧊",desc:"Freeze enemies for 4s",apply:()=>{ state.enemies.forEach(e=>{ if (e.frozen) return; e.frozen=true; e._dx=e.dx; e._dy=e.dy; e.dx=e.dy=0; }); spawnParticles(state.player.x,state.player.y,"#0ff",60,3,30); setTimeout(()=>{ state.enemies.forEach(e=>{ if (!e.frozen) return; e.frozen=false; e.dx=e._dx; e.dy=e._dy; }); },4000); }},
-      decoy:{emoji:"🔮",desc:"Decoy lasts 5s",apply:()=>{ state.decoy={x:state.player.x,y:state.player.y,r:20,expires:Date.now()+5000}; spawnParticles(state.player.x,state.player.y,"#8e44ad",50,3,30); }},
-      stack:{emoji:"🧠",desc:"Double next power-up",apply:()=>{ state.stacked=true; spawnParticles(state.player.x,state.player.y,"#aaa",40,4,30); }},
-      score: {emoji: "⭐", desc: "Permanently +LVL to Max Health", apply: () => { const healthGain = Math.max(1, state.level); state.player.maxHealth += healthGain; state.health += healthGain; spawnParticles(state.player.x, state.player.y, "#f1c40f", 20, 4, 30); }},
-      chain:{emoji:"⚡",desc:"Chain lightning hits 6 targets",apply:()=>{ play(chainS); const targets = []; let currentTarget = state.player; for (let i = 0; i < 6; i++) { let closest = null; let minDist = Infinity; state.enemies.forEach(e => { if (!targets.includes(e)) { const dist = Math.hypot(e.x - currentTarget.x, e.y - currentTarget.y); if (dist < minDist) { minDist = dist; closest = e; } } }); if (closest) { targets.push(closest); currentTarget = closest; } else { break; } } let damage = (state.player.berserkUntil > Date.now()) ? 30 : 15; state.effects.push({ type: 'chain_lightning', targets: targets, links: [], startTime: Date.now(), durationPerLink: 80, damage: damage }); }},
-      repulsion: {emoji: "🖐️", desc: "Pushes enemies away for 5s", apply: () => { state.effects.push({ type: 'repulsion_field', x: state.player.x, y: state.player.y, radius: 250, endTime: Date.now() + 5000 }); play(shockS); }},
-      orbitalStrike: {emoji: "☄️", desc: "Calls 3 meteors on random enemies", apply: () => { const availableTargets = state.enemies.filter(e => !e.boss); for (let i = 0; i < 3; i++) { if (availableTargets.length > 0) { const targetIndex = Math.floor(Math.random() * availableTargets.length); const target = availableTargets.splice(targetIndex, 1)[0]; state.effects.push({type: 'orbital_target', x: target.x, y: target.y, startTime: Date.now()}); } } }},
-      black_hole: {emoji: "⚫", desc: "Pulls and damages enemies for 4s", apply: () => { let damage = (state.player.berserkUntil > Date.now()) ? 6 : 3; state.effects.push({ type: 'black_hole', x: state.player.x, y: state.player.y, radius: 20, maxRadius: 350, damageRate: 200, lastDamage: 0, endTime: Date.now() + 4000, damage: damage }); play(gravityS); }},
-      berserk: {emoji: "💢", desc: "8s: Deal 2x damage, take 2x damage", apply: () => { state.player.berserkUntil = Date.now() + 8000; addStatusEffect('Berserk', '💢', 8000); spawnParticles(state.player.x, state.player.y, "#e74c3c", 40, 3, 30); }},
-      ricochetShot: {emoji: "🔄", desc: "Fires a shot that bounces 6 times", apply: () => { const angle = Math.atan2(my - state.player.y, mx - state.player.x); const speed = 10; state.effects.push({ type: 'ricochet_projectile', x: state.player.x, y: state.player.y, dx: Math.cos(angle) * speed, dy: Math.sin(angle) * speed, r: 8, bounces: 6, hitEnemies: new Set() }); }},
-      bulletNova: {emoji: "💫", desc: "Unleashes a spiral of bullets", apply: () => { state.effects.push({ type: 'nova_controller', startTime: Date.now(), duration: 2000, lastShot: 0, angle: Math.random() * Math.PI * 2 }); }},
-    };
+    function usePower(queueType){
+      let powerType, inventory;
+      const slotId = queueType === 'offensive' ? 'slot-off-0' : 'slot-def-0';
+      const slotEl = document.getElementById(slotId);
+      
+      if (queueType === 'offensive') { inventory = state.offensiveInventory; }
+      else { inventory = state.defensiveInventory; }
 
-    const bossData=[
-        { id:"splitter", name:"Splitter Sentinel", color:"#ff4500", maxHP: 150, onDeath: b => { spawnParticles(b.x, b.y, "#ff4500", 100, 6, 40, 5); const spawnInCircle = (count, radius, center) => { for(let i=0; i<count; i++) { const angle = (i / count) * 2 * Math.PI + Math.random() * 0.5; const spawnX = center.x + Math.cos(angle) * radius; const spawnY = center.y + Math.sin(angle) * radius; const newEnemy = spawnEnemy(false, null, { x: spawnX, y: spawnY }); if (state.arenaMode && newEnemy) newEnemy.targetBosses = true; } }; spawnInCircle(6, 60, b); setTimeout(() => spawnInCircle(6, 120, b), 1000); } },
-        { id:"reflector", name:"Reflector Warden", color:"#2ecc71", maxHP: 175, init:b=>{b.phase="idle";b.last=Date.now(); b.cycles=0; b.reflecting=false;}, logic:(b, ctx)=>{ ctx.save(); if(Date.now()-b.last>2000){ b.phase=b.phase==="idle"?"moving":"idle"; b.last=Date.now(); if(b.phase==="moving") { b.cycles++; if(b.cycles % 3 === 0) { b.reflecting = true; spawnParticles(b.x, b.y, "#fff", 50, 4, 30); setTimeout(() => b.reflecting = false, 2000); } } } if(b.phase==="moving") { ctx.fillStyle = "rgba(46, 204, 113, 0.3)"; ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 10, 0, 2 * Math.PI); ctx.fill(); } else { ctx.fillStyle = "rgba(255, 255, 255, 0.5)"; ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 5, 0, 2 * Math.PI); ctx.fill(); } ctx.restore(); }, onDamage:(b,dmg)=>{ if(b.phase!=="idle") b.hp += dmg; if(b.reflecting) state.health -=10; } },
-        { id: "vampire", name: "Vampire Veil", color: "#800020", maxHP: 200, init: b => { b.lastHit = Date.now(); b.lastHeal = Date.now(); }, logic: (b, ctx) => { const now = Date.now(); if (now - b.lastHit > 3000 && now - b.lastHeal > 5000) { b.hp = Math.min(b.maxHP, b.hp + 5); b.lastHeal = now; spawnParticles(b.x, b.y, "#800020", 20, 1, 40); } }, onDamage: (b, dmg, isReal, p) => { b.lastHit = Date.now(); if (Math.random() < 0.3) { state.pickups.push({ x: b.x, y: b.y, dx: 0, dy: 0, r: 10, type: 'heal', emoji: '🩸', life: Date.now() + 8000, customApply: () => { state.health = Math.min(state.player.maxHealth, state.health + 10); spawnParticles(state.player.x, state.player.y, "#800020", 20, 3, 30); } }); } } },
-        { id:"gravity", name:"Gravity Tyrant", color:"#9b59b6", maxHP: 230, init:b=>{ b.wells=[]; for(let i=0; i<8; i++) { b.wells.push({ angle: i * (Math.PI/4), dist: 150, r: 30 }); } }, logic:(b, ctx)=>{ b.wells.forEach(w => { const wellX = b.x + Math.cos(w.angle) * w.dist; const wellY = b.y + Math.sin(w.angle) * w.dist; drawCircle(wellX, wellY, w.r, "rgba(155, 89, 182, 0.3)"); const dx = state.player.x - wellX, dy = state.player.y - wellY; if (Math.hypot(dx, dy) < w.r + state.player.r) { state.player.x -= dx * 0.05; state.player.y -= dy * 0.05; } }); } },
-        { id:"swarm", name:"Swarm Link", color:"#c0392b", maxHP: 250, init:b=>{b.chain=[]; for(let i=0;i<150;i++)b.chain.push({x:b.x,y:b.y});}, logic:(b, ctx)=>{ let prev = b; b.chain.forEach(c=>{ c.x+=(prev.x-c.x)*0.2; c.y+=(prev.y-c.y)*0.2; drawCircle(c.x,c.y,8,"orange"); prev = c; }); } },
-        { id:"mirror", name:"Mirror Mirage", color:"#ff00ff", maxHP: 300, init:b=>{b.clones=[]; for(let i=0;i<5;i++)b.clones.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,r:b.r}); b.lastSwap = Date.now();}, logic:(b, ctx)=>{ b.clones.forEach(c=>drawCircle(c.x,c.y,c.r,"rgba(255,0,255,0.5)")); if(Date.now() - b.lastSwap > 2000){ b.lastSwap = Date.now(); const i = Math.floor(Math.random()*b.clones.length); [b.x,b.clones[i].x]=[b.clones[i].x,b.x]; [b.y,b.clones[i].y]=[b.clones[i].y,b.y]; } }, onDamage:(b,dmg,isReal)=>{if(isReal) spawnParticles(b.x,b.y,"#f00",10,3,20);} },
-        { id:"emp", name:"EMP Overload", color:"#3498db", maxHP: 325, init:b=>{b.lastEMP = Date.now(); b.bolts = [];}, logic:(b, ctx)=>{ if(Date.now() - b.lastEMP > 8000){ b.lastEMP = Date.now(); state.offensiveInventory = [null,null,null]; state.defensiveInventory = [null,null,null]; state.player.stunnedUntil = Date.now() + 500; state.player.speed *= 0.5; setTimeout(() => state.player.speed = state.player.speed / 0.5, 1000); b.bolts = []; for (let i=0; i<7; i++) { b.bolts.push({ x1: Math.random() * canvas.width, y1: 0, x2: Math.random() * canvas.width, y2: canvas.height, life: Date.now() + 300 }); b.bolts.push({ x1: 0, y1: Math.random() * canvas.height, x2: canvas.width, y2: Math.random() * canvas.height, life: Date.now() + 300 }); } } b.bolts = b.bolts.filter(bolt => Date.now() < bolt.life); b.bolts.forEach(bolt => drawLightning(bolt.x1, bolt.y1, bolt.x2, bolt.y2, "#3498db")); } },
-        { id:"architect", name:"The Architect", color:"#7f8c8d", maxHP: 350, init:b=>{b.pillars=[]; b.lastBuild=0;}, logic:(b, ctx)=>{ if(Date.now() - b.lastBuild > 8000) { b.lastBuild = Date.now(); b.pillars=[]; for(let i=0; i<10; i++) { const angle = Math.random() * 2 * Math.PI; const startX = b.x + Math.cos(angle) * 100; const startY = b.y + Math.sin(angle) * 100; for(let j=0; j<8; j++) { b.pillars.push({x:startX+Math.cos(angle)*j*40, y:startY+Math.sin(angle)*j*40, r:15}); } } } b.pillars.forEach(p => drawCircle(p.x, p.y, p.r, "#444")); } },
-        { id:"twins", name:"Vortex Twins", color:"#f39c12", maxHP: 350, init:b=>{ if (!state.enemies.find(e => e.id === 'twins' && e !== b)) { spawnEnemy(true, 'twins'); } }, onDeath:b=>{ const remainingTwins = state.enemies.filter(e => e.id === 'twins' && e.hp > 0 && e !== b); if (remainingTwins.length > 0) { remainingTwins.forEach(twin => { twin.enraged = true; }); } } },
-        { id:"looper", name:"Looping Eye", color:"#ecf0f1", maxHP: 400, init:b=>{b.lastTeleport = 0;}, logic:(b, ctx)=>{ const interval = b.hp < b.maxHP*0.25 ? 1500 : (b.hp < b.maxHP*0.5 ? 2000 : 2500); if(Date.now() - b.lastTeleport > interval) { b.lastTeleport = Date.now(); spawnParticles(b.x, b.y, "#fff", 30, 4, 20); b.x=Math.random()*canvas.width; b.y=Math.random()*canvas.height; spawnParticles(b.x, b.y, "#fff", 30, 4, 20); } } },
-        { id: "juggernaut", name: "The Juggernaut", color: "#636e72", maxHP: 450, init: b => { b.lastCharge = Date.now(); b.isCharging = false; b.baseDx = (Math.random()-0.5)*0.5; b.baseDy = (Math.random()-0.5)*0.5;}, logic: (b, ctx) => { const speedMultiplier = 1 + (1 - b.hp / b.maxHP) * 2.5; if (!b.isCharging) { b.dx = b.baseDx * speedMultiplier; b.dy = b.baseDy * speedMultiplier; if (Date.now() - b.lastCharge > 7000) { b.isCharging = true; b.dx=0; b.dy=0; state.effects.push({type:'juggernaut_charge_ring', source:b, startTime:Date.now(), duration:1000}); play(chargeUpS); setTimeout(() => { const angle = Math.atan2(state.player.y - b.y, state.player.x - b.x); b.dx = Math.cos(angle) * 15; b.dy = Math.sin(angle) * 15; triggerScreenShake(150, 3); play(chargeDashS); setTimeout(() => { b.isCharging = false; b.lastCharge = Date.now(); b.baseDx = (Math.random()-0.5)*0.5; b.baseDy = (Math.random()-0.5)*0.5;}, 500); }, 1000); } } else { state.enemies.forEach(e => { if(e !== b && !e.boss) { const dist = Math.hypot(b.x-e.x, b.y-e.y); if(dist < b.r + e.r){ const angle = Math.atan2(e.y - b.y, e.x - b.x); e.dx = Math.cos(angle) * 10; e.dy = Math.sin(angle) * 10; } } }); } }},
-        { id: "puppeteer", name: "The Puppeteer", color: "#a29bfe", maxHP: 400, init: b => { b.lastConvert = Date.now(); }, logic: (b, ctx) => { if (Date.now() - b.lastConvert > 1000) { let farthestEnemy = null; let maxDist = 0; state.enemies.forEach(e => { if (!e.boss && !e.isPuppet) { const d = Math.hypot(b.x - e.x, b.y - e.y); if (d > maxDist) { maxDist = d; farthestEnemy = e; } } }); if (farthestEnemy) { b.lastConvert = Date.now(); farthestEnemy.isPuppet = true; farthestEnemy.customColor = b.color; farthestEnemy.r *= 1.5; farthestEnemy.hp = 10; farthestEnemy.dx *= 2; farthestEnemy.dy *= 2; drawLightning(b.x, b.y, farthestEnemy.x, farthestEnemy.y, b.color, 5); } } }, onDeath: b => { play(magicDispelS); state.enemies.forEach(e => { if (e.isPuppet) e.hp = 0; }); } },
-        { id: "glitch", name: "The Glitch", color: "#fd79a8", maxHP: 420, hasCustomDraw: true, init: b => { b.lastTeleport = Date.now(); }, logic: (b, ctx) => { if (Date.now() - b.lastTeleport > 3000) { b.lastTeleport = Date.now(); play(glitchS); spawnParticles(b.x, b.y, b.color, 40, 4, 30); const oldX = b.x; const oldY = b.y; b.x = Math.random() * canvas.width; b.y = Math.random() * canvas.height; state.effects.push({ type: 'glitch_zone', x: oldX, y: oldY, r: 100, endTime: Date.now() + 5000 }); } const size = b.r * 0.4; for(let i=0; i<10; i++) { const glitchX = b.x + (Math.random() - 0.5) * b.r * 1.5; const glitchY = b.y + (Math.random() - 0.5) * b.r * 1.5; ctx.fillStyle = ['#fd79a8', '#81ecec', '#f1c40f'][Math.floor(Math.random()*3)]; ctx.fillRect(glitchX - size/2, glitchY-size/2, size, size); } }, onDeath: b => { state.player.controlsInverted = false; } },
-        { id: "sentinel_pair", name: "Sentinel Pair", color: "#f1c40f", maxHP: 500, hasCustomMovement: true, init: b => { if (!state.enemies.find(e => e.id === 'sentinel_pair' && e !== b)) { const partner = spawnEnemy(true, 'sentinel_pair'); if(partner) {b.partner = partner; partner.partner = b;} } }, logic: (b, ctx) => { if (b.partner && b.partner.hp > 0) { const P_VEC = {x: state.player.x - b.x, y: state.player.y - b.y}; const PERP_VEC = {x: -P_VEC.y, y: P_VEC.x}; const dist = Math.hypot(PERP_VEC.x, PERP_VEC.y) || 1; PERP_VEC.x /= dist; PERP_VEC.y /= dist; const offset = 200; const targetPos = {x: state.player.x + PERP_VEC.x * offset, y: state.player.y + PERP_VEC.y * offset}; b.dx = (targetPos.x - b.x) * 0.01; b.dy = (targetPos.y - b.y) * 0.01; const partnerDist = Math.hypot(b.x - b.partner.x, b.y - b.partner.y); if(partnerDist < 300) { b.dx -= (b.partner.x - b.x) * 0.01; b.dy -= (b.partner.y - b.y) * 0.01; } if (!b.frozen) { b.x += b.dx; b.y += b.dy; } if (!b.frozen && !b.partner.frozen) { const p1 = b; const p2 = b.partner; const p0 = state.player; drawLightning(p1.x, p1.y, p2.x, p2.y, b.color, 5); const L2 = Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2); if (L2 !== 0) { let t = ((p0.x - p1.x) * (p2.x - p1.x) + (p0.y - p1.y) * (p2.y - p1.y)) / L2; t = Math.max(0, Math.min(1, t)); const closestX = p1.x + t * (p2.x - p1.x); const closestY = p1.y + t * (p2.y - p1.y); if (Math.hypot(p0.x - closestX, p0.y - closestY) < p0.r + 5 && !p0.shield) { let damage = (state.player.berserkUntil > Date.now()) ? 2 : 1; state.health -= damage; } } if (beamHumS.paused) play(beamHumS); } } else { if (!beamHumS.paused) beamHumS.pause(); } }, onDeath: b => { if (!beamHumS.paused) beamHumS.pause(); if(b.partner) b.partner.hp = 0; }, onDamage: (b, dmg) => { if (b.partner) { b.partner.hp -= dmg; b.hp = b.partner.hp; } } },
-        { id: "basilisk", name: "The Basilisk", color: "#00b894", maxHP: 480, init: b => { b.lastPetrifyZone = Date.now(); }, logic: (b, ctx) => { if (Date.now() - b.lastPetrifyZone > 7000) { b.lastPetrifyZone = Date.now(); for (let i = 0; i < 4; i++) { state.effects.push({ type: 'petrify_zone', x: Math.random() * canvas.width, y: Math.random() * canvas.height, r: 120, startTime: Date.now() }); } } } },
-        { id: "annihilator", name: "The Annihilator", color: "#d63031", maxHP: 600, init: b => { b.lastBeam = Date.now(); b.isChargingBeam = false; b.pillar = { x: canvas.width/2, y: canvas.height/2, r: 75 }; }, logic: (b, ctx) => { if (Date.now() - b.lastBeam > 12000 && !b.isChargingBeam) { b.isChargingBeam = true; play(powerSirenS); setTimeout(() => { play(annihilatorBeamS); state.effects.push({ type: 'annihilator_beam', source: b, pillar: b.pillar, endTime: Date.now() + 1200 }); b.lastBeam = Date.now(); b.isChargingBeam = false; }, 4000); } if (b.pillar) { drawCircle(b.pillar.x, b.pillar.y, b.pillar.r, "#2d3436"); } }, onDeath: b => { b.pillar = null; } },
-        { id: "parasite", name: "The Parasite", color: "#55efc4", maxHP: 520, onCollision: (b, p) => { if (!p.infected) addStatusEffect('Infected', '☣️', 10000); p.infected = true; p.infectionEnd = Date.now() + 10000; }, logic: (b, ctx) => { state.enemies.forEach(e => { if (e !== b && !e.boss && !e.isInfected) { const dist = Math.hypot(b.x - e.x, b.y - e.y); if (dist < b.r + e.r) { e.isInfected = true; e.infectionEnd = Date.now() + 10000; e.lastSpore = Date.now(); } } }); }, onDeath: b => { state.player.infected = false; } },
-        { id: "quantum_shadow", name: "Quantum Shadow", color: "#81ecec", maxHP: 450, hasCustomDraw: true, init: b => { b.phase = 'seeking'; b.lastPhaseChange = Date.now(); b.echoes = []; b.invulnerable = false; }, logic: (b, ctx) => { if (b.phase === 'seeking' && Date.now() - b.lastPhaseChange > 7000) { b.phase = 'superposition'; b.lastPhaseChange = Date.now(); b.invulnerable = true; play(phaseShiftS); for(let i=0; i<3; i++) { b.echoes.push({ x:Math.random() * canvas.width, y:Math.random() * canvas.height, r: b.r }); } } else if (b.phase === 'superposition') { ctx.globalAlpha = 0.5; drawCircle(b.x, b.y, b.r, b.color); ctx.globalAlpha = 1; b.echoes.forEach(e => { ctx.globalAlpha = 0.3 + Math.sin(Date.now()/200)*0.2; drawCircle(e.x, e.y, e.r, b.color); ctx.globalAlpha = 1; }); if (Date.now() - b.lastPhaseChange > 3000) { b.phase = 'seeking'; b.lastPhaseChange = Date.now(); b.invulnerable = false; const targetEcho = b.echoes.splice(Math.floor(Math.random() * b.echoes.length), 1)[0]; b.x = targetEcho.x; b.y = targetEcho.y; b.echoes.forEach(e => { spawnParticles(e.x, e.y, '#ff4757', 50, 6, 40); state.effects.push({ type: 'shockwave', x: e.x, y: e.y, radius: 0, maxRadius: 250, speed: 600, startTime: Date.now(), hitEnemies: new Set(), damage: 10 }); }); b.echoes = []; } } if (!b.invulnerable) { drawCircle(b.x, b.y, b.r, b.color); } }, onDamage:(b,dmg)=>{ if(b.invulnerable) b.hp+=dmg; } },
-        { id: "time_eater", name: "Time Eater", color: "#dfe6e9", maxHP: 550, init: b => { b.lastAbility = Date.now(); }, logic: (b, ctx) => { if (Date.now() - b.lastAbility > 5000) { b.lastAbility = Date.now(); for(let i=0; i<4; i++) state.effects.push({ type: 'slow_zone', x: Math.random() * canvas.width, y: Math.random() * canvas.height, r: 150, endTime: Date.now() + 6000 }); } } },
-        { id: "singularity", name: "The Singularity", color: "#000000", maxHP: 750, init: b => { b.phase = 1; b.lastAction = 0; b.wells = []; b.beamTarget = null; }, logic: (b, ctx) => { const hpPercent = b.hp / b.maxHP; if (hpPercent <= 0.33 && b.phase < 3) { b.phase = 3; play(finalBossPhaseS); triggerScreenShake(500,15); spawnParticles(b.x, b.y, "#d63031", 150, 8, 50); b.lastAction = Date.now(); b.wells=[]; } else if (hpPercent <= 0.66 && b.phase < 2) { b.phase = 2; play(finalBossPhaseS); triggerScreenShake(500,10); spawnParticles(b.x, b.y, "#6c5ce7", 150, 8, 50); b.lastAction = Date.now(); b.wells=[]; } switch (b.phase) { case 1: if (Date.now() - b.lastAction > 5000) { b.lastAction = Date.now(); b.wells = []; for (let i = 0; i < 4; i++) { b.wells.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, r: 40, endTime: Date.now() + 4000 }); } } b.wells.forEach(w => { if (Date.now() < w.endTime) { drawCircle(w.x, w.y, w.r, "rgba(155, 89, 182, 0.3)"); const dx = state.player.x - w.x, dy = state.player.y - w.y; if (Math.hypot(dx, dy) < w.r + state.player.r) { state.player.x -= dx * 0.08; state.player.y -= dy * 0.08; } } }); break; case 2: if (Date.now() - b.lastAction > 4000) { b.lastAction = Date.now(); state.effects.push({ type: 'glitch_zone', x: Math.random() * canvas.width, y: Math.random() * canvas.height, r: 100, endTime: Date.now() + 3000 }); b.beamTarget = { x: Math.random() * canvas.width, y: Math.random() * canvas.height }; } if (b.beamTarget) { drawLightning(b.x, b.y, b.beamTarget.x, b.beamTarget.y, '#fd79a8', 8); } break; case 3: if (Date.now() - b.lastAction > 1000) { b.lastAction = Date.now(); spawnParticles(b.x, b.y, "#fff", 30, 4, 20); b.x = Math.random() * canvas.width; b.y = Math.random() * canvas.height; spawnParticles(b.x, b.y, "#fff", 30, 4, 20); for(let i=0; i<3; i++) { const spore = spawnEnemy(false, null, {x: b.x, y: b.y}); if (spore) { spore.r=10; spore.hp=1; spore.dx = (Math.random() - 0.5) * 8; spore.dy = (Math.random() - 0.5) * 8; spore.ignoresPlayer = true; } } } break; } } }
-    ];
-    const spawnWeights={ shield:1, heal:1, shockwave:3, missile:3, gravity:1, speed:1, freeze:1, decoy:1, stack:1, score:1, chain:3 };
+      powerType = inventory[0];
+      if (!powerType) return;
 
-    function usePower(queueType){
-      let powerType, inventory;
-      const slotId = queueType === 'offensive' ? 'slot-off-0' : 'slot-def-0';
-      const slotEl = document.getElementById(slotId);
-      
-      if (queueType === 'offensive') { inventory = state.offensiveInventory; }
-      else { inventory = state.defensiveInventory; }
+      slotEl.classList.add('activated');
+      setTimeout(()=> slotEl.classList.remove('activated'), 200);
 
-      powerType = inventory[0];
-      if (!powerType) return;
+      spawnParticles(state.player.x, state.player.y, "#fff", 20, 3, 25);
+      powers[powerType].apply();
+      inventory.shift(); inventory.push(null);
+      if(state.stacked){ const nextPower = state.offensiveInventory[0] || state.defensiveInventory[0]; if (nextPower) { powers[nextPower].apply(); if(state.offensiveInventory[0]) { state.offensiveInventory.shift(); state.offensiveInventory.push(null); } else { state.defensiveInventory.shift(); state.defensiveInventory.push(null); } } state.stacked=false; }
+    }
+    
+    function spawnEnemy(isBoss=false, bossId=null, location=null){
+      const e={ x: location ? location.x : Math.random()*canvas.width, y: location ? location.y : Math.random()*canvas.height, dx:(Math.random()-0.5)*0.75, dy:(Math.random()-0.5)*0.75, r:isBoss?50:15, hp:isBoss?200:1, maxHP:isBoss?200:1, boss:isBoss,frozen:false, targetBosses: false };
+      if(isBoss){
+        const bd = bossId ? bossData.find(b => b.id === bossId) : bossData[state.arenaMode ? Math.floor(Math.random()*bossData.length) : (state.level-1)%bossData.length];
+        if (!bd) { console.error("Boss data not found for level", state.level); return null; }
+        Object.assign(e, bd); e.maxHP = bd.maxHP || e.maxHP; e.hp = e.maxHP;
+        state.enemies.push(e);
+        bd.init && bd.init(e);
+        if (!state.currentBoss || state.currentBoss.hp <= 0) { state.currentBoss = e; }
+        state.bossActive = true; if (!bossId || (bossId && !e.partner && !e.shadow)) { showBoss(e); }
+      } else {
+        state.enemies.push(e);
+      }
+      return e;
+    }
+    function spawnPickup() {
+        const midLevelPowers = ['ricochetShot', 'bulletNova'];
+        const highLevelPowers = ['repulsion', 'orbitalStrike', 'berserk'];
+        let type;
+        if (state.level >= 10 && Math.random() < 0.25 && !state.arenaMode) { type = highLevelPowers[Math.floor(Math.random() * highLevelPowers.length)];
+        } else if (state.level >= 5 && Math.random() < 0.20 && !state.arenaMode) { type = midLevelPowers[Math.floor(Math.random() * midLevelPowers.length)];
+        } else { const types = []; for (const t in spawnWeights) { for (let i = 0; i < spawnWeights[t]; i++) types.push(t); } type = types[Math.floor(Math.random() * types.length)]; }
+        state.pickups.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, dx: (Math.random() - 0.5) * 1, dy: (Math.random() - 0.5) * 1, r: 12, type });
+    }
+    
+    function resetGame(isArena = false) {
+      Object.assign(state,{ enemies:[], pickups:[], effects: [], offensiveInventory:[null,null,null], defensiveInventory:[null,null,null], decoy:null, currentBoss:null, bossActive:false, score:0, level: 1, health:100, stacked:false, gameOver:false, gravityActive:false, gravityEnd:0, bossSpawnCooldownEnd: 0, arenaMode: isArena, wave: 0, lastArenaSpawn: Date.now() });
+      state.player={
+        x:canvas.width/2,y:canvas.height/2,r:20,speed:1,shield:false, 
+        maxHealth: 100, stunnedUntil: 0,
+        statusEffects: [],
+        controlsInverted: false, berserkUntil: 0, 
+        infected: false, infectionEnd: 0, lastSpore: 0
+      };
+      if (!beamHumS.paused) beamHumS.pause();
+    }
+    
+    function gameTick() {
+      if(isPaused) return true;
+      if(state.gameOver) { if (!beamHumS.paused) beamHumS.pause(); ctx.fillStyle="rgba(0,0,0,0.8)"; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.fillStyle="white"; ctx.font="48px sans-serif"; ctx.textAlign="center"; ctx.fillText("Game Over",canvas.width/2,canvas.height/2); ctx.textAlign="left"; return false; }
+      ctx.save();
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      applyScreenShake();
+      let finalMx = mx; let finalMy = my;
+      if (state.player.controlsInverted) { finalMx = state.player.x - (mx - state.player.x); finalMy = state.player.y - (my - state.player.y); ctx.strokeStyle = '#fd79a8'; ctx.lineWidth = 5; ctx.strokeRect(0, 0, canvas.width, canvas.height); }
+      
+      let playerSpeedMultiplier = 1;
+      state.effects.forEach(effect => { if(effect.type === 'slow_zone' && Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < effect.r) { playerSpeedMultiplier = 0.5; } });
 
-      slotEl.classList.add('activated');
-      setTimeout(()=> slotEl.classList.remove('activated'), 200);
+      if (Date.now() > state.player.stunnedUntil) { state.player.x+=(finalMx-state.player.x)*0.015*state.player.speed * playerSpeedMultiplier; state.player.y+=(finalMy-state.player.y)*0.015*state.player.speed * playerSpeedMultiplier; }
+      if (state.player.infected) { if (Date.now() > state.player.infectionEnd) { state.player.infected = false; } else if (Date.now() - state.player.lastSpore > 2000) { state.player.lastSpore = Date.now(); const spore = spawnEnemy(false, null, {x: state.player.x, y: state.player.y}); if(spore){ spore.r = 8; spore.hp = 2; spore.dx = (Math.random() - 0.5) * 8; spore.dy = (Math.random() - 0.5) * 8; spore.ignoresPlayer = true; } } }
+      
+      const annihilator = state.enemies.find(e => e.id === 'annihilator' && e.pillar);
+      if (annihilator) { const pillar = annihilator.pillar; const dx = state.player.x - pillar.x; const dy = state.player.y - pillar.y; const dist = Math.hypot(dx, dy); if (dist < state.player.r + pillar.r) { const angle = Math.atan2(dy, dx); state.player.x = pillar.x + Math.cos(angle) * (state.player.r + pillar.r); state.player.y = pillar.y + Math.sin(angle) * (state.player.r + pillar.r); } }
+      
+      const isBerserk = state.player.berserkUntil > Date.now();
+      if(state.player.shield){ ctx.strokeStyle="rgba(241,196,15,0.7)"; ctx.lineWidth=4; ctx.beginPath(); ctx.arc(state.player.x,state.player.y,state.player.r+8,0,2*Math.PI); ctx.stroke(); }
+      drawCircle(state.player.x,state.player.y,state.player.r, state.player.shield?"#f1c40f": (isBerserk ? '#e74c3c' : (state.player.infected ? '#55efc4' : "#3498db")));
+      if(state.decoy){ drawCircle(state.decoy.x,state.decoy.y,state.decoy.r,"#9b59b6"); if(Date.now()>state.decoy.expires) state.decoy=null; }
+      const gravOn = state.gravityActive && Date.now()<state.gravityEnd;
+      if(gravOn){ const t=(state.gravityEnd-Date.now())/1000; ctx.strokeStyle=`rgba(155, 89, 182, ${t * 0.5})`; ctx.lineWidth=6; ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height/2, 50+(1-t)*400,0,2*Math.PI); ctx.stroke(); }
+      for(let i=state.enemies.length-1;i>=0;i--){
+        const e=state.enemies[i];
+        if(e.hp<=0){ if(e.boss) { triggerScreenShake(250, 5); e.onDeath && e.onDeath(e); state.enemies.splice(i,1); if (state.currentBoss === e) { state.currentBoss = state.enemies.find(en => en.boss) || null; } if (!state.enemies.some(en => en.boss)) { state.bossActive = false; if (!state.arenaMode) { state.level++; } } } else { state.enemies.splice(i,1); } continue; }
+        if (e.eatenBy) { const pullX = e.eatenBy.x - e.x; const pullY = e.eatenBy.y - e.y; const pullDist = Math.hypot(pullX, pullY) || 1; e.dx = (pullX / pullDist) * 3; e.dy = (pullY / pullDist) * 3; e.x += e.dx; e.y += e.dy; e.r *= 0.95; if(e.r < 2) { const timeEater = state.enemies.find(b => b.id === 'time_eater'); if (timeEater) timeEater.hp -= 5; spawnParticles(e.x, e.y, "#fff", 10, 2, 15); state.enemies.splice(i, 1); continue;}
+        } else if(!e.frozen && !e.hasCustomMovement){ let tgt; let pullFactor = 0.005; let baseDx = e.dx; let baseDy = e.dy; if (!e.ignoresPlayer) { if (gravOn && !e.boss) { tgt = { x: canvas.width / 2, y: canvas.height / 2 }; pullFactor = 0.1; baseDx = 0; baseDy = 0; } else { tgt = state.decoy || state.player; } const vx = (tgt.x - e.x) * pullFactor; const vy = (tgt.y - e.y) * pullFactor; e.x += vx; e.y += vy; } let enemySpeedMultiplier = 1; state.effects.forEach(effect => { if(effect.type === 'slow_zone' && Math.hypot(e.x - effect.x, e.y - effect.y) < effect.r) { enemySpeedMultiplier = 0.5; } }); e.x += baseDx * enemySpeedMultiplier; e.y += baseDy * enemySpeedMultiplier; if(e.x<e.r || e.x>canvas.width-e.r) e.dx*=-1; if(e.y<e.r || e.y>canvas.height-e.r) e.dy*=-1; }
+        if (annihilator) { const pillar = annihilator.pillar; const dx = e.x - pillar.x; const dy = e.y - pillar.y; const dist = Math.hypot(dx, dy); if (dist < e.r + pillar.r) { const angle = Math.atan2(dy, dx); e.x = pillar.x + Math.cos(angle) * (e.r + pillar.r); e.y = pillar.y + Math.sin(angle) * (e.r + pillar.r); }}
+        if (e.isInfected) { if (Date.now() > e.infectionEnd) { e.isInfected = false; } else if (Date.now() - e.lastSpore > 3000) { e.lastSpore = Date.now(); const spore = spawnEnemy(false, null, {x: e.x, y: e.y}); if (spore) { spore.r = 6; spore.hp = 1; spore.dx = (Math.random() - 0.5) * 8; spore.dy = (Math.random() - 0.5) * 8; spore.ignoresPlayer = true; } } }
+        if(e.boss && e.logic) e.logic(e, ctx);
+        let color = e.customColor || (e.boss ? e.color : "#c0392b"); if(e.isInfected) color = '#55efc4'; if(e.frozen) color = '#add8e6';
+        if(!e.hasCustomDraw) { drawCircle(e.x,e.y,e.r, color); }
+        if(e.enraged) { ctx.strokeStyle = "yellow"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(e.x,e.y,e.r+5,0,2*Math.PI); ctx.stroke(); }
+        const pDist=Math.hypot(state.player.x-e.x,state.player.y-e.y);
+        if(pDist < e.r+state.player.r){ if (e.onCollision) e.onCollision(e, state.player); if(!state.player.shield){ let damage = e.boss ? (e.enraged ? 20 : 10) : 1; if (isBerserk) damage *= 2; state.health -= damage; play(hitS); if(e.onDamage) e.onDamage(e, damage); if(state.health<=0) state.gameOver=true; } else { state.player.shield=false; } const ang=Math.atan2(state.player.y-e.y,state.player.x-e.x); state.player.x=e.x+Math.cos(ang)*(e.r+state.player.r); state.player.y=e.y+Math.sin(ang)*(e.r+state.player.r); }
+      }
+      for(let i=state.pickups.length-1;i>=0;i--){
+        const p=state.pickups[i]; if(p.eatenBy) { const pullX = p.eatenBy.x - p.x; const pullY = p.eatenBy.y - p.y; p.dx = (pullX / (Math.hypot(pullX, pullY) || 1)) * 3; p.dy = (pullY / (Math.hypot(pullX, pullY) || 1)) * 3; p.r *= 0.95; if(p.r < 2) { const timeEater = state.enemies.find(e => e.id === 'time_eater'); if (timeEater) timeEater.hp = Math.min(timeEater.maxHP, timeEater.hp + 20); spawnParticles(p.x, p.y, "#fff", 10, 2, 15); state.pickups.splice(i, 1); continue; } }
+        if (p.life && Date.now() > p.life) { state.pickups.splice(i, 1); continue; }
+        p.x += p.dx || 0; p.y += p.dy || 0;
+        let radius = p.r; let color = "#2ecc71"; if (p.life) { radius = p.r + Math.sin(Date.now() / 200) * 2; color = "#800020"; }
+        drawCircle(p.x,p.y,radius,color); ctx.fillStyle="#fff"; ctx.font="16px sans-serif"; ctx.textAlign = "center"; ctx.fillText(powers[p.type].emoji, p.x, p.y+6); ctx.textAlign = "left";
+        const d=Math.hypot(state.player.x-p.x,state.player.y-p.y);
+        if(d<state.player.r+radius && !p.eatenBy){ if(p.customApply) { p.customApply(); play(pickupS); state.pickups.splice(i,1); continue; } const isOffensive = offensivePowers.includes(p.type); const targetInventory = isOffensive ? state.offensiveInventory : state.defensiveInventory; const idx=targetInventory.indexOf(null); if(idx!==-1){ targetInventory[idx]=p.type; play(pickupS); state.pickups.splice(i,1); } else { spawnParticles(p.x, p.y, "#f00", 15, 2, 20); state.pickups.splice(i,1); } }
+      }
+      
+      const timeEater = state.enemies.find(e => e.id === 'time_eater');
+      const slowZones = state.effects.filter(e => e.type === 'slow_zone');
+      if (timeEater && slowZones.length > 0) {
+        for(const zone of slowZones) {
+            for (let i = state.pickups.length - 1; i >= 0; i--) { const p = state.pickups[i]; if (!p.eatenBy && Math.hypot(p.x - zone.x, p.y - zone.y) < zone.r) { p.eatenBy = zone; } }
+            for (let i = state.enemies.length - 1; i >= 0; i--) { const e = state.enemies[i]; if (!e.boss && !e.eatenBy && Math.hypot(e.x - zone.x, e.y - zone.y) < zone.r) { e.eatenBy = zone; } }
+        }
+      }
 
-      spawnParticles(state.player.x, state.player.y, "#fff", 20, 3, 25);
-      powers[powerType].apply();
-      inventory.shift(); inventory.push(null);
-      if(state.stacked){ const nextPower = state.offensiveInventory[0] || state.defensiveInventory[0]; if (nextPower) { powers[nextPower].apply(); if(state.offensiveInventory[0]) { state.offensiveInventory.shift(); state.offensiveInventory.push(null); } else { state.defensiveInventory.shift(); state.defensiveInventory.push(null); } } state.stacked=false; }
-    }
-    
-    function spawnEnemy(isBoss=false, bossId=null, location=null){
-      const e={ x: location ? location.x : Math.random()*canvas.width, y: location ? location.y : Math.random()*canvas.height, dx:(Math.random()-0.5)*0.75, dy:(Math.random()-0.5)*0.75, r:isBoss?50:15, hp:isBoss?200:1, maxHP:isBoss?200:1, boss:isBoss,frozen:false, targetBosses: false };
-      if(isBoss){
-        const bd = bossId ? bossData.find(b => b.id === bossId) : bossData[state.arenaMode ? Math.floor(Math.random()*bossData.length) : (state.level-1)%bossData.length];
-        if (!bd) { console.error("Boss data not found for level", state.level); return null; }
-        Object.assign(e, bd); e.maxHP = bd.maxHP || e.maxHP; e.hp = e.maxHP;
-        state.enemies.push(e);
-        bd.init && bd.init(e);
-        if (!state.currentBoss || state.currentBoss.hp <= 0) { state.currentBoss = e; }
-        state.bossActive = true; if (!bossId || (bossId && !e.partner && !e.shadow)) { showBoss(e); }
-      } else {
-        state.enemies.push(e);
-      }
-      return e;
-    }
-    function spawnPickup() {
-        // FIX: Added 'black_hole' to the high-level power-up pool
-        const midLevelPowers = ['ricochetShot', 'bulletNova'];
-        const highLevelPowers = ['repulsion', 'orbitalStrike', 'berserk', 'black_hole'];
-        let type;
-        if (state.level >= 10 && Math.random() < 0.25 && !state.arenaMode) { type = highLevelPowers[Math.floor(Math.random() * highLevelPowers.length)];
-        } else if (state.level >= 5 && Math.random() < 0.20 && !state.arenaMode) { type = midLevelPowers[Math.floor(Math.random() * midLevelPowers.length)];
-        } else { const types = []; for (const t in spawnWeights) { for (let i = 0; i < spawnWeights[t]; i++) types.push(t); } type = types[Math.floor(Math.random() * types.length)]; }
-        state.pickups.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, dx: (Math.random() - 0.5) * 1, dy: (Math.random() - 0.5) * 1, r: 12, type });
-    }
-    
-    function resetGame(isArena = false) {
-      Object.assign(state,{ enemies:[], pickups:[], effects: [], offensiveInventory:[null,null,null], defensiveInventory:[null,null,null], decoy:null, currentBoss:null, bossActive:false, score:0, level: 1, health:100, stacked:false, gameOver:false, gravityActive:false, gravityEnd:0, bossSpawnCooldownEnd: 0, arenaMode: isArena, wave: 0, lastArenaSpawn: Date.now() });
-      state.player={
-        x:canvas.width/2,y:canvas.height/2,r:20,speed:1,shield:false, 
-        maxHealth: 100, stunnedUntil: 0,
-        statusEffects: [],
-        controlsInverted: false, berserkUntil: 0, 
-        infected: false, infectionEnd: 0, lastSpore: 0
-      };
-      if (!beamHumS.paused) beamHumS.pause();
-    }
-    
-    function gameTick() {
-      if(isPaused) return true;
-      if(state.gameOver) { if (!beamHumS.paused) beamHumS.pause(); ctx.fillStyle="rgba(0,0,0,0.8)"; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.fillStyle="white"; ctx.font="48px sans-serif"; ctx.textAlign="center"; ctx.fillText("Game Over",canvas.width/2,canvas.height/2); ctx.textAlign="left"; return false; }
-      ctx.save();
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      applyScreenShake();
-      let finalMx = mx; let finalMy = my;
-      if (state.player.controlsInverted) { finalMx = state.player.x - (mx - state.player.x); finalMy = state.player.y - (my - state.player.y); ctx.strokeStyle = '#fd79a8'; ctx.lineWidth = 5; ctx.strokeRect(0, 0, canvas.width, canvas.height); }
-      
-      let playerSpeedMultiplier = 1;
-      state.effects.forEach(effect => { if(effect.type === 'slow_zone' && Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < effect.r) { playerSpeedMultiplier = 0.5; } });
+      state.effects.forEach((effect, index) => {
+        if (effect.type === 'shockwave') { const elapsed = (Date.now() - effect.startTime) / 1000; effect.radius = elapsed * effect.speed; ctx.strokeStyle = `rgba(255, 255, 255, ${1 - (effect.radius / effect.maxRadius)})`; ctx.lineWidth = 10; ctx.beginPath(); ctx.arc(effect.x, effect.y, effect.radius, 0, 2 * Math.PI); ctx.stroke(); state.enemies.forEach(e => { if (!effect.hitEnemies.has(e) && Math.abs(Math.hypot(e.x - effect.x, e.y - effect.y) - effect.radius) < e.r + 5) { e.hp -= e.boss ? effect.damage : 1000; effect.hitEnemies.add(e); if(e.onDamage) e.onDamage(e, effect.damage); } }); if (effect.radius >= effect.maxRadius) state.effects.splice(index, 1);
+        } else if (effect.type === 'chain_lightning') { const linkIndex = Math.floor((Date.now() - effect.startTime) / effect.durationPerLink); if (linkIndex >= effect.targets.length) { state.effects.splice(index, 1); return; } for (let i=0; i <= linkIndex; i++) { const from = i === 0 ? state.player : effect.targets[i-1]; const to = effect.targets[i]; if (!from || !to) continue; drawLightning(from.x, from.y, to.x, to.y, '#00ffff', 4); if (!effect.links.includes(to)) { spawnParticles(to.x, to.y, '#ffffff', 30, 5, 20); to.hp -= to.boss ? effect.damage : 50; if(to.onDamage) to.onDamage(to, effect.damage); effect.links.push(to); } }
+        } else if (effect.type === 'repulsion_field') { if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; } effect.x = state.player.x; effect.y = state.player.y; const alpha = (effect.endTime - Date.now()) / 5000 * 0.4; ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(effect.x, effect.y, effect.radius, 0, 2*Math.PI); ctx.stroke(); state.enemies.forEach(e => { if (e.boss) return; const dist = Math.hypot(e.x - effect.x, e.y - effect.y); if (dist < effect.radius) { const angle = Math.atan2(e.y - effect.y, e.x - effect.x); e.x += Math.cos(angle) * 5; e.y += Math.sin(angle) * 5; } });
+        } else if (effect.type === 'black_hole') { if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; } const progress = 1 - (effect.endTime - Date.now()) / 4000; const currentPullRadius = effect.maxRadius * progress; drawCircle(effect.x, effect.y, effect.radius, "#000"); ctx.strokeStyle = `rgba(155, 89, 182, ${0.6 * progress})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(effect.x, effect.y, currentPullRadius, 0, 2*Math.PI); ctx.stroke(); state.enemies.forEach(e => { const dist = Math.hypot(e.x - effect.x, e.y - effect.y); if (dist < currentPullRadius) { const pullStrength = e.boss ? 0.03 : 0.1; e.x += (effect.x - e.x) * pullStrength; e.y += (effect.y - e.y) * pullStrength; if (dist < effect.radius + e.r && Date.now() - effect.lastDamage > effect.damageRate) { e.hp -= e.boss ? effect.damage : 15; effect.lastDamage = Date.now(); } } });
+        } else if (effect.type === 'glitch_zone') { if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; } const alpha = (effect.endTime - Date.now()) / 5000 * 0.3; ctx.fillStyle = `rgba(253, 121, 168, ${alpha})`; drawCircle(effect.x, effect.y, effect.r, ctx.fillStyle); if (Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < effect.r + state.player.r) { if (!state.player.controlsInverted) { play(systemErrorS); addStatusEffect('Controls Inverted', '😵', 3000); } state.player.controlsInverted = true; setTimeout(() => state.player.controlsInverted = false, 3000); }
+        } else if (effect.type === 'petrify_zone') { if (Date.now() > effect.startTime + 5000) { state.effects.splice(index, 1); return; } ctx.fillStyle = `rgba(0, 184, 148, 0.2)`; drawCircle(effect.x, effect.y, effect.r, ctx.fillStyle); if (Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < effect.r) { if(!effect.playerInsideTime) effect.playerInsideTime = Date.now(); const stunProgress = (Date.now() - effect.playerInsideTime) / 1500; ctx.fillStyle = `rgba(0, 184, 148, 0.4)`; ctx.beginPath(); ctx.moveTo(effect.x, effect.y); ctx.arc(effect.x, effect.y, effect.r, -Math.PI/2, -Math.PI/2 + (Math.PI*2) * stunProgress, false); ctx.lineTo(effect.x, effect.y); ctx.fill(); if (stunProgress >= 1) { play(stoneCrackingS); addStatusEffect('Petrified', '🗿', 2000); state.player.stunnedUntil = Date.now() + 2000; state.effects.splice(index, 1); } } else { effect.playerInsideTime = null; }
+        } else if (effect.type === 'annihilator_beam') { if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; } const { source, pillar } = effect; if(!source || !pillar || source.hp <= 0) { state.effects.splice(index, 1); return; } const alpha = (effect.endTime - Date.now()) / 1200; ctx.fillStyle = `rgba(214, 48, 49, ${alpha * 0.7})`; const distToPillar = Math.hypot(pillar.x - source.x, pillar.y - source.y); const angleToPillar = Math.atan2(pillar.y - source.y, pillar.x - source.x); const angleToTangent = Math.asin(pillar.r / distToPillar); const angle1 = angleToPillar - angleToTangent; const angle2 = angleToPillar + angleToTangent; const maxDist = Math.hypot(canvas.width, canvas.height) * 2; const p1x = source.x + maxDist * Math.cos(angle1); const p1y = source.y + maxDist * Math.sin(angle1); const p2x = source.x + maxDist * Math.cos(angle2); const p2y = source.y + maxDist * Math.sin(angle2); ctx.beginPath(); ctx.rect(-1000, -1000, canvas.width+2000, canvas.height+2000); ctx.moveTo(source.x, source.y); ctx.lineTo(p1x,p1y); ctx.lineTo(p2x,p2y); ctx.closePath(); ctx.fill('evenodd'); const playerAngle = Math.atan2(state.player.y - source.y, state.player.x - source.x); let angleDiff = (playerAngle - angleToPillar + Math.PI * 3) % (Math.PI * 2) - Math.PI; const isSafe = Math.abs(angleDiff) < angleToTangent && Math.hypot(state.player.x - source.x, state.player.y - source.y) > distToPillar; if (!isSafe && !state.player.shield) { state.health = 0; if (state.health <= 0) state.gameOver = true; } 
+        } else if (effect.type === 'slow_zone') { if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; } const alpha = (effect.endTime - Date.now()) / 5000 * 0.3; for(let i=0; i<3; i++) { ctx.strokeStyle = `rgba(223, 230, 233, ${alpha * (0.5 + Math.sin(Date.now()/200 + i*2)*0.5)})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(effect.x, effect.y, effect.r * (0.6 + i*0.2), 0, Math.PI*2); ctx.stroke(); }
+        } else if (effect.type === 'orbital_target') { const duration = 1500; const progress = (Date.now() - effect.startTime) / duration; if (progress >= 1) { spawnParticles(effect.x, effect.y, '#e67e22', 100, 8, 40); const explosionRadius = 150; state.enemies.forEach(e => { if (Math.hypot(e.x-effect.x, e.y-effect.y) < explosionRadius) { let damage = (state.player.berserkUntil > Date.now()) ? 50 : 25; e.hp -= e.boss ? damage : 1000; } }); state.effects.splice(index, 1); return; } ctx.strokeStyle = 'rgba(230, 126, 34, 0.8)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(effect.x, effect.y, 50 * (1-progress), 0, Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(effect.x-10, effect.y); ctx.lineTo(effect.x+10, effect.y); ctx.moveTo(effect.x, effect.y-10); ctx.lineTo(effect.x, effect.y+10); ctx.stroke(); 
+        } else if (effect.type === 'juggernaut_charge_ring') { const progress = (Date.now() - effect.startTime) / effect.duration; if (progress >= 1) { state.effects.splice(index, 1); return; } ctx.strokeStyle = `rgba(255,255,255, ${0.8 * (1-progress)})`; ctx.lineWidth = 15; ctx.beginPath(); ctx.arc(effect.source.x, effect.source.y, effect.source.r * progress, 0, Math.PI*2); ctx.stroke();
+        } else if (effect.type === 'ricochet_projectile') { effect.x += effect.dx; effect.y += effect.dy; drawCircle(effect.x, effect.y, effect.r, '#f1c40f'); if(effect.x < effect.r || effect.x > canvas.width - effect.r) { effect.dx *= -1; effect.bounces--; } if(effect.y < effect.r || effect.y > canvas.height - effect.r) { effect.dy *= -1; effect.bounces--; } state.enemies.forEach(e => { if (!effect.hitEnemies.has(e) && Math.hypot(e.x - effect.x, e.y - effect.y) < e.r + effect.r) { let damage = (state.player.berserkUntil > Date.now()) ? 20 : 10; e.hp -= damage; effect.bounces--; const angle = Math.atan2(e.y - effect.y, e.x - effect.x); effect.dx = -Math.cos(angle) * 10; effect.dy = -Math.sin(angle) * 10; effect.hitEnemies.add(e); setTimeout(()=>effect.hitEnemies.delete(e), 200); } }); if (effect.bounces <= 0) state.effects.splice(index, 1);
+        } else if (effect.type === 'nova_controller') { if (Date.now() > effect.startTime + effect.duration) { state.effects.splice(index, 1); return; } if(Date.now() - effect.lastShot > 50) { effect.lastShot = Date.now(); const speed = 5; state.effects.push({ type: 'nova_bullet', x: state.player.x, y: state.player.y, r: 4, dx: Math.cos(effect.angle) * speed, dy: Math.sin(effect.angle) * speed }); effect.angle += 0.5; }
+        } else if (effect.type === 'nova_bullet') { effect.x += effect.dx; effect.y += effect.dy; drawCircle(effect.x, effect.y, effect.r, '#fff'); if(effect.x < 0 || effect.x > canvas.width || effect.y < 0 || effect.y > canvas.height) state.effects.splice(index, 1); state.enemies.forEach(e => { if (Math.hypot(e.x-effect.x, e.y-effect.y) < e.r + effect.r) { let damage = (state.player.berserkUntil > Date.now()) ? 6 : 3; e.hp -= damage; state.effects.splice(index, 1); } }); }
+      });
+      updateParticles(); updateUI(); ctx.restore(); return true;
+    }
+    
+    function loop(){
+      if(!gameTick()) { if(gameLoopId) cancelAnimationFrame(gameLoopId); return; };
+      if (!isPaused) {
+        state.score++;
+        if(state.score>0 && !state.bossActive && !state.arenaMode && state.score % 1500 === 0 && Date.now() > state.bossSpawnCooldownEnd) spawnEnemy(true);
+        if(Math.random()<(0.007+state.level*0.001)) spawnEnemy(false);
+        if(Math.random() < (0.02 + state.level * 0.0002)) spawnPickup();
+      }
+      gameLoopId = requestAnimationFrame(loop);
+    }
+    function arenaLoop() {
+      if(!gameTick()) { if(gameLoopId) cancelAnimationFrame(gameLoopId); return; };
+      if (!isPaused) { const spawnInterval = Math.max(1000, 8000 * Math.pow(0.95, state.wave)); if (Date.now() - state.lastArenaSpawn > spawnInterval) { state.lastArenaSpawn = Date.now(); state.wave++; spawnEnemy(true); } if (Math.random() < 0.02) { spawnPickup(); } }
+      gameLoopId = requestAnimationFrame(arenaLoop);
+    }
+    const startNewGame = (isArena) => { if (gameLoopId) cancelAnimationFrame(gameLoopId); resetGame(isArena); isPaused = false; levelSelectModal.style.display = 'none'; if (isArena) { arenaLoop(); } else { loop(); } };
+    const startSpecificLevel = (levelNum) => { startNewGame(false); state.level = levelNum; state.score = (levelNum - 1) * 1500; state.enemies = []; spawnEnemy(true); updateUI(); };
 
-      if (Date.now() > state.player.stunnedUntil) { state.player.x+=(finalMx-state.player.x)*0.015*state.player.speed * playerSpeedMultiplier; state.player.y+=(finalMy-state.player.y)*0.015*state.player.speed * playerSpeedMultiplier; }
-      if (state.player.infected) { if (Date.now() > state.player.infectionEnd) { state.player.infected = false; } else if (Date.now() - state.player.lastSpore > 2000) { state.player.lastSpore = Date.now(); const spore = spawnEnemy(false, null, {x: state.player.x, y: state.player.y}); if(spore){ spore.r = 8; spore.hp = 2; spore.dx = (Math.random() - 0.5) * 8; spore.dy = (Math.random() - 0.5) * 8; spore.ignoresPlayer = true; } } }
-      
-      const annihilator = state.enemies.find(e => e.id === 'annihilator' && e.pillar);
-      if (annihilator) { const pillar = annihilator.pillar; const dx = state.player.x - pillar.x; const dy = state.player.y - pillar.y; const dist = Math.hypot(dx, dy); if (dist < state.player.r + pillar.r) { const angle = Math.atan2(dy, dx); state.player.x = pillar.x + Math.cos(angle) * (state.player.r + pillar.r); state.player.y = pillar.y + Math.sin(angle) * (state.player.r + pillar.r); } }
-      
-      const isBerserk = state.player.berserkUntil > Date.now();
-      if(state.player.shield){ ctx.strokeStyle="rgba(241,196,15,0.7)"; ctx.lineWidth=4; ctx.beginPath(); ctx.arc(state.player.x,state.player.y,state.player.r+8,0,2*Math.PI); ctx.stroke(); }
-      drawCircle(state.player.x,state.player.y,state.player.r, state.player.shield?"#f1c40f": (isBerserk ? '#e74c3c' : (state.player.infected ? '#55efc4' : "#3498db")));
-      if(state.decoy){ drawCircle(state.decoy.x,state.decoy.y,state.decoy.r,"#9b59b6"); if(Date.now()>state.decoy.expires) state.decoy=null; }
-      const gravOn = state.gravityActive && Date.now()<state.gravityEnd;
-      if(gravOn){ const t=(state.gravityEnd-Date.now())/1000; ctx.strokeStyle=`rgba(155, 89, 182, ${t * 0.5})`; ctx.lineWidth=6; ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height/2, 50+(1-t)*400,0,2*Math.PI); ctx.stroke(); }
-      for(let i=state.enemies.length-1;i>=0;i--){
-        const e=state.enemies[i];
-        if(e.hp<=0){ if(e.boss) { triggerScreenShake(250, 5); e.onDeath && e.onDeath(e); state.enemies.splice(i,1); if (state.currentBoss === e) { state.currentBoss = state.enemies.find(en => en.boss) || null; } if (!state.enemies.some(en => en.boss)) { state.bossActive = false; if (!state.arenaMode) { state.level++; } } } else { state.enemies.splice(i,1); } continue; }
-        if (e.eatenBy) { const pullX = e.eatenBy.x - e.x; const pullY = e.eatenBy.y - e.y; const pullDist = Math.hypot(pullX, pullY) || 1; e.dx = (pullX / pullDist) * 3; e.dy = (pullY / pullDist) * 3; e.x += e.dx; e.y += e.dy; e.r *= 0.95; if(e.r < 2) { const timeEater = state.enemies.find(b => b.id === 'time_eater'); if (timeEater) timeEater.hp -= 5; spawnParticles(e.x, e.y, "#fff", 10, 2, 15); state.enemies.splice(i, 1); continue;}
-        } else if(!e.frozen && !e.hasCustomMovement){ let tgt; let pullFactor = 0.005; let baseDx = e.dx; let baseDy = e.dy; if (!e.ignoresPlayer) { if (gravOn && !e.boss) { tgt = { x: canvas.width / 2, y: canvas.height / 2 }; pullFactor = 0.1; baseDx = 0; baseDy = 0; } else { tgt = state.decoy || state.player; } const vx = (tgt.x - e.x) * pullFactor; const vy = (tgt.y - e.y) * pullFactor; e.x += vx; e.y += vy; } let enemySpeedMultiplier = 1; state.effects.forEach(effect => { if(effect.type === 'slow_zone' && Math.hypot(e.x - effect.x, e.y - effect.y) < effect.r) { enemySpeedMultiplier = 0.5; } }); e.x += baseDx * enemySpeedMultiplier; e.y += baseDy * enemySpeedMultiplier; if(e.x<e.r || e.x>canvas.width-e.r) e.dx*=-1; if(e.y<e.r || e.y>canvas.height-e.r) e.dy*=-1; }
-        if (annihilator) { const pillar = annihilator.pillar; const dx = e.x - pillar.x; const dy = e.y - pillar.y; const dist = Math.hypot(dx, dy); if (dist < e.r + pillar.r) { const angle = Math.atan2(dy, dx); e.x = pillar.x + Math.cos(angle) * (e.r + pillar.r); e.y = pillar.y + Math.sin(angle) * (e.r + pillar.r); }}
-        if (e.isInfected) { if (Date.now() > e.infectionEnd) { e.isInfected = false; } else if (Date.now() - e.lastSpore > 3000) { e.lastSpore = Date.now(); const spore = spawnEnemy(false, null, {x: e.x, y: e.y}); if (spore) { spore.r = 6; spore.hp = 1; spore.dx = (Math.random() - 0.5) * 8; spore.dy = (Math.random() - 0.5) * 8; spore.ignoresPlayer = true; } } }
-        if(e.boss && e.logic) e.logic(e, ctx);
-        let color = e.customColor || (e.boss ? e.color : "#c0392b"); if(e.isInfected) color = '#55efc4'; if(e.frozen) color = '#add8e6';
-        if(!e.hasCustomDraw) { drawCircle(e.x,e.y,e.r, color); }
-        if(e.enraged) { ctx.strokeStyle = "yellow"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(e.x,e.y,e.r+5,0,2*Math.PI); ctx.stroke(); }
-        const pDist=Math.hypot(state.player.x-e.x,state.player.y-e.y);
-        if(pDist < e.r+state.player.r){ if (e.onCollision) e.onCollision(e, state.player); if(!state.player.shield){ let damage = e.boss ? (e.enraged ? 20 : 10) : 1; if (isBerserk) damage *= 2; state.health -= damage; play(hitS); if(e.onDamage) e.onDamage(e, damage); if(state.health<=0) state.gameOver=true; } else { state.player.shield=false; } const ang=Math.atan2(state.player.y-e.y,state.player.x-e.x); state.player.x=e.x+Math.cos(ang)*(e.r+state.player.r); state.player.y=e.y+Math.sin(ang)*(e.r+state.player.r); }
-      }
-      for(let i=state.pickups.length-1;i>=0;i--){
-        const p=state.pickups[i]; if(p.eatenBy) { const pullX = p.eatenBy.x - p.x; const pullY = p.eatenBy.y - p.y; p.dx = (pullX / (Math.hypot(pullX, pullY) || 1)) * 3; p.dy = (pullY / (Math.hypot(pullX, pullY) || 1)) * 3; p.r *= 0.95; if(p.r < 2) { const timeEater = state.enemies.find(e => e.id === 'time_eater'); if (timeEater) timeEater.hp = Math.min(timeEater.maxHP, timeEater.hp + 20); spawnParticles(p.x, p.y, "#fff", 10, 2, 15); state.pickups.splice(i, 1); continue; } }
-        if (p.life && Date.now() > p.life) { state.pickups.splice(i, 1); continue; }
-        p.x += p.dx || 0; p.y += p.dy || 0;
-        let radius = p.r; let color = "#2ecc71"; if (p.life) { radius = p.r + Math.sin(Date.now() / 200) * 2; color = "#800020"; }
-        drawCircle(p.x,p.y,radius,color); ctx.fillStyle="#fff"; ctx.font="16px sans-serif"; ctx.textAlign = "center"; ctx.fillText(powers[p.type].emoji, p.x, p.y+6); ctx.textAlign = "left";
-        const d=Math.hypot(state.player.x-p.x,state.player.y-p.y);
-        if(d<state.player.r+radius && !p.eatenBy){ if(p.customApply) { p.customApply(); play(pickupS); state.pickups.splice(i,1); continue; } const isOffensive = offensivePowers.includes(p.type); const targetInventory = isOffensive ? state.offensiveInventory : state.defensiveInventory; const idx=targetInventory.indexOf(null); if(idx!==-1){ targetInventory[idx]=p.type; play(pickupS); state.pickups.splice(i,1); } else { spawnParticles(p.x, p.y, "#f00", 15, 2, 20); state.pickups.splice(i,1); } }
-      }
-      
-      const timeEater = state.enemies.find(e => e.id === 'time_eater');
-      const slowZones = state.effects.filter(e => e.type === 'slow_zone');
-      if (timeEater && slowZones.length > 0) {
-        for(const zone of slowZones) {
-            for (let i = state.pickups.length - 1; i >= 0; i--) { const p = state.pickups[i]; if (!p.eatenBy && Math.hypot(p.x - zone.x, p.y - zone.y) < zone.r) { p.eatenBy = zone; } }
-            for (let i = state.enemies.length - 1; i >= 0; i--) { const e = state.enemies[i]; if (!e.boss && !e.eatenBy && Math.hypot(e.x - zone.x, e.y - zone.y) < zone.r) { e.eatenBy = zone; } }
-        }
-      }
+    soundBtn.addEventListener("click",() => AudioManager.toggleMute());
+    document.body.addEventListener("click", () => AudioManager.unlockAudio(), { once: true });
+    document.body.addEventListener("touchstart", () => AudioManager.unlockAudio(), { once: true });
+    
+    // RE-ADDED canvas click listeners for desktop gameplay
+    canvas.addEventListener("click", e => { if (e.target.id === 'gameCanvas' && state.offensiveInventory[0]) { usePower('offensive'); } });
+    canvas.addEventListener("contextmenu", e => { e.preventDefault(); if (state.defensiveInventory[0]) { usePower('defensive'); } });
+    
+    // Listeners for mobile / direct icon clicks
+    document.getElementById('slot-off-0').addEventListener('click', e => { if (state.offensiveInventory[0]) { usePower('offensive'); } });
+    document.getElementById('slot-def-0').addEventListener('click', e => { if (state.defensiveInventory[0]) { usePower('defensive'); } });
+    document.getElementById('slot-off-0').addEventListener('touchstart', e => { e.preventDefault(); if (state.offensiveInventory[0]) { usePower('offensive'); } });
+    document.getElementById('slot-def-0').addEventListener('touchstart', e => { e.preventDefault(); if (state.defensiveInventory[0]) { usePower('defensive'); } });
+    
+    restartBtn.addEventListener("click",() => startNewGame(false));
+    arenaBtn.addEventListener("click", () => startNewGame(true));
+    levelSelectBtn.addEventListener("click", () => { isPaused = true; levelSelectModal.style.display = 'flex'; });
+    closeModalBtn.addEventListener("click", () => { isPaused = false; levelSelectModal.style.display = 'none'; });
+    bossData.forEach((boss, index) => { const level = index + 1; const button = document.createElement('button'); button.innerText = level; button.title = boss.name; button.onclick = () => { startSpecificLevel(level); }; levelSelectGrid.appendChild(button); });
 
-      state.effects.forEach((effect, index) => {
-        if (effect.type === 'shockwave') { const elapsed = (Date.now() - effect.startTime) / 1000; effect.radius = elapsed * effect.speed; ctx.strokeStyle = `rgba(255, 255, 255, ${1 - (effect.radius / effect.maxRadius)})`; ctx.lineWidth = 10; ctx.beginPath(); ctx.arc(effect.x, effect.y, effect.radius, 0, 2 * Math.PI); ctx.stroke(); state.enemies.forEach(e => { if (!effect.hitEnemies.has(e) && Math.abs(Math.hypot(e.x - effect.x, e.y - effect.y) - effect.radius) < e.r + 5) { e.hp -= e.boss ? effect.damage : 1000; effect.hitEnemies.add(e); if(e.onDamage) e.onDamage(e, effect.damage); } }); if (effect.radius >= effect.maxRadius) state.effects.splice(index, 1);
-        } else if (effect.type === 'chain_lightning') { const linkIndex = Math.floor((Date.now() - effect.startTime) / effect.durationPerLink); if (linkIndex >= effect.targets.length) { state.effects.splice(index, 1); return; } for (let i=0; i <= linkIndex; i++) { const from = i === 0 ? state.player : effect.targets[i-1]; const to = effect.targets[i]; if (!from || !to) continue; drawLightning(from.x, from.y, to.x, to.y, '#00ffff', 4); if (!effect.links.includes(to)) { spawnParticles(to.x, to.y, '#ffffff', 30, 5, 20); to.hp -= to.boss ? effect.damage : 50; if(to.onDamage) to.onDamage(to, effect.damage); effect.links.push(to); } }
-        } else if (effect.type === 'repulsion_field') { if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; } effect.x = state.player.x; effect.y = state.player.y; const alpha = (effect.endTime - Date.now()) / 5000 * 0.4; ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(effect.x, effect.y, effect.radius, 0, 2*Math.PI); ctx.stroke(); state.enemies.forEach(e => { if (e.boss) return; const dist = Math.hypot(e.x - effect.x, e.y - effect.y); if (dist < effect.radius) { const angle = Math.atan2(e.y - effect.y, e.x - effect.x); e.x += Math.cos(angle) * 5; e.y += Math.sin(angle) * 5; } });
-        } else if (effect.type === 'black_hole') { if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; } const progress = 1 - (effect.endTime - Date.now()) / 4000; const currentPullRadius = effect.maxRadius * progress; drawCircle(effect.x, effect.y, effect.radius, "#000"); ctx.strokeStyle = `rgba(155, 89, 182, ${0.6 * progress})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(effect.x, effect.y, currentPullRadius, 0, 2*Math.PI); ctx.stroke(); state.enemies.forEach(e => { const dist = Math.hypot(e.x - effect.x, e.y - effect.y); if (dist < currentPullRadius) { const pullStrength = e.boss ? 0.03 : 0.1; e.x += (effect.x - e.x) * pullStrength; e.y += (effect.y - e.y) * pullStrength; if (dist < effect.radius + e.r && Date.now() - effect.lastDamage > effect.damageRate) { e.hp -= e.boss ? effect.damage : 15; effect.lastDamage = Date.now(); } } });
-        } else if (effect.type === 'glitch_zone') { if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; } const alpha = (effect.endTime - Date.now()) / 5000 * 0.3; ctx.fillStyle = `rgba(253, 121, 168, ${alpha})`; drawCircle(effect.x, effect.y, effect.r, ctx.fillStyle); if (Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < effect.r + state.player.r) { if (!state.player.controlsInverted) { play(systemErrorS); addStatusEffect('Controls Inverted', '😵', 3000); } state.player.controlsInverted = true; setTimeout(() => state.player.controlsInverted = false, 3000); }
-        } else if (effect.type === 'petrify_zone') { if (Date.now() > effect.startTime + 5000) { state.effects.splice(index, 1); return; } ctx.fillStyle = `rgba(0, 184, 148, 0.2)`; drawCircle(effect.x, effect.y, effect.r, ctx.fillStyle); if (Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < effect.r) { if(!effect.playerInsideTime) effect.playerInsideTime = Date.now(); const stunProgress = (Date.now() - effect.playerInsideTime) / 1500; ctx.fillStyle = `rgba(0, 184, 148, 0.4)`; ctx.beginPath(); ctx.moveTo(effect.x, effect.y); ctx.arc(effect.x, effect.y, effect.r, -Math.PI/2, -Math.PI/2 + (Math.PI*2) * stunProgress, false); ctx.lineTo(effect.x, effect.y); ctx.fill(); if (stunProgress >= 1) { play(stoneCrackingS); addStatusEffect('Petrified', '🗿', 2000); state.player.stunnedUntil = Date.now() + 2000; state.effects.splice(index, 1); } } else { effect.playerInsideTime = null; }
-        } else if (effect.type === 'annihilator_beam') { if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; } const { source, pillar } = effect; if(!source || !pillar || source.hp <= 0) { state.effects.splice(index, 1); return; } const alpha = (effect.endTime - Date.now()) / 1200; ctx.fillStyle = `rgba(214, 48, 49, ${alpha * 0.7})`; const distToPillar = Math.hypot(pillar.x - source.x, pillar.y - source.y); const angleToPillar = Math.atan2(pillar.y - source.y, pillar.x - source.x); const angleToTangent = Math.asin(pillar.r / distToPillar); const angle1 = angleToPillar - angleToTangent; const angle2 = angleToPillar + angleToTangent; const maxDist = Math.hypot(canvas.width, canvas.height) * 2; const p1x = source.x + maxDist * Math.cos(angle1); const p1y = source.y + maxDist * Math.sin(angle1); const p2x = source.x + maxDist * Math.cos(angle2); const p2y = source.y + maxDist * Math.sin(angle2); ctx.beginPath(); ctx.rect(-1000, -1000, canvas.width+2000, canvas.height+2000); ctx.moveTo(source.x, source.y); ctx.lineTo(p1x,p1y); ctx.lineTo(p2x,p2y); ctx.closePath(); ctx.fill('evenodd'); const playerAngle = Math.atan2(state.player.y - source.y, state.player.x - source.x); let angleDiff = (playerAngle - angleToPillar + Math.PI * 3) % (Math.PI * 2) - Math.PI; const isSafe = Math.abs(angleDiff) < angleToTangent && Math.hypot(state.player.x - source.x, state.player.y - source.y) > distToPillar; if (!isSafe && !state.player.shield) { state.health = 0; if (state.health <= 0) state.gameOver = true; } 
-        } else if (effect.type === 'slow_zone') { if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; } const alpha = (effect.endTime - Date.now()) / 5000 * 0.3; for(let i=0; i<3; i++) { ctx.strokeStyle = `rgba(223, 230, 233, ${alpha * (0.5 + Math.sin(Date.now()/200 + i*2)*0.5)})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(effect.x, effect.y, effect.r * (0.6 + i*0.2), 0, Math.PI*2); ctx.stroke(); }
-        } else if (effect.type === 'orbital_target') { const duration = 1500; const progress = (Date.now() - effect.startTime) / duration; if (progress >= 1) { spawnParticles(effect.x, effect.y, '#e67e22', 100, 8, 40); const explosionRadius = 150; state.enemies.forEach(e => { if (Math.hypot(e.x-effect.x, e.y-effect.y) < explosionRadius) { let damage = (state.player.berserkUntil > Date.now()) ? 50 : 25; e.hp -= e.boss ? damage : 1000; } }); state.effects.splice(index, 1); return; } ctx.strokeStyle = 'rgba(230, 126, 34, 0.8)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(effect.x, effect.y, 50 * (1-progress), 0, Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(effect.x-10, effect.y); ctx.lineTo(effect.x+10, effect.y); ctx.moveTo(effect.x, effect.y-10); ctx.lineTo(effect.x, effect.y+10); ctx.stroke(); 
-        } else if (effect.type === 'juggernaut_charge_ring') { const progress = (Date.now() - effect.startTime) / effect.duration; if (progress >= 1) { state.effects.splice(index, 1); return; } ctx.strokeStyle = `rgba(255,255,255, ${0.8 * (1-progress)})`; ctx.lineWidth = 15; ctx.beginPath(); ctx.arc(effect.source.x, effect.source.y, effect.source.r * progress, 0, Math.PI*2); ctx.stroke();
-        } else if (effect.type === 'ricochet_projectile') { effect.x += effect.dx; effect.y += effect.dy; drawCircle(effect.x, effect.y, effect.r, '#f1c40f'); if(effect.x < effect.r || effect.x > canvas.width - effect.r) { effect.dx *= -1; effect.bounces--; } if(effect.y < effect.r || effect.y > canvas.height - effect.r) { effect.dy *= -1; effect.bounces--; } state.enemies.forEach(e => { if (!effect.hitEnemies.has(e) && Math.hypot(e.x - effect.x, e.y - effect.y) < e.r + effect.r) { let damage = (state.player.berserkUntil > Date.now()) ? 20 : 10; e.hp -= damage; effect.bounces--; const angle = Math.atan2(e.y - effect.y, e.x - effect.x); effect.dx = -Math.cos(angle) * 10; effect.dy = -Math.sin(angle) * 10; effect.hitEnemies.add(e); setTimeout(()=>effect.hitEnemies.delete(e), 200); } }); if (effect.bounces <= 0) state.effects.splice(index, 1);
-        } else if (effect.type === 'nova_controller') { if (Date.now() > effect.startTime + effect.duration) { state.effects.splice(index, 1); return; } if(Date.now() - effect.lastShot > 50) { effect.lastShot = Date.now(); const speed = 5; state.effects.push({ type: 'nova_bullet', x: state.player.x, y: state.player.y, r: 4, dx: Math.cos(effect.angle) * speed, dy: Math.sin(effect.angle) * speed }); effect.angle += 0.5; }
-        } else if (effect.type === 'nova_bullet') { effect.x += effect.dx; effect.y += effect.dy; drawCircle(effect.x, effect.y, effect.r, '#fff'); if(effect.x < 0 || effect.x > canvas.width || effect.y < 0 || effect.y > canvas.height) state.effects.splice(index, 1); state.enemies.forEach(e => { if (Math.hypot(e.x-effect.x, e.y-effect.y) < e.r + effect.r) { let damage = (state.player.berserkUntil > Date.now()) ? 6 : 3; e.hp -= damage; state.effects.splice(index, 1); } }); }
-      });
-      updateParticles(); updateUI(); ctx.restore(); return true;
-    }
-    
-    function loop(){
-      if(!gameTick()) { if(gameLoopId) cancelAnimationFrame(gameLoopId); return; };
-      if (!isPaused) {
-        state.score++;
-        if(state.score>0 && !state.bossActive && !state.arenaMode && state.score % 1500 === 0 && Date.now() > state.bossSpawnCooldownEnd) spawnEnemy(true);
-        if(Math.random()<(0.007+state.level*0.001)) spawnEnemy(false);
-        if(Math.random() < (0.02 + state.level * 0.0002)) spawnPickup();
-      }
-      gameLoopId = requestAnimationFrame(loop);
-    }
-    function arenaLoop() {
-      if(!gameTick()) { if(gameLoopId) cancelAnimationFrame(gameLoopId); return; };
-      if (!isPaused) { const spawnInterval = Math.max(1000, 8000 * Math.pow(0.95, state.wave)); if (Date.now() - state.lastArenaSpawn > spawnInterval) { state.lastArenaSpawn = Date.now(); state.wave++; spawnEnemy(true); } if (Math.random() < 0.02) { spawnPickup(); } }
-      gameLoopId = requestAnimationFrame(arenaLoop);
-    }
-    const startNewGame = (isArena) => { if (gameLoopId) cancelAnimationFrame(gameLoopId); resetGame(isArena); isPaused = false; levelSelectModal.style.display = 'none'; if (isArena) { arenaLoop(); } else { loop(); } };
-    const startSpecificLevel = (levelNum) => { startNewGame(false); state.level = levelNum; state.score = (levelNum - 1) * 1500; state.enemies = []; spawnEnemy(true); updateUI(); };
-
-    soundBtn.addEventListener("click",() => AudioManager.toggleMute());
-    document.body.addEventListener("click", () => AudioManager.unlockAudio(), { once: true });
-    document.body.addEventListener("touchstart", () => AudioManager.unlockAudio(), { once: true });
-    
-    // RE-ADDED canvas click listeners for desktop gameplay
-    canvas.addEventListener("click", e => { if (e.target.id === 'gameCanvas' && state.offensiveInventory[0]) { usePower('offensive'); } });
-    canvas.addEventListener("contextmenu", e => { e.preventDefault(); if (state.defensiveInventory[0]) { usePower('defensive'); } });
-    
-    // Listeners for mobile / direct icon clicks
-    document.getElementById('slot-off-0').addEventListener('click', e => { if (state.offensiveInventory[0]) { usePower('offensive'); } });
-    document.getElementById('slot-def-0').addEventListener('click', e => { if (state.defensiveInventory[0]) { usePower('defensive'); } });
-    document.getElementById('slot-off-0').addEventListener('touchstart', e => { e.preventDefault(); if (state.offensiveInventory[0]) { usePower('offensive'); } });
-    document.getElementById('slot-def-0').addEventListener('touchstart', e => { e.preventDefault(); if (state.defensiveInventory[0]) { usePower('defensive'); } });
-    
-    restartBtn.addEventListener("click",() => startNewGame(false));
-    arenaBtn.addEventListener("click", () => startNewGame(true));
-    levelSelectBtn.addEventListener("click", () => { isPaused = true; levelSelectModal.style.display = 'flex'; });
-    closeModalBtn.addEventListener("click", () => { isPaused = false; levelSelectModal.style.display = 'none'; });
-    bossData.forEach((boss, index) => { const level = index + 1; const button = document.createElement('button'); button.innerText = level; button.title = boss.name; button.onclick = () => { startSpecificLevel(level); }; levelSelectGrid.appendChild(button); });
-
-    startNewGame(false);
-  });
-  </script>
+    startNewGame(false);
+  });
+  </script>
 </body>
 </html>
