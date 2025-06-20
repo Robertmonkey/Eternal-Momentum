@@ -194,11 +194,11 @@
                     <div class="queue-slot" id="q-def-2"></div>
                 </div>
                 <div class="abilities">
-                    <div class="ability-slot" id="slot-def-0" data-tooltip-text="Defensive">
-                        <span class="ability-key">R-Click</span>
-                    </div>
                     <div class="ability-slot main" id="slot-off-0" data-tooltip-text="Offensive">
                         <span class="ability-key">L-Click</span>
+                    </div>
+                    <div class="ability-slot" id="slot-def-0" data-tooltip-text="Defensive">
+                        <span class="ability-key">R-Click</span>
                     </div>
                 </div>
                 <div class="ability-queue offensive">
@@ -270,7 +270,6 @@
           glitchS = document.getElementById("glitchSound"),
           systemErrorS = document.getElementById("systemErrorSound"),
           beamHumS = document.getElementById("beamHumSound"),
-          // BUG FIX: Corrected the ID from "stoneCracking.mp3" to "stoneCrackingSound"
           stoneCrackingS = document.getElementById("stoneCrackingSound"),
           powerSirenS = document.getElementById("powerSirenSound"),
           annihilatorBeamS = document.getElementById("annihilatorBeamSound"),
@@ -548,6 +547,20 @@
       state.effects.forEach(effect => { if(effect.type === 'slow_zone' && Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < effect.r) { playerSpeedMultiplier = 0.5; } });
 
       if (Date.now() > state.player.stunnedUntil) { state.player.x+=(finalMx-state.player.x)*0.015*state.player.speed * playerSpeedMultiplier; state.player.y+=(finalMy-state.player.y)*0.015*state.player.speed * playerSpeedMultiplier; }
+      
+      // BUG FIX: Architect pillar collision
+      const architect = state.enemies.find(e => e.id === 'architect');
+      if(architect && architect.pillars) {
+          architect.pillars.forEach(pillar => {
+              const dist = Math.hypot(state.player.x - pillar.x, state.player.y - pillar.y);
+              if (dist < state.player.r + pillar.r) {
+                  const angle = Math.atan2(state.player.y - pillar.y, state.player.x - pillar.x);
+                  state.player.x = pillar.x + Math.cos(angle) * (state.player.r + pillar.r);
+                  state.player.y = pillar.y + Math.sin(angle) * (state.player.r + pillar.r);
+              }
+          });
+      }
+
       if (state.player.infected) { if (Date.now() > state.player.infectionEnd) { state.player.infected = false; } else if (Date.now() - state.player.lastSpore > 2000) { state.player.lastSpore = Date.now(); const spore = spawnEnemy(false, null, {x: state.player.x, y: state.player.y}); if(spore){ spore.r = 8; spore.hp = 2; spore.dx = (Math.random() - 0.5) * 8; spore.dy = (Math.random() - 0.5) * 8; spore.ignoresPlayer = true; } } }
       
       const annihilator = state.enemies.find(e => e.id === 'annihilator' && e.pillar);
