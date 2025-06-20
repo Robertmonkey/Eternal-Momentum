@@ -189,9 +189,9 @@
 
         <div class="core-display">
             <div class="ability-cluster">
-                <div class="ability-queue defensive">
-                    <div class="queue-slot" id="q-def-1"></div>
-                    <div class="queue-slot" id="q-def-2"></div>
+                <div class="ability-queue offensive">
+                    <div class="queue-slot" id="q-off-1"></div>
+                    <div class="queue-slot" id="q-off-2"></div>
                 </div>
                 <div class="abilities">
                     <div class="ability-slot main" id="slot-off-0" data-tooltip-text="Offensive">
@@ -201,9 +201,9 @@
                         <span class="ability-key">R-Click</span>
                     </div>
                 </div>
-                <div class="ability-queue offensive">
-                    <div class="queue-slot" id="q-off-1"></div>
-                    <div class="queue-slot" id="q-off-2"></div>
+                <div class="ability-queue defensive">
+                    <div class="queue-slot" id="q-def-1"></div>
+                    <div class="queue-slot" id="q-def-2"></div>
                 </div>
             </div>
         </div>
@@ -498,6 +498,7 @@
     
     function spawnEnemy(isBoss=false, bossId=null, location=null){
       const e={ x: location ? location.x : Math.random()*canvas.width, y: location ? location.y : Math.random()*canvas.height, dx:(Math.random()-0.5)*0.75, dy:(Math.random()-0.5)*0.75, r:isBoss?50:15, hp:isBoss?200:1, maxHP:isBoss?200:1, boss:isBoss,frozen:false, targetBosses: false };
+      
       if(isBoss){
         const bd = bossId ? bossData.find(b => b.id === bossId) : bossData[state.arenaMode ? Math.floor(Math.random()*bossData.length) : (state.level-1)%bossData.length];
         if (!bd) { console.error("Boss data not found for level", state.level); return null; }
@@ -509,6 +510,12 @@
       } else {
         state.enemies.push(e);
       }
+      
+      if(state.arenaMode) {
+        e.target = null;
+        e.lastTargetCheck = 0;
+      }
+
       return e;
     }
     
@@ -548,7 +555,6 @@
 
       if (Date.now() > state.player.stunnedUntil) { state.player.x+=(finalMx-state.player.x)*0.015*state.player.speed * playerSpeedMultiplier; state.player.y+=(finalMy-state.player.y)*0.015*state.player.speed * playerSpeedMultiplier; }
       
-      // BUG FIX: Architect pillar collision
       const architect = state.enemies.find(e => e.id === 'architect');
       if(architect && architect.pillars) {
           architect.pillars.forEach(pillar => {
@@ -572,17 +578,63 @@
       if(state.decoy){ drawCircle(state.decoy.x,state.decoy.y,state.decoy.r,"#9b59b6"); if(Date.now()>state.decoy.expires) state.decoy=null; }
       const gravOn = state.gravityActive && Date.now()<state.gravityEnd;
       if(gravOn){ const t=(state.gravityEnd-Date.now())/1000; ctx.strokeStyle=`rgba(155, 89, 182, ${t * 0.5})`; ctx.lineWidth=6; ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height/2, 50+(1-t)*400,0,2*Math.PI); ctx.stroke(); }
+      
       for(let i=state.enemies.length-1;i>=0;i--){
         const e=state.enemies[i];
         if(e.hp<=0){ if(e.boss) { triggerScreenShake(250, 5); e.onDeath && e.onDeath(e); state.enemies.splice(i,1); if (state.currentBoss === e) { state.currentBoss = state.enemies.find(en => en.boss) || null; } if (!state.enemies.some(en => en.boss)) { state.bossActive = false; if (!state.arenaMode) { state.level++; } } } else { state.enemies.splice(i,1); } continue; }
+        
+        if (state.arenaMode) {
+            const now = Date.now();
+            if (now - e.lastTargetCheck > 10000) {
+                e.lastTargetCheck = now;
+                const potentialTargets = [state.player, ...state.enemies.filter(other => other !== e)];
+                let closestTarget = null;
+                let minDistance = Infinity;
+                potentialTargets.forEach(pTarget => {
+                    if (pTarget.hp > 0) { // Ensure target is alive
+                        const dist = Math.hypot(e.x - pTarget.x, e.y - pTarget.y);
+                        if (dist < minDistance) {
+                            minDistance = dist;
+                            closestTarget = pTarget;
+                        }
+                    }
+                });
+                e.target = closestTarget;
+            }
+        }
+
         if (e.eatenBy) { const pullX = e.eatenBy.x - e.x; const pullY = e.eatenBy.y - e.y; const pullDist = Math.hypot(pullX, pullY) || 1; e.dx = (pullX / pullDist) * 3; e.dy = (pullY / pullDist) * 3; e.x += e.dx; e.y += e.dy; e.r *= 0.95; if(e.r < 2) { const timeEater = state.enemies.find(b => b.id === 'time_eater'); if (timeEater) timeEater.hp = Math.min(timeEater.maxHP, timeEater.hp + 10); spawnParticles(e.x, e.y, "#fff", 10, 2, 15); state.enemies.splice(i, 1); continue;}
-        } else if(!e.frozen && !e.hasCustomMovement){ let tgt; let pullFactor = 0.005; let baseDx = e.dx; let baseDy = e.dy; if (!e.ignoresPlayer) { if (gravOn && !e.boss) { tgt = { x: canvas.width / 2, y: canvas.height / 2 }; pullFactor = 0.1; baseDx = 0; baseDy = 0; } else { tgt = state.decoy || state.player; } const vx = (tgt.x - e.x) * pullFactor; const vy = (tgt.y - e.y) * pullFactor; e.x += vx; e.y += vy; } let enemySpeedMultiplier = 1; state.effects.forEach(effect => { if(effect.type === 'slow_zone' && Math.hypot(e.x - effect.x, e.y - effect.y) < effect.r) { enemySpeedMultiplier = 0.5; } }); e.x += baseDx * enemySpeedMultiplier; e.y += baseDy * enemySpeedMultiplier; if(e.x<e.r || e.x>canvas.width-e.r) e.dx*=-1; if(e.y<e.r || e.y>canvas.height-e.r) e.dy*=-1; }
+        } else if(!e.frozen && !e.hasCustomMovement){ 
+            let tgt; 
+            let pullFactor = 0.005; 
+            let baseDx = e.dx; 
+            let baseDy = e.dy; 
+            if (!e.ignoresPlayer) { 
+                if (state.arenaMode && e.target) {
+                    tgt = e.target;
+                } else if (gravOn && !e.boss) { 
+                    tgt = { x: canvas.width / 2, y: canvas.height / 2 }; pullFactor = 0.1; baseDx = 0; baseDy = 0; 
+                } else { 
+                    tgt = state.decoy || state.player; 
+                } 
+                const vx = (tgt.x - e.x) * pullFactor; 
+                const vy = (tgt.y - e.y) * pullFactor; 
+                e.x += vx; e.y += vy; 
+            } 
+            let enemySpeedMultiplier = 1; 
+            state.effects.forEach(effect => { if(effect.type === 'slow_zone' && Math.hypot(e.x - effect.x, e.y - effect.y) < effect.r) { enemySpeedMultiplier = 0.5; } }); 
+            e.x += baseDx * enemySpeedMultiplier; e.y += baseDy * enemySpeedMultiplier; 
+            if(e.x<e.r || e.x>canvas.width-e.r) e.dx*=-1; 
+            if(e.y<e.r || e.y>canvas.height-e.r) e.dy*=-1; 
+        }
+
         if (annihilator) { const pillar = annihilator.pillar; const dx = e.x - pillar.x; const dy = e.y - pillar.y; const dist = Math.hypot(dx, dy); if (dist < e.r + pillar.r) { const angle = Math.atan2(dy, dx); e.x = pillar.x + Math.cos(angle) * (e.r + pillar.r); e.y = pillar.y + Math.sin(angle) * (e.r + pillar.r); }}
         if (e.isInfected) { if (Date.now() > e.infectionEnd) { e.isInfected = false; } else if (Date.now() - e.lastSpore > 3000) { e.lastSpore = Date.now(); const spore = spawnEnemy(false, null, {x: e.x, y: e.y}); if (spore) { spore.r = 6; spore.hp = 1; spore.dx = (Math.random() - 0.5) * 8; spore.dy = (Math.random() - 0.5) * 8; spore.ignoresPlayer = true; } } }
         if(e.boss && e.logic) e.logic(e, ctx);
         let color = e.customColor || (e.boss ? e.color : "#c0392b"); if(e.isInfected) color = '#55efc4'; if(e.frozen) color = '#add8e6';
         if(!e.hasCustomDraw) { drawCircle(e.x,e.y,e.r, color); }
         if(e.enraged) { ctx.strokeStyle = "yellow"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(e.x,e.y,e.r+5,0,2*Math.PI); ctx.stroke(); }
+        
         const pDist=Math.hypot(state.player.x-e.x,state.player.y-e.y);
         if(pDist < e.r+state.player.r){ if (e.onCollision) e.onCollision(e, state.player); if(!state.player.shield){ let damage = e.boss ? (e.enraged ? 20 : 10) : 1; if (isBerserk) damage *= 2; state.health -= damage; play(hitS); if(e.onDamage) e.onDamage(e, damage); if(state.health<=0) state.gameOver=true; } else { state.player.shield=false; } const ang=Math.atan2(state.player.y-e.y,state.player.x-e.x); state.player.x=e.x+Math.cos(ang)*(e.r+state.player.r); state.player.y=e.y+Math.sin(ang)*(e.r+state.player.r); }
       }
