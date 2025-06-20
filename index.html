@@ -360,7 +360,8 @@
       for(let i=state.enemies.length-1;i>=0;i--){
         const e=state.enemies[i];
         if(e.hp<=0){ if(e.boss) { triggerScreenShake(250, 5); e.onDeath && e.onDeath(e); state.enemies.splice(i,1); if (state.currentBoss === e) { state.currentBoss = state.enemies.find(en => en.boss) || null; } if (!state.enemies.some(en => en.boss)) { state.bossActive = false; if (!state.arenaMode) { state.level++; } } } else { state.enemies.splice(i,1); } continue; }
-        if(!e.frozen && !e.hasCustomMovement){ let tgt; let pullFactor = 0.005; let baseDx = e.dx; let baseDy = e.dy; if (!e.ignoresPlayer) { if (gravOn && !e.boss) { tgt = { x: canvas.width / 2, y: canvas.height / 2 }; pullFactor = 0.1; baseDx = 0; baseDy = 0; } else { tgt = state.decoy || state.player; } const vx = (tgt.x - e.x) * pullFactor; const vy = (tgt.y - e.y) * pullFactor; e.x += vx; e.y += vy; } let enemySpeedMultiplier = 1; state.effects.forEach(effect => { if(effect.type === 'slow_zone' && Math.hypot(e.x - effect.x, e.y - effect.y) < effect.r) { enemySpeedMultiplier = 0.5; } }); e.x += baseDx * enemySpeedMultiplier; e.y += baseDy * enemySpeedMultiplier; if(e.x<e.r || e.x>canvas.width-e.r) e.dx*=-1; if(e.y<e.r || e.y>canvas.height-e.r) e.dy*=-1; }
+        if (e.eatenBy) { const pullX = e.eatenBy.x - e.x; const pullY = e.eatenBy.y - e.y; const pullDist = Math.hypot(pullX, pullY) || 1; e.dx = (pullX / pullDist) * 2; e.dy = (pullY / pullDist) * 2; e.x += e.dx; e.y += e.dy; e.r *= 0.95; if(e.r < 2) { const timeEater = state.enemies.find(b => b.id === 'time_eater'); if (timeEater) timeEater.hp = Math.min(timeEater.maxHP, timeEater.hp + 15); spawnParticles(e.x, e.y, "#fff", 10, 2, 15); e.hp = 0;}
+        } else if(!e.frozen && !e.hasCustomMovement){ let tgt; let pullFactor = 0.005; let baseDx = e.dx; let baseDy = e.dy; if (!e.ignoresPlayer) { if (gravOn && !e.boss) { tgt = { x: canvas.width / 2, y: canvas.height / 2 }; pullFactor = 0.1; baseDx = 0; baseDy = 0; } else { tgt = state.decoy || state.player; } const vx = (tgt.x - e.x) * pullFactor; const vy = (tgt.y - e.y) * pullFactor; e.x += vx; e.y += vy; } let enemySpeedMultiplier = 1; state.effects.forEach(effect => { if(effect.type === 'slow_zone' && Math.hypot(e.x - effect.x, e.y - effect.y) < effect.r) { enemySpeedMultiplier = 0.5; } }); e.x += baseDx * enemySpeedMultiplier; e.y += baseDy * enemySpeedMultiplier; if(e.x<e.r || e.x>canvas.width-e.r) e.dx*=-1; if(e.y<e.r || e.y>canvas.height-e.r) e.dy*=-1; }
         if (annihilator) { const pillar = annihilator.pillar; const dx = e.x - pillar.x; const dy = e.y - pillar.y; const dist = Math.hypot(dx, dy); if (dist < e.r + pillar.r) { const angle = Math.atan2(dy, dx); e.x = pillar.x + Math.cos(angle) * (e.r + pillar.r); e.y = pillar.y + Math.sin(angle) * (e.r + pillar.r); }}
         if (e.isInfected) { if (Date.now() > e.infectionEnd) { e.isInfected = false; } else if (Date.now() - e.lastSpore > 3000) { e.lastSpore = Date.now(); const spore = spawnEnemy(false, null, {x: e.x, y: e.y}); if (spore) { spore.r = 6; spore.hp = 1; spore.dx = (Math.random() - 0.5) * 8; spore.dy = (Math.random() - 0.5) * 8; spore.ignoresPlayer = true; } } }
         if(e.boss && e.logic) e.logic(e, ctx);
@@ -371,15 +372,24 @@
         if(pDist < e.r+state.player.r){ if (e.onCollision) e.onCollision(e, state.player); if(!state.player.shield){ let damage = e.boss ? (e.enraged ? 20 : 10) : 1; if (isBerserk) damage *= 2; state.health -= damage; play(hitS); if(e.onDamage) e.onDamage(e, damage); if(state.health<=0) state.gameOver=true; } else { state.player.shield=false; } const ang=Math.atan2(state.player.y-e.y,state.player.x-e.x); state.player.x=e.x+Math.cos(ang)*(e.r+state.player.r); state.player.y=e.y+Math.sin(ang)*(e.r+state.player.r); }
       }
       for(let i=state.pickups.length-1;i>=0;i--){
-        const p=state.pickups[i]; if(p.eaten) { p.r *= 0.9; if (p.r < 1) { const timeEater = state.enemies.find(e => e.id === 'time_eater'); if (timeEater) timeEater.hp = Math.min(timeEater.maxHP, timeEater.hp + 10); state.pickups.splice(i, 1); } }
+        const p=state.pickups[i]; if(p.eatenBy) { const pullX = p.eatenBy.x - p.x; const pullY = p.eatenBy.y - p.y; const pullDist = Math.hypot(pullX, pullY) || 1; p.dx = (pullX / pullDist) * 3; p.dy = (pullY / pullDist) * 3; p.r *= 0.95; if(p.r < 2) { const timeEater = state.enemies.find(e => e.id === 'time_eater'); if (timeEater) timeEater.hp = Math.min(timeEater.maxHP, timeEater.hp + 10); spawnParticles(p.x, p.y, "#fff", 10, 2, 15); state.pickups.splice(i, 1); continue; } }
         if (p.life && Date.now() > p.life) { state.pickups.splice(i, 1); continue; }
         p.x += p.dx || 0; p.y += p.dy || 0;
         let radius = p.r; let color = "#2ecc71"; if (p.life) { radius = p.r + Math.sin(Date.now() / 200) * 2; color = "#800020"; }
         drawCircle(p.x,p.y,radius,color); ctx.fillStyle="#fff"; ctx.font="16px sans-serif"; ctx.textAlign = "center"; ctx.fillText(powers[p.type].emoji, p.x, p.y+6); ctx.textAlign = "left";
         const d=Math.hypot(state.player.x-p.x,state.player.y-p.y);
-        if(d<state.player.r+radius){ if(p.customApply) { p.customApply(); play(pickupS); state.pickups.splice(i,1); updateUI(); continue; } const isOffensive = offensivePowers.includes(p.type); const targetInventory = isOffensive ? state.offensiveInventory : state.defensiveInventory; const idx=targetInventory.indexOf(null); if(idx!==-1){ targetInventory[idx]=p.type; play(pickupS); state.pickups.splice(i,1); updateUI(); } else { spawnParticles(p.x, p.y, "#f00", 15, 2, 20); state.pickups.splice(i,1); } }
+        if(d<state.player.r+radius && !p.eatenBy){ if(p.customApply) { p.customApply(); play(pickupS); state.pickups.splice(i,1); updateUI(); continue; } const isOffensive = offensivePowers.includes(p.type); const targetInventory = isOffensive ? state.offensiveInventory : state.defensiveInventory; const idx=targetInventory.indexOf(null); if(idx!==-1){ targetInventory[idx]=p.type; play(pickupS); state.pickups.splice(i,1); updateUI(); } else { spawnParticles(p.x, p.y, "#f00", 15, 2, 20); state.pickups.splice(i,1); } }
       }
       
+      const timeEater = state.enemies.find(e => e.id === 'time_eater');
+      const slowZones = state.effects.filter(e => e.type === 'slow_zone');
+      if (timeEater && slowZones.length > 0) {
+        for(const zone of slowZones) {
+            for (let i = state.pickups.length - 1; i >= 0; i--) { const p = state.pickups[i]; if (!p.eatenBy && Math.hypot(p.x - zone.x, p.y - zone.y) < zone.r) { p.eatenBy = zone; } }
+            for (let i = state.enemies.length - 1; i >= 0; i--) { const e = state.enemies[i]; if (!e.boss && !e.eatenBy && Math.hypot(e.x - zone.x, e.y - zone.y) < zone.r) { e.eatenBy = zone; } }
+        }
+      }
+
       state.effects.forEach((effect, index) => {
         if (effect.type === 'shockwave') { const elapsed = (Date.now() - effect.startTime) / 1000; effect.radius = elapsed * effect.speed; ctx.strokeStyle = `rgba(255, 255, 255, ${1 - (effect.radius / effect.maxRadius)})`; ctx.lineWidth = 10; ctx.beginPath(); ctx.arc(effect.x, effect.y, effect.radius, 0, 2 * Math.PI); ctx.stroke(); state.enemies.forEach(e => { if (!effect.hitEnemies.has(e) && Math.abs(Math.hypot(e.x - effect.x, e.y - effect.y) - effect.radius) < e.r + 5) { e.hp -= e.boss ? effect.damage : 1000; effect.hitEnemies.add(e); if(e.onDamage) e.onDamage(e, effect.damage); } }); if (effect.radius >= effect.maxRadius) state.effects.splice(index, 1);
         } else if (effect.type === 'chain_lightning') { const linkIndex = Math.floor((Date.now() - effect.startTime) / effect.durationPerLink); if (linkIndex >= effect.targets.length) { state.effects.splice(index, 1); return; } for (let i=0; i <= linkIndex; i++) { const from = i === 0 ? state.player : effect.targets[i-1]; const to = effect.targets[i]; if (!from || !to) continue; drawLightning(from.x, from.y, to.x, to.y, '#00ffff', 4); if (!effect.links.includes(to)) { spawnParticles(to.x, to.y, '#ffffff', 30, 5, 20); to.hp -= to.boss ? effect.damage : 50; if(to.onDamage) to.onDamage(to, effect.damage); effect.links.push(to); } }
@@ -391,21 +401,6 @@
         } else if (effect.type === 'slow_zone') { if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; } const alpha = (effect.endTime - Date.now()) / 5000 * 0.3; for(let i=0; i<3; i++) { ctx.strokeStyle = `rgba(223, 230, 233, ${alpha * (0.5 + Math.sin(Date.now()/200 + i*2)*0.5)})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(effect.x, effect.y, effect.r * (0.6 + i*0.2), 0, Math.PI*2); ctx.stroke(); }
         } else if (effect.type === 'orbital_target') { const duration = 1500; const progress = (Date.now() - effect.startTime) / duration; if (progress >= 1) { spawnParticles(effect.x, effect.y, '#e67e22', 100, 8, 40); const explosionRadius = 150; state.enemies.forEach(e => { if (Math.hypot(e.x-effect.x, e.y-effect.y) < explosionRadius) { let damage = (state.player.berserkUntil > Date.now()) ? 50 : 25; e.hp -= e.boss ? damage : 1000; } }); state.effects.splice(index, 1); return; } ctx.strokeStyle = 'rgba(230, 126, 34, 0.8)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(effect.x, effect.y, 50 * (1-progress), 0, Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(effect.x-10, effect.y); ctx.lineTo(effect.x+10, effect.y); ctx.moveTo(effect.x, effect.y-10); ctx.lineTo(effect.x, effect.y+10); ctx.stroke(); }
       });
-      const timeEater = state.enemies.find(e => e.id === 'time_eater');
-      if (timeEater) {
-        const slowZones = state.effects.filter(e => e.type === 'slow_zone');
-        for (let i = state.pickups.length-1; i>=0; i--) {
-            const p = state.pickups[i];
-            if(p.eaten) continue;
-            for(const zone of slowZones) {
-                if (Math.hypot(p.x - zone.x, p.y - zone.y) < zone.r) {
-                    p.eaten = true;
-                    p.eatenBy = zone;
-                    break;
-                }
-            }
-        }
-      }
       updateParticles(); updateUI(); ctx.restore(); return true;
     }
     
