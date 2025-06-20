@@ -12,10 +12,15 @@
       --ui-bg: rgba(20, 20, 40, 0.85);
       --border-color: rgba(0, 255, 255, 0.4);
       --font-color: #eaf2ff;
-      --health-bar: #3498db;
-      --health-bar-berserk: #e74c3c;
+      --health-high: #3498db;
+      --health-medium: #f1c40f;
+      --health-low: #e74c3c;
       --health-bar-bg: #444;
       --disabled-color: rgba(255, 255, 255, 0.2);
+    }
+    @keyframes sheen-animation {
+        0% { transform: translateX(-150%) skewX(-30deg); }
+        100% { transform: translateX(250%) skewX(-30deg); }
     }
     html, body { 
       margin:0; padding:0; overflow:hidden; background:var(--dark-bg);
@@ -24,151 +29,115 @@
     }
     canvas { display:block; width:100vw; height:100vh; }
     
-    /* Main UI Container */
     #ui-container {
-      position: absolute;
-      bottom: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 95%;
-      max-width: 900px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-      pointer-events: none; 
+      position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+      width: 95%; max-width: 900px; display: flex; flex-direction: column;
+      align-items: center; gap: 8px; pointer-events: none; 
     }
     
-    /* Buffs and Debuffs Bar */
     #status-effects-bar {
-      display: flex;
-      gap: 8px;
-      height: 40px;
-      padding: 4px 10px;
-      background: rgba(0,0,0,0.4);
-      border-radius: 20px;
-      border: 1px solid var(--border-color);
-      backdrop-filter: blur(5px);
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.3s ease-in-out;
+      display: flex; gap: 8px; height: 40px; padding: 4px 10px;
+      background: rgba(0,0,0,0.4); border-radius: 20px;
+      border: 1px solid var(--border-color); backdrop-filter: blur(5px);
+      pointer-events: none; opacity: 0; transition: opacity 0.3s ease-in-out;
     }
-    #status-effects-bar.visible {
-      opacity: 1;
-      pointer-events: all;
-    }
+    #status-effects-bar.visible { opacity: 1; pointer-events: all; }
     .status-icon {
-      width: 32px; height: 32px;
-      font-size: 24px;
-      display: flex; align-items: center; justify-content: center;
-      position: relative;
-      background: rgba(0,0,0,0.5);
-      border-radius: 50%;
-      overflow: hidden;
+      width: 32px; height: 32px; font-size: 24px; display: flex;
+      align-items: center; justify-content: center; position: relative;
+      background: rgba(0,0,0,0.5); border-radius: 50%; overflow: hidden;
     }
     .status-icon .cooldown-overlay {
-      position: absolute;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.7);
-      transform-origin: bottom;
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7); transform-origin: bottom;
       transition: transform 0.2s linear;
     }
-    .status-icon[data-tooltip-text]:hover::before {
-        content: attr(data-tooltip-text);
-        position: absolute; bottom: 110%;
-        background: black; color: white; padding: 4px 8px; border-radius: 4px;
-        font-size: 0.8rem; white-space: nowrap;
-    }
 
-    /* Main Command Bar */
     .command-bar {
-      width: 100%;
-      height: 120px;
-      background: var(--ui-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 12px;
-      box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
-      backdrop-filter: blur(10px);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0 20px;
-      color: var(--font-color);
-      pointer-events: all;
+      width: 100%; height: 120px; background: var(--ui-bg);
+      border: 1px solid var(--border-color); border-radius: 12px;
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.2); backdrop-filter: blur(10px);
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0 20px; color: var(--font-color); pointer-events: all;
     }
     .ui-pod { text-align: center; font-size: 1.1rem; line-height: 1.5; flex-basis: 250px; }
     .left-pod { text-align: left; }
     .right-pod { text-align: right; display: flex; gap: 10px; justify-content: flex-end; }
 
-    /* Central Health & Abilities */
     .core-display { 
-      flex-grow: 1;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
+      flex-grow: 1; height: 100%; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
     }
-    #playerHealthArc {
-      width: 100%;
-      height: 45px;
-      max-width: 340px;
-    }
-    #healthArcBackground, #healthArcValue { stroke-width: 8; stroke-linecap: round; }
-    #healthArcBackground { stroke: var(--health-bar-bg); }
-    #healthArcValue { stroke: var(--health-bar); transition: stroke-dashoffset 0.3s ease-out, stroke 0.3s; }
-    #playerHealthText { fill: var(--font-color); font-size: 16px; font-weight: bold; }
     
     .ability-cluster { 
-      display: flex; 
-      justify-content: center; 
-      align-items: flex-end; 
-      gap: 4px;
-      margin-top: -5px; /* Pull cluster up slightly under the arc */
+      display: flex; justify-content: center; 
+      align-items: flex-end; gap: 4px;
     }
     .abilities { display: flex; align-items: flex-end; gap: 10px; margin: 0 10px; }
     .ability-slot {
-      width: 64px; height: 72px;
-      border: 2px solid var(--border-color);
-      cursor: pointer;
-      position: relative;
-      background-color: rgba(0, 255, 255, 0.05);
+      width: 64px; height: 72px; border: 2px solid var(--border-color);
+      cursor: pointer; position: relative; background-color: rgba(0, 255, 255, 0.05);
       clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
       transition: background-color 0.2s, transform 0.2s;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 36px;
+      display: flex; align-items: center; justify-content: center; font-size: 36px;
     }
     .ability-slot.main { width: 80px; height: 90px; border-color: var(--secondary-glow); background-color: rgba(240, 0, 255, 0.05); font-size: 44px;}
     .ability-slot:hover { background-color: rgba(0, 255, 255, 0.2); transform: translateY(-5px); }
     .ability-slot.main:hover { background-color: rgba(240, 0, 255, 0.2); }
     .ability-slot.empty { font-size: 24px; color: var(--disabled-color); }
     .ability-slot .ability-key {
-      position: absolute;
-      bottom: -18px;
-      font-size: 0.7rem;
-      color: #aaa;
+      position: absolute; bottom: -18px; font-size: 0.7rem; color: #aaa;
       display: none; /* Hidden by default, shown for non-touch devices */
     }
-    .ability-slot.activated {
-      transform: translateY(-5px) scale(1.1);
-      box-shadow: 0 0 15px #fff;
-    }
+    .ability-slot.activated { transform: translateY(-5px) scale(1.1); box-shadow: 0 0 15px #fff; }
     
     .ability-queue { display: flex; flex-direction: column; justify-content: center; gap: 4px; }
     .queue-slot {
-      width: 40px; height: 46px;
-      border: 1px solid var(--border-color);
+      width: 40px; height: 46px; border: 1px solid var(--border-color);
       clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
       display: flex; align-items: center; justify-content: center;
-      font-size: 20px;
-      background: rgba(0,0,0,0.5);
-      opacity: 0;
-      transform: scale(0.8);
-      transition: opacity 0.3s, transform 0.3s;
+      font-size: 20px; background: rgba(0,0,0,0.5); opacity: 0;
+      transform: scale(0.8); transition: opacity 0.3s, transform 0.3s;
     }
     .queue-slot.visible { opacity: 1; transform: scale(1); }
+    
+    #health-bar-container {
+      position: relative;
+      width: 100%;
+      max-width: 300px;
+      height: 22px;
+      background: var(--health-bar-bg);
+      border: 2px solid rgba(0,0,0,0.5);
+      border-radius: 12px;
+      margin-top: 8px;
+      overflow: hidden;
+      box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
+    }
+    #health-bar-value {
+      position: absolute; top:0; left: 0;
+      height: 100%;
+      width: 100%;
+      border-radius: 10px;
+      transition: width 0.4s ease-out, background-color 0.5s ease;
+    }
+    #health-bar-value.health-high { background: var(--health-high); }
+    #health-bar-value.health-medium { background: var(--health-medium); }
+    #health-bar-value.health-low { background: var(--health-low); }
 
-    /* Tooltips */
+    #health-bar-sheen {
+        position: absolute; top: 0; left: 0;
+        width: 50%; height: 100%;
+        background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0) 100%);
+        animation: sheen-animation 3.5s ease-in-out infinite;
+        animation-delay: 1s;
+    }
+
+    #health-bar-text {
+      position: absolute; width: 100%; text-align: center;
+      line-height: 22px; font-size: 0.9rem; font-weight: bold;
+      color: white; text-shadow: 1px 1px 2px black;
+    }
+    
     [data-tooltip-text]:hover::before {
       content: attr(data-tooltip-text);
       position: absolute; top: -30px; left: 50%; transform: translateX(-50%);
@@ -176,18 +145,15 @@
       font-size: 0.9rem; white-space: nowrap; z-index: 10;
     }
 
-    /* Control Buttons */
     button {
       background: rgba(0, 255, 255, 0.2); border: 1px solid var(--border-color);
       padding: 6px; width: 40px; height: 40px; border-radius: 8px;
-      color: white; font-size: 1.2rem; cursor: pointer;
-      transition: background-color 0.2s;
+      color: white; font-size: 1.2rem; cursor: pointer; transition: background-color 0.2s;
     }
     button:hover { background: rgba(0, 255, 255, 0.4); }
     #arenaBtn { background: rgba(155, 89, 182, 0.4); border-color: rgba(155, 89, 182, 1); }
     #arenaBtn:hover { background: rgba(155, 89, 182, 0.6); }
 
-    /* Other UI Elements */
     #bossBanner, #levelSelectModal, #bossHpContainer, #vignette { position:absolute; }
     #bossBanner { top:30%; width:100%; text-align:center; font-size:2rem; color:#f1c40f; text-shadow:2px 2px 4px black; opacity:0; transition:opacity 1s; pointer-events: none; }
     #bossHpContainer { top: 8px; left: 50%; transform: translateX(-50%); width: 80%; max-width: 400px; display: flex; flex-direction: column; gap: 5px; }
@@ -216,11 +182,6 @@
         </div>
 
         <div class="core-display">
-            <svg id="playerHealthArc" viewBox="0 0 340 45">
-                <path id="healthArcBackground" d="M 10 40 A 160 160 0 0 1 330 40" fill="none" />
-                <path id="healthArcValue" d="M 10 40 A 160 160 0 0 1 330 40" fill="none" />
-                <text id="playerHealthText" x="170" y="32" text-anchor="middle">100/100</text>
-            </svg>
             <div class="ability-cluster">
                 <div class="ability-queue defensive">
                     <div class="queue-slot" id="q-def-1"></div>
@@ -238,6 +199,11 @@
                     <div class="queue-slot" id="q-off-1"></div>
                     <div class="queue-slot" id="q-off-2"></div>
                 </div>
+            </div>
+            <div id="health-bar-container">
+                <div id="health-bar-value" class="health-high"></div>
+                <div id="health-bar-sheen"></div>
+                <span id="health-bar-text">100 / 100</span>
             </div>
         </div>
 
@@ -399,16 +365,24 @@
         document.getElementById("score").innerText = state.arenaMode ? `Wave: ${state.wave}` : "Score: " + state.score;
         document.getElementById("level").innerText = "Level: " + state.level;
         
+        // Health Bar Logic
         const healthPct = Math.max(0, state.health) / state.player.maxHealth;
-        const healthArc = document.getElementById('healthArcValue');
-        if (healthArc) {
-          const arcLength = healthArc.getTotalLength();
-          healthArc.style.strokeDasharray = arcLength;
-          healthArc.style.strokeDashoffset = arcLength * (1 - healthPct);
-          const isBerserk = state.player.berserkUntil > Date.now();
-          healthArc.style.stroke = isBerserk ? 'var(--health-bar-berserk)' : 'var(--health-bar)';
+        const healthBarValue = document.getElementById('health-bar-value');
+        const healthBarText = document.getElementById('health-bar-text');
+
+        if(healthBarValue && healthBarText) {
+            healthBarValue.style.width = `${healthPct * 100}%`;
+            healthBarText.innerText = `${Math.max(0, Math.round(state.health))}/${Math.round(state.player.maxHealth)}`;
+
+            healthBarValue.classList.remove('health-high', 'health-medium', 'health-low');
+            if (healthPct > 0.6) {
+                healthBarValue.classList.add('health-high');
+            } else if (healthPct > 0.3) {
+                healthBarValue.classList.add('health-medium');
+            } else {
+                healthBarValue.classList.add('health-low');
+            }
         }
-        document.getElementById('playerHealthText').innerText = `${Math.max(0, Math.round(state.health))}/${Math.round(state.player.maxHealth)}`;
         
         // Main Abilities
         const offP = state.offensiveInventory[0];
@@ -544,7 +518,6 @@
     
     function spawnPickup() {
         const midLevelPowers = ['ricochetShot', 'bulletNova'];
-        // BUG FIX: Added 'black_hole' to highLevelPowers
         const highLevelPowers = ['repulsion', 'orbitalStrike', 'berserk', 'black_hole'];
         let type;
         if (state.level >= 10 && Math.random() < 0.25 && !state.arenaMode) { type = highLevelPowers[Math.floor(Math.random() * highLevelPowers.length)];
