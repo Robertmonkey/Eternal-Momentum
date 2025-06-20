@@ -36,7 +36,7 @@
       flex-direction: column;
       align-items: center;
       gap: 8px;
-      pointer-events: none; /* Let clicks pass through to canvas unless on a specific element */
+      pointer-events: none; 
     }
     
     /* Buffs and Debuffs Bar */
@@ -49,6 +49,12 @@
       border-radius: 20px;
       border: 1px solid var(--border-color);
       backdrop-filter: blur(5px);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s ease-in-out;
+    }
+    #status-effects-bar.visible {
+      opacity: 1;
       pointer-events: all;
     }
     .status-icon {
@@ -95,15 +101,31 @@
     .right-pod { text-align: right; display: flex; gap: 10px; justify-content: flex-end; }
 
     /* Central Health & Abilities */
-    .core-display { position: relative; display: flex; justify-content: center; align-items: center; flex-grow: 1; }
-    .ability-cluster { display: flex; justify-content: center; align-items: flex-end; gap: 4px; }
-    
-    #playerHealthArc { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); width: 340px; height: 70px; pointer-events: none; }
+    .core-display { 
+      flex-grow: 1;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    #playerHealthArc {
+      width: 100%;
+      height: 45px;
+      max-width: 340px;
+    }
     #healthArcBackground, #healthArcValue { stroke-width: 8; stroke-linecap: round; }
     #healthArcBackground { stroke: var(--health-bar-bg); }
     #healthArcValue { stroke: var(--health-bar); transition: stroke-dashoffset 0.3s ease-out, stroke 0.3s; }
     #playerHealthText { fill: var(--font-color); font-size: 16px; font-weight: bold; }
     
+    .ability-cluster { 
+      display: flex; 
+      justify-content: center; 
+      align-items: flex-end; 
+      gap: 4px;
+      margin-top: -5px; /* Pull cluster up slightly under the arc */
+    }
     .abilities { display: flex; align-items: flex-end; gap: 10px; margin: 0 10px; }
     .ability-slot {
       width: 64px; height: 72px;
@@ -194,10 +216,10 @@
         </div>
 
         <div class="core-display">
-            <svg id="playerHealthArc" viewBox="0 0 340 70">
-                <path id="healthArcBackground" d="M 20 60 A 150 150 0 0 1 320 60" fill="none" />
-                <path id="healthArcValue" d="M 20 60 A 150 150 0 0 1 320 60" fill="none" />
-                <text id="playerHealthText" x="170" y="50" text-anchor="middle">100/100</text>
+            <svg id="playerHealthArc" viewBox="0 0 340 45">
+                <path id="healthArcBackground" d="M 10 40 A 160 160 0 0 1 330 40" fill="none" />
+                <path id="healthArcValue" d="M 10 40 A 160 160 0 0 1 330 40" fill="none" />
+                <text id="playerHealthText" x="170" y="32" text-anchor="middle">100/100</text>
             </svg>
             <div class="ability-cluster">
                 <div class="ability-queue defensive">
@@ -344,7 +366,10 @@
         const now = Date.now();
         state.player.statusEffects = state.player.statusEffects.filter(effect => now < effect.endTime);
         const statusBar = document.getElementById('status-effects-bar');
+        
+        statusBar.classList.toggle('visible', state.player.statusEffects.length > 0);
         statusBar.innerHTML = '';
+
         state.player.statusEffects.forEach(effect => {
             const remaining = effect.endTime - now;
             const duration = effect.endTime - effect.startTime;
@@ -516,9 +541,11 @@
       }
       return e;
     }
+    
     function spawnPickup() {
         const midLevelPowers = ['ricochetShot', 'bulletNova'];
-        const highLevelPowers = ['repulsion', 'orbitalStrike', 'berserk'];
+        // BUG FIX: Added 'black_hole' to highLevelPowers
+        const highLevelPowers = ['repulsion', 'orbitalStrike', 'berserk', 'black_hole'];
         let type;
         if (state.level >= 10 && Math.random() < 0.25 && !state.arenaMode) { type = highLevelPowers[Math.floor(Math.random() * highLevelPowers.length)];
         } else if (state.level >= 5 && Math.random() < 0.20 && !state.arenaMode) { type = midLevelPowers[Math.floor(Math.random() * midLevelPowers.length)];
@@ -635,11 +662,9 @@
     document.body.addEventListener("click", () => AudioManager.unlockAudio(), { once: true });
     document.body.addEventListener("touchstart", () => AudioManager.unlockAudio(), { once: true });
     
-    // RE-ADDED canvas click listeners for desktop gameplay
     canvas.addEventListener("click", e => { if (e.target.id === 'gameCanvas' && state.offensiveInventory[0]) { usePower('offensive'); } });
     canvas.addEventListener("contextmenu", e => { e.preventDefault(); if (state.defensiveInventory[0]) { usePower('defensive'); } });
     
-    // Listeners for mobile / direct icon clicks
     document.getElementById('slot-off-0').addEventListener('click', e => { if (state.offensiveInventory[0]) { usePower('offensive'); } });
     document.getElementById('slot-def-0').addEventListener('click', e => { if (state.defensiveInventory[0]) { usePower('defensive'); } });
     document.getElementById('slot-off-0').addEventListener('touchstart', e => { e.preventDefault(); if (state.offensiveInventory[0]) { usePower('offensive'); } });
