@@ -17,6 +17,7 @@
       --health-low: #e74c3c;
       --health-bar-bg: #444;
       --disabled-color: rgba(255, 255, 255, 0.2);
+      --shield-color: rgba(241, 196, 15, 0.7);
     }
     @keyframes sheen-animation {
         0% { transform: translateX(-150%) skewX(-30deg); }
@@ -124,6 +125,15 @@
     #health-bar-value.health-medium { background: var(--health-medium); }
     #health-bar-value.health-low { background: var(--health-low); }
 
+    #shield-bar-overlay {
+        position: absolute; top:0; left: 0;
+        height: 100%;
+        width: 0%;
+        background-color: var(--shield-color);
+        border-radius: 6px;
+        transition: width 0.3s linear;
+    }
+
     #health-bar-sheen {
         position: absolute; top: 0; left: 0;
         width: 30%; height: 100%;
@@ -183,6 +193,7 @@
 
         <div id="health-bar-container">
             <div id="health-bar-value" class="health-high"></div>
+            <div id="shield-bar-overlay"></div>
             <div id="health-bar-sheen"></div>
             <span id="health-bar-text">100 / 100</span>
         </div>
@@ -384,6 +395,19 @@
             }
         }
         
+        const shieldEffect = state.player.statusEffects.find(e => e.name === 'Shield');
+        const shieldBar = document.getElementById('shield-bar-overlay');
+
+        if (shieldEffect && shieldBar) {
+            const now = Date.now();
+            const remaining = shieldEffect.endTime - now;
+            const duration = shieldEffect.endTime - shieldEffect.startTime;
+            const shieldPct = Math.max(0, remaining) / duration;
+            shieldBar.style.width = `${shieldPct * 100}%`;
+        } else if (shieldBar) {
+            shieldBar.style.width = '0%';
+        }
+        
         const offP = state.offensiveInventory[0];
         const defP = state.defensiveInventory[0];
         const offSlot = document.getElementById('slot-off-0');
@@ -441,7 +465,7 @@
       speed:{emoji:"🚀",desc:"Speed Boost for 5s",apply:()=>{ state.player.speed*=1.5; addStatusEffect('Speed Boost', '🚀', 5000); spawnParticles(state.player.x,state.player.y,"#00f5ff",40,3,30); setTimeout(()=>state.player.speed/=1.5,5000); }},
       freeze:{emoji:"🧊",desc:"Freeze enemies for 4s",apply:()=>{ state.enemies.forEach(e=>{ if (e.frozen) return; e.frozen=true; e._dx=e.dx; e._dy=e.dy; e.dx=e.dy=0; }); spawnParticles(state.player.x,state.player.y,"#0ff",60,3,30); setTimeout(()=>{ state.enemies.forEach(e=>{ if (!e.frozen) return; e.frozen=false; e.dx=e._dx; e.dy=e._dy; }); },4000); }},
       decoy:{emoji:"🔮",desc:"Decoy lasts 5s",apply:()=>{ state.decoy={x:state.player.x,y:state.player.y,r:20,expires:Date.now()+5000}; spawnParticles(state.player.x,state.player.y,"#8e44ad",50,3,30); }},
-      stack:{emoji:"🧠",desc:"Double next power-up",apply:()=>{ state.stacked=true; spawnParticles(state.player.x,state.player.y,"#aaa",40,4,30); }},
+      stack:{emoji:"🧠",desc:"Double next power-up",apply:()=>{ state.stacked=true; addStatusEffect('Stacked', '🧠', 60000); spawnParticles(state.player.x,state.player.y,"#aaa",40,4,30); }},
       score: {emoji: "⭐", desc: "Permanently +LVL to Max Health", apply: () => { const healthGain = Math.max(1, state.level); state.player.maxHealth += healthGain; state.health += healthGain; spawnParticles(state.player.x, state.player.y, "#f1c40f", 20, 4, 30); }},
       chain:{emoji:"⚡",desc:"Chain lightning hits 6 targets",apply:()=>{ play(chainS); const targets = []; let currentTarget = state.player; for (let i = 0; i < 6; i++) { let closest = null; let minDist = Infinity; state.enemies.forEach(e => { if (!targets.includes(e)) { const dist = Math.hypot(e.x - currentTarget.x, e.y - currentTarget.y); if (dist < minDist) { minDist = dist; closest = e; } } }); if (closest) { targets.push(closest); currentTarget = closest; } else { break; } } let damage = (state.player.berserkUntil > Date.now()) ? 30 : 15; state.effects.push({ type: 'chain_lightning', targets: targets, links: [], startTime: Date.now(), durationPerLink: 80, damage: damage }); }},
       repulsion: {emoji: "🖐️", desc: "Pushes enemies away for 5s", apply: () => { state.effects.push({ type: 'repulsion_field', x: state.player.x, y: state.player.y, radius: 250, endTime: Date.now() + 5000 }); play(shockS); }},
@@ -490,10 +514,15 @@
       slotEl.classList.add('activated');
       setTimeout(()=> slotEl.classList.remove('activated'), 200);
 
+      if (state.stacked && powerType !== 'stack') {
+        powers[powerType].apply(); 
+        state.stacked = false;
+        state.player.statusEffects = state.player.statusEffects.filter(e => e.name !== 'Stacked');
+      }
+
       spawnParticles(state.player.x, state.player.y, "#fff", 20, 3, 25);
       powers[powerType].apply();
       inventory.shift(); inventory.push(null);
-      if(state.stacked){ const nextPower = state.offensiveInventory[0] || state.defensiveInventory[0]; if (nextPower) { powers[nextPower].apply(); if(state.offensiveInventory[0]) { state.offensiveInventory.shift(); state.offensiveInventory.push(null); } else { state.defensiveInventory.shift(); state.defensiveInventory.push(null); } } state.stacked=false; }
     }
     
     function spawnEnemy(isBoss=false, bossId=null, location=null){
@@ -583,6 +612,21 @@
         const e=state.enemies[i];
         if(e.hp<=0){ if(e.boss) { triggerScreenShake(250, 5); e.onDeath && e.onDeath(e); state.enemies.splice(i,1); if (state.currentBoss === e) { state.currentBoss = state.enemies.find(en => en.boss) || null; } if (!state.enemies.some(en => en.boss)) { state.bossActive = false; if (!state.arenaMode) { state.level++; } } } else { state.enemies.splice(i,1); } continue; }
         
+        if (e.eatenBy) { 
+            const pullX = e.eatenBy.x - e.x; const pullY = e.eatenBy.y - e.y;
+            const pullDist = Math.hypot(pullX, pullY) || 1;
+            e.dx = (pullX / pullDist) * 3; e.dy = (pullY / pullDist) * 3;
+            e.x += e.dx; e.y += e.dy;
+            e.r *= 0.95; 
+            if(e.r < 2) {
+                const timeEater = state.enemies.find(b => b.id === 'time_eater'); 
+                if (timeEater) { timeEater.hp -= 5; } // Damage Time Eater for eating an enemy
+                spawnParticles(e.x, e.y, "#d63031", 10, 2, 15); 
+                state.enemies.splice(i, 1); 
+                continue;
+            }
+        }
+        
         if (state.arenaMode) {
             const now = Date.now();
             if (now - e.lastTargetCheck > 10000) {
@@ -591,7 +635,7 @@
                 let closestTarget = null;
                 let minDistance = Infinity;
                 potentialTargets.forEach(pTarget => {
-                    if (pTarget.hp > 0) { // Ensure target is alive
+                    if (pTarget.hp > 0) {
                         const dist = Math.hypot(e.x - pTarget.x, e.y - pTarget.y);
                         if (dist < minDistance) {
                             minDistance = dist;
@@ -603,8 +647,7 @@
             }
         }
 
-        if (e.eatenBy) { const pullX = e.eatenBy.x - e.x; const pullY = e.eatenBy.y - e.y; const pullDist = Math.hypot(pullX, pullY) || 1; e.dx = (pullX / pullDist) * 3; e.dy = (pullY / pullDist) * 3; e.x += e.dx; e.y += e.dy; e.r *= 0.95; if(e.r < 2) { const timeEater = state.enemies.find(b => b.id === 'time_eater'); if (timeEater) timeEater.hp = Math.min(timeEater.maxHP, timeEater.hp + 10); spawnParticles(e.x, e.y, "#fff", 10, 2, 15); state.enemies.splice(i, 1); continue;}
-        } else if(!e.frozen && !e.hasCustomMovement){ 
+        if(!e.frozen && !e.hasCustomMovement){ 
             let tgt; 
             let pullFactor = 0.005; 
             let baseDx = e.dx; 
