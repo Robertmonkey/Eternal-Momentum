@@ -49,7 +49,8 @@ function levelUp() {
     state.player.essenceToNextLevel = Math.floor(state.player.essenceToNextLevel * 1.5);
     state.player.ascensionPoints += 2;
     handleThematicUnlock(state.player.level);
-    utils.spawnParticles(state.effects, state.player.x, state.player.y, '#00ffff', 80, 6, 50, 5);
+    // CORRECTED: Was passing state.effects, now passes state.particles
+    utils.spawnParticles(state.particles, state.player.x, state.player.y, '#00ffff', 80, 6, 50, 5);
 }
 
 export function addEssence(amount) {
@@ -228,7 +229,8 @@ export function gameTick(mx, my) {
                 if (timeEater) {
                     timeEater.hp -= 5;
                 }
-                utils.spawnParticles(state.effects, e.x, e.y, "#d63031", 10, 2, 15);
+                // CORRECTED: Was passing state.effects, now passes state.particles
+                utils.spawnParticles(state.particles, e.x, e.y, "#d63031", 10, 2, 15);
                 state.enemies.splice(i, 1);
                 continue;
             }
@@ -378,7 +380,8 @@ export function gameTick(mx, my) {
             if (p.r < 2) {
                 const timeEater = state.enemies.find(e => e.id === 'time_eater');
                 if (timeEater) timeEater.hp = Math.min(timeEater.maxHP, timeEater.hp + 10);
-                utils.spawnParticles(state.effects, p.x, p.y, "#fff", 10, 2, 15);
+                // CORRECTED: Was passing state.effects, now passes state.particles
+                utils.spawnParticles(state.particles, p.x, p.y, "#fff", 10, 2, 15);
                 state.pickups.splice(i, 1);
                 continue;
             }
@@ -417,7 +420,8 @@ export function gameTick(mx, my) {
                 play('pickup');
                 state.pickups.splice(i, 1);
             } else {
-                utils.spawnParticles(state.effects, p.x, p.y, "#f00", 15, 2, 20);
+                // CORRECTED: Was passing state.effects, now passes state.particles
+                utils.spawnParticles(state.particles, p.x, p.y, "#f00", 15, 2, 20);
                 state.pickups.splice(i, 1);
             }
         }
@@ -476,7 +480,8 @@ export function gameTick(mx, my) {
                 if (!from || !to) continue;
                 utils.drawLightning(ctx, from.x, from.y, to.x, to.y, '#00ffff', 4);
                 if (!effect.links.includes(to)) {
-                    utils.spawnParticles(state.effects, to.x, to.y, '#ffffff', 30, 5, 20);
+                    // CORRECTED: Was passing state.effects, now passes state.particles
+                    utils.spawnParticles(state.particles, to.x, to.y, '#ffffff', 30, 5, 20);
                     to.hp -= to.boss ? effect.damage : 50;
                     if (to.onDamage) to.onDamage(to, effect.damage, effect.caster);
                     effect.links.push(to);
@@ -510,7 +515,8 @@ export function gameTick(mx, my) {
         }
         // ... ALL OTHER EFFECT LOGIC ...
     });
-    utils.updateParticles(ctx, state.effects);
+    // CORRECTED: Was passing state.effects, now passes state.particles
+    utils.updateParticles(ctx, state.particles);
     updateUI();
     ctx.restore();
     return true;
