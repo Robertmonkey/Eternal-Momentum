@@ -26,6 +26,7 @@ export const state = {
   enemies:[], 
   pickups:[], 
   effects: [],
+  particles: [], // <-- ADDED
   decoy:null, 
   
   // Inventories and status
@@ -74,7 +75,8 @@ export function resetGame(isArena = false) {
     
     // Reset general game state
     Object.assign(state, {
-        enemies: [], pickups: [], effects: [], decoy: null,
+        enemies: [], pickups: [], effects: [], particles: [], // <-- ADDED
+        decoy: null,
         offensiveInventory: [null, null, null], 
         defensiveInventory: [null, null, null], 
         currentBoss: null, bossActive: false, stacked: false, gameOver: false, 
