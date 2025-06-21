@@ -1,8 +1,8 @@
 // modules/utils.js
 
 // This module contains helper functions for drawing and visual effects.
+// All functions are "pure" - they don't store their own state.
 
-let particles = [];
 let screenShakeEnd = 0;
 let screenShakeMagnitude = 0;
 
@@ -13,7 +13,7 @@ export function drawCircle(ctx, x, y, r, c) {
     ctx.fill();
 }
 
-export function spawnParticles(x, y, c, n, spd, life, r = 3) {
+export function spawnParticles(particles, x, y, c, n, spd, life, r = 3) {
     for (let i = 0; i < n; i++) {
         const a = Math.random() * 2 * Math.PI;
         particles.push({
@@ -28,7 +28,7 @@ export function spawnParticles(x, y, c, n, spd, life, r = 3) {
     }
 }
 
-export function updateParticles(ctx) {
+export function updateParticles(ctx, particles) {
     for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
         p.x += p.dx;
