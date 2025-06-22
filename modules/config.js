@@ -1,6 +1,5 @@
 // modules/config.js
 
-// Defines the reward for reaching a specific level.
 export const THEMATIC_UNLOCKS = {
   2: { type: 'power', id: 'shield' },
   3: { type: 'power', id: 'speed' },
@@ -18,11 +17,11 @@ export const THEMATIC_UNLOCKS = {
   15: { type: 'power', id: 'gravity' },
   16: { type: 'power', id: 'score' }, // This is the "Essence Crystal" power-up
   17: { type: 'power', id: 'shockwave' },
-  // 18-19 are open for future powers
-  20: { type: 'slot', id: 'defensiveQueue1' },
+  18: { type: 'bonus', value: 5 }, // Bonus AP
+  19: { type: 'slot', id: 'defensiveQueue1' },
+  20: { type: 'victory' },
 };
 
-// Defines the spawn chance for each power-up once it's unlocked.
 export const SPAWN_WEIGHTS = {
     shield: 2, 
     heal: 3, 
