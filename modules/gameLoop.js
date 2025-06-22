@@ -382,7 +382,10 @@ export function gameTick(mx, my) {
                 if (e.onCollision) e.onCollision(e, state.player, addStatusEffect); 
                 if(!state.player.shield){ 
                     let damage = e.boss ? (e.enraged ? 20 : 10) : 1; 
-                    if (state.player.berserkUntil > Date.now()) damage *= 2; 
+                    if (state.player.berserkUntil > Date.now()) damage *= 2;
+                    
+                    // --- NEW: Apply Glass Cannon Multiplier ---
+                    damage *= state.player.talent_modifiers.damage_taken_multiplier;
 
                     const reactiveRank = state.player.purchasedTalents.get('reactive-plating');
                     if(reactiveRank && damage >= 20 && Date.now() > state.player.talent_states.reactivePlating.cooldownUntil) {
@@ -391,7 +394,24 @@ export function gameTick(mx, my) {
                         utils.spawnParticles(state.particles, state.player.x, state.player.y, '#f1c40f', 40, 4, 35, 3);
                         state.player.talent_states.reactivePlating.cooldownUntil = Date.now() + 30000;
                     } else {
-                        state.player.health -= damage; 
+                        // --- NEW: Last Stand Logic ---
+                        const wouldBeFatal = (state.player.health - damage) <= 0;
+                        if(wouldBeFatal && state.player.purchasedTalents.has('last-stand') && !state.player.lastStandUsed) {
+                            state.player.lastStandUsed = true;
+                            state.player.health = 1;
+                            addStatusEffect('Last Stand', '💪', 3000);
+                            const invulnShieldEndTime = Date.now() + 3000;
+                            state.player.shield = true;
+                            state.player.shield_end_time = invulnShieldEndTime;
+                            setTimeout(()=> {
+                                if(state.player.shield_end_time <= invulnShieldEndTime){
+                                    state.player.shield = false;
+                                }
+                            }, 3000);
+                            utils.spawnParticles(state.particles, state.player.x, state.player.y, '#f1c40f', 100, 8, 50);
+                        } else {
+                            state.player.health -= damage; 
+                        }
                     }
                     
                     play('hit'); 
