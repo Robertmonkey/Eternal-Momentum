@@ -3,7 +3,7 @@ export const bossData = [{
     id: "splitter",
     name: "Splitter Sentinel",
     color: "#ff4500",
-    maxHP: 150,
+    maxHP: 120,
     onDeath: (b, state, spawnEnemy, spawnParticles) => {
         spawnParticles(b.x, b.y, "#ff4500", 100, 6, 40, 5);
         const spawnInCircle = (count, radius, center) => {
@@ -25,7 +25,7 @@ export const bossData = [{
     id: "reflector",
     name: "Reflector Warden",
     color: "#2ecc71",
-    maxHP: 175,
+    maxHP: 150,
     init: b => {
         b.phase = "idle";
         b.last = Date.now();
@@ -67,7 +67,7 @@ export const bossData = [{
     id: "vampire",
     name: "Vampire Veil",
     color: "#800020",
-    maxHP: 200,
+    maxHP: 180,
     init: b => {
         b.lastHit = Date.now();
         b.lastHeal = Date.now();
@@ -103,7 +103,7 @@ export const bossData = [{
     id: "gravity",
     name: "Gravity Tyrant",
     color: "#9b59b6",
-    maxHP: 230,
+    maxHP: 210,
     init: b => {
         b.wells = [];
         for (let i = 0; i < 8; i++) {
