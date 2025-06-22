@@ -124,6 +124,7 @@ function purchaseTalent(talentId) {
         updateUI();
 
     } else {
+        // This could be replaced with a visual shake or sound effect later
         console.log("Not enough AP!");
     }
 }
