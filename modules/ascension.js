@@ -95,10 +95,7 @@ function createTalentNode(talent, constellationColor) {
     
     const tooltip = document.createElement('div');
     tooltip.className = 'talent-tooltip';
-    if (talent.position.x > 75) {
-        tooltip.classList.add('show-left');
-    }
-
+    
     tooltip.innerHTML = `
         <div class="tooltip-header">
             <span class="tooltip-icon">${talent.icon}</span>
@@ -114,6 +111,18 @@ function createTalentNode(talent, constellationColor) {
         node.onclick = () => purchaseTalent(talent.id);
     }
     
+    node.addEventListener('mouseenter', () => {
+        requestAnimationFrame(() => {
+            const rect = tooltip.getBoundingClientRect();
+            const containerRect = gridContainer.getBoundingClientRect();
+            if (rect.right > containerRect.right - 10) {
+                tooltip.classList.add('show-left');
+            } else {
+                tooltip.classList.remove('show-left');
+            }
+        });
+    });
+
     gridContainer.appendChild(node);
 }
 
