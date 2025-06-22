@@ -191,6 +191,14 @@ export function usePower(queueType, utils, game, mx, my){
   powerType = inventory[0];
   if (!powerType) return;
   
+  // --- NEW: Preordinance Talent Logic ---
+  let stackedEffect = state.stacked; // Check for normal stack power-up
+  if (!stackedEffect && state.player.purchasedTalents.has('preordinance') && !state.player.preordinanceUsed) {
+      stackedEffect = true;
+      state.player.preordinanceUsed = true;
+      game.addStatusEffect('Preordained', '🎲', 2000);
+  }
+
   const recycleTalent = state.player.purchasedTalents.get('energetic-recycling');
   let consumed = true;
 
@@ -210,10 +218,12 @@ export function usePower(queueType, utils, game, mx, my){
 
   const applyArgs = [utils, game, mx, my];
 
-  if (state.stacked && powerType !== 'stack') {
+  if (stackedEffect && powerType !== 'stack') {
     powers[powerType].apply(...applyArgs); 
-    state.stacked = false;
-    state.player.statusEffects = state.player.statusEffects.filter(e => e.name !== 'Stacked');
+    if(state.stacked) { // Only consume the original stack power-up state
+        state.stacked = false;
+        state.player.statusEffects = state.player.statusEffects.filter(e => e.name !== 'Stacked');
+    }
   }
 
   utils.spawnParticles(state.particles, state.player.x, state.player.y, "#fff", 20, 3, 25);
