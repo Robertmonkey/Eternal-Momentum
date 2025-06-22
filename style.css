@@ -353,7 +353,10 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
 .ascension-content {
     flex-grow: 1;
     position: relative;
-    overflow: hidden; /* Use hidden to contain the SVG, but a child can be visible */
+    overflow: hidden;
+    aspect-ratio: 16 / 9;
+    width: 100%;
+    margin: auto;
 }
 .ascension-footer {
     display: flex;
@@ -370,6 +373,8 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     font-size: 1rem;
     font-weight: bold;
     color: white;
+    width: auto;
+    padding: 10px 30px;
 }
 .close-ascension-grid:hover {
     background: #ff40ff;
@@ -453,6 +458,10 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     left: auto;
     right: 110%;
     transform: translateX(0);
+}
+.talent-node .talent-tooltip.show-bottom {
+    bottom: auto;
+    top: 125%;
 }
 
 .talent-node:hover .talent-tooltip {
