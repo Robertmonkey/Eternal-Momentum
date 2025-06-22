@@ -252,19 +252,24 @@ export function gameTick(mx, my) {
         if (e.hp <= 0) {
             if (e.boss) {
                 if (e.onDeath) e.onDeath(e, state, spawnEnemy, spawnParticlesCallback, play, stopLoopingSfx);
+                
                 state.enemies.splice(i, 1);
+                
                 if (state.currentBoss === e) {
                     state.currentBoss = state.enemies.find(en => en.boss) || null;
                 }
+                
                 if (!state.enemies.some(en => en.boss)) {
                     state.bossActive = false;
                     state.bossSpawnCooldownEnd = Date.now() + 5000;
+                    
                     if (state.currentStage > state.player.highestStageBeaten) {
                         state.player.highestStageBeaten = state.currentStage;
                         state.player.ascensionPoints += 3;
                         showUnlockNotification("Stage Cleared! +3 AP", `Level ${state.currentStage + 1} Unlocked`);
                         handleThematicUnlock(state.currentStage);
                     }
+                    
                     addEssence(300);
                     savePlayerState();
                 }
