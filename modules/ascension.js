@@ -109,28 +109,49 @@ function purchaseTalent(talentId) {
         updateUI();
 
     } else {
+        // This could be replaced with a visual shake or sound effect later
         console.log("Not enough AP!");
     }
 }
 
 export function applyAllTalentEffects() {
+    // Reset stats to their absolute base values before recalculating
     let baseMaxHealth = 100;
     let baseSpeed = 1.0;
+    let baseDamageMultiplier = 1.0;
+    let basePickupRadius = 0;
     let baseEssenceGain = 1.0;
 
     state.player.purchasedTalents.forEach((rank, id) => {
         const talent = findTalentById(id);
         if (talent) {
             for (let i = 1; i <= rank; i++) {
-                if (id === 'exo-weave-plating') baseMaxHealth += [15, 15, 20][i-1];
-                if (id === 'fleet-footed') baseSpeed *= (1 + [0.05, 0.07][i-1]);
-                // Add effects for other stat-boosting talents here
+                // Apply effects for each purchased rank of the talent
+                switch (id) {
+                    case 'exo-weave-plating':
+                        baseMaxHealth += [15, 15, 20][i-1];
+                        break;
+                    case 'fleet-footed':
+                        baseSpeed *= (1 + [0.05, 0.07][i-1]);
+                        break;
+                    case 'high-frequency-emitters':
+                        baseDamageMultiplier += [0.05, 0.07][i-1];
+                        break;
+                    case 'resonance-magnet':
+                        basePickupRadius += 75;
+                        break;
+                    case 'essence-conduit':
+                        baseEssenceGain += [0.10, 0.15][i-1];
+                        break;
+                }
             }
         }
     });
 
     state.player.maxHealth = baseMaxHealth;
     state.player.speed = baseSpeed;
+    state.player.talent_modifiers.damage_multiplier = baseDamageMultiplier;
+    state.player.talent_modifiers.pickup_radius_bonus = basePickupRadius;
     state.player.essenceGainModifier = baseEssenceGain;
 }
 
@@ -143,6 +164,7 @@ export function renderAscensionGrid() {
     for (const talentId in allTalents) {
         const talent = allTalents[talentId];
         
+        // Visibility Rules
         const powerUnlocked = !talent.powerPrerequisite || state.player.unlockedPowers.has(talent.powerPrerequisite);
         const prereqsMet = talent.prerequisites.every(p => state.player.purchasedTalents.has(p));
 
