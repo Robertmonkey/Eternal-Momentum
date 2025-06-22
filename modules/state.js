@@ -3,7 +3,7 @@ import { applyAllTalentEffects } from './ascension.js';
 
 export const state = {
   player:{
-    x:0, y:0, r:20, speed:1,
+    x:0, y:0, r:20, speed:1.0,
     maxHealth:100, health:100,
     shield:false, stunnedUntil: 0, berserkUntil: 0, 
     controlsInverted: false,
@@ -14,11 +14,23 @@ export const state = {
     ascensionPoints: 0,
     unlockedPowers: new Set(['heal', 'missile']),
     purchasedTalents: new Map(),
-    essenceGainModifier: 1.0,
     highestStageBeaten: 0, 
     unlockedOffensiveSlots: 1,
     unlockedDefensiveSlots: 1,
     infected: false, infectionEnd: 0, lastSpore: 0,
+    
+    // Modifiers from talents will be stored here
+    talent_modifiers: {
+        damage_multiplier: 1.0,
+        pickup_radius_bonus: 0,
+        essence_gain_modifier: 1.0,
+    },
+
+    // Properties for specific talents
+    phaseMomentum: {
+        active: false,
+        lastDamageTime: 0,
+    }
   },
   enemies:[], pickups:[], effects: [], particles: [], decoy:null, 
   currentStage: 1,
@@ -49,7 +61,6 @@ export function savePlayerState() {
         highestStageBeaten: state.player.highestStageBeaten,
         unlockedOffensiveSlots: state.player.unlockedOffensiveSlots,
         unlockedDefensiveSlots: state.player.unlockedDefensiveSlots,
-        // We don't save maxHealth/speed directly, they are recalculated from talents
     };
     localStorage.setItem('eternalMomentumSave', JSON.stringify(persistentData));
 }
@@ -58,7 +69,6 @@ export function loadPlayerState() {
     const savedData = localStorage.getItem('eternalMomentumSave');
     if (savedData) {
         const parsedData = JSON.parse(savedData);
-        // Load all saved properties into the state.player object
         Object.assign(state.player, {
             ...parsedData,
             unlockedPowers: new Set(parsedData.unlockedPowers),
@@ -80,6 +90,7 @@ export function resetGame(isArena = false) {
     state.player.statusEffects = [];
     state.player.shield = false;
     state.player.berserkUntil = 0;
+    state.player.phaseMomentum.lastDamageTime = Date.now();
     
     Object.assign(state, {
         enemies: [], pickups: [], effects: [], particles: [], decoy: null,
