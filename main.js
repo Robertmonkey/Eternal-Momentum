@@ -76,7 +76,6 @@ window.addEventListener('DOMContentLoaded', (event) => {
         document.body.addEventListener("click", () => AudioManager.unlockAudio(), { once: true });
         document.body.addEventListener("touchstart", () => AudioManager.unlockAudio(), { once: true });
 
-        // Modal Listeners
         levelSelectBtn.addEventListener("click", () => { 
             state.isPaused = true; 
             populateLevelSelect(bossData, startSpecificLevel);
@@ -104,14 +103,13 @@ window.addEventListener('DOMContentLoaded', (event) => {
             showCustomConfirm(
                 "|| SEVER TIMELINE? ||",
                 "All Ascension progress and unlocked powers will be lost to the void. This action cannot be undone.",
-                () => { // onConfirm
+                () => {
                     localStorage.removeItem('eternalMomentumSave');
                     window.location.reload();
                 }
             );
         });
 
-        // Game Over Menu Listeners
         restartStageBtn.addEventListener("click", () => {
             startSpecificLevel(state.currentStage);
         });
@@ -131,7 +129,6 @@ window.addEventListener('DOMContentLoaded', (event) => {
             return;
         }
         if (!state.isPaused) {
-            // This logic now correctly spawns the next boss after a delay
             if (!state.bossActive && !state.arenaMode && Date.now() > state.bossSpawnCooldownEnd) {
                 spawnEnemy(true);
             }
@@ -180,6 +177,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
 
     // --- START THE GAME ---
     initialize();
-    startSpecificLevel(1); 
+    const startStage = state.player.highestStageBeaten > 0 ? state.player.highestStageBeaten + 1 : 1;
+    startSpecificLevel(startStage);
     updateUI();
 });
