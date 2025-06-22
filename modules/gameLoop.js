@@ -595,7 +595,9 @@ export function gameTick(mx, my) {
             if(Date.now() > effect.startTime + effect.life) state.effects.splice(index, 1);
         } else if (effect.type === 'repulsion_field') {
             if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
-            const alpha = (effect.endTime - Date.now()) / 3000 * 0.4;
+            effect.x = state.player.x;
+            effect.y = state.player.y;
+            const alpha = (effect.endTime - Date.now()) / 5000 * 0.4;
             ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
             ctx.lineWidth = 4;
             ctx.beginPath();
