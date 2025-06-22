@@ -1,4 +1,5 @@
 // modules/state.js
+import { offensivePowers } from './powers.js';
 
 export const state = {
   player:{
@@ -108,4 +109,25 @@ export function resetGame(isArena = false) {
         arenaMode: isArena, wave: 0, lastArenaSpawn: Date.now(),
         bossSpawnCooldownEnd: Date.now() + 3000, 
     });
+
+    // --- NEW: Temporal Echo Talent Logic ---
+    if (state.player.purchasedTalents.has('temporal-echo')) {
+        const unlocked = [...state.player.unlockedPowers];
+        if (unlocked.length > 0) {
+            const powerType = unlocked[Math.floor(Math.random() * unlocked.length)];
+            const isOffensive = offensivePowers.includes(powerType);
+
+            if (isOffensive && state.offensiveInventory[0] === null) {
+                state.offensiveInventory[0] = powerType;
+            } else if (!isOffensive && state.defensiveInventory[0] === null) {
+                state.defensiveInventory[0] = powerType;
+            } else { // Fallback if preferred slot is full
+                if (state.offensiveInventory[0] === null) {
+                    state.offensiveInventory[0] = powerType;
+                } else if (state.defensiveInventory[0] === null) {
+                    state.defensiveInventory[0] = powerType;
+                }
+            }
+        }
+    }
 }
