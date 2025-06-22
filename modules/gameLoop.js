@@ -199,27 +199,27 @@ export function spawnPickup() {
 export function gameTick(mx, my) {
     if (state.isPaused) return true;
 
-    // --- All Spawning Logic now lives inside gameTick ---
-    if (state.arenaMode) {
-        const spawnInterval = Math.max(1000, 8000 * Math.pow(0.95, state.wave));
-        if (Date.now() - state.lastArenaSpawn > spawnInterval) {
-            state.lastArenaSpawn = Date.now();
-            state.wave++;
-            spawnEnemy(true, null, {x: canvas.width/2, y: 100});
+    if (!state.gameOver) {
+        if (state.arenaMode) {
+            const spawnInterval = Math.max(1000, 8000 * Math.pow(0.95, state.wave));
+            if (Date.now() - state.lastArenaSpawn > spawnInterval) {
+                state.lastArenaSpawn = Date.now();
+                state.wave++;
+                spawnEnemy(true, null, {x: canvas.width/2, y: 100});
+            }
+        } else {
+            if (!state.bossActive && Date.now() > state.bossSpawnCooldownEnd) {
+                spawnBossesForStage(state.currentStage);
+            }
         }
-    } else {
-        if (!state.bossActive && Date.now() > state.bossSpawnCooldownEnd) {
-            spawnBossesForStage(state.currentStage);
+        if (state.bossActive && Math.random() < (0.007 + state.player.level * 0.001)) {
+            spawnEnemy(false);
+        }
+        if (Math.random() < (0.02 + state.player.level * 0.0002)) {
+            spawnPickup();
         }
     }
-    if (state.bossActive && Math.random() < (0.007 + state.player.level * 0.001)) {
-        spawnEnemy(false);
-    }
-    if (Math.random() < (0.02 + state.player.level * 0.0002)) {
-        spawnPickup();
-    }
-    // --- End Spawning Logic ---
-
+    
     if (state.gameOver) {
         stopLoopingSfx("beamHum");
         const gameOverMenu = document.getElementById('gameOverMenu');
@@ -394,12 +394,7 @@ export function gameTick(mx, my) {
             }
         }
         
-        if (e.knockbackUntil && Date.now() < e.knockbackUntil) {
-            const angle = Math.atan2(e.y - state.player.y, e.x - state.player.x);
-            const knockbackForce = 10;
-            e.x += Math.cos(angle) * knockbackForce;
-            e.y += Math.sin(angle) * knockbackForce;
-        } else if (e.eatenBy) {
+        if (e.eatenBy) {
             const pullX = e.eatenBy.x - e.x;
             const pullY = e.eatenBy.y - e.y;
             const pullDist = Math.hypot(pullX, pullY) || 1;
@@ -731,6 +726,38 @@ export function gameTick(mx, my) {
             utils.drawCircle(ctx, effect.x, effect.y, effect.r, '#ff9944');
             state.enemies.forEach(e => { if(Math.hypot(e.x - effect.x, e.y - effect.y) < e.r + effect.r) { e.hp -= effect.damage; state.effects.splice(index, 1); }});
             if(Date.now() > effect.startTime + effect.life) state.effects.splice(index, 1);
+        } else if (effect.type === 'repulsion_field') {
+            if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
+            effect.x = state.player.x;
+            effect.y = state.player.y;
+            
+            let knockbackForce = 5;
+            const isOverloaded = effect.isOverloaded && Date.now() < effect.startTime + 2000;
+
+            if (isOverloaded) {
+                knockbackForce = 15;
+                const pulseAlpha = 0.8 * (1 - (Date.now() - effect.startTime) / 2000);
+                ctx.strokeStyle = `rgba(0, 255, 255, ${pulseAlpha})`;
+                ctx.lineWidth = 6;
+            } else {
+                const alpha = (effect.endTime - Date.now()) / 5000 * 0.4;
+                ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+                ctx.lineWidth = 4;
+            }
+            ctx.beginPath();
+            ctx.arc(effect.x, effect.y, effect.radius, 0, 2*Math.PI);
+            ctx.stroke();
+            
+            state.enemies.forEach(e => {
+                if (!e.boss) {
+                    const dist = Math.hypot(e.x - effect.x, e.y - effect.y);
+                    if (dist < effect.radius) {
+                        const angle = Math.atan2(e.y - effect.y, e.x - effect.x);
+                        e.x += Math.cos(angle) * knockbackForce;
+                        e.y += Math.sin(angle) * knockbackForce;
+                    }
+                }
+            });
         } else if (effect.type === 'glitch_zone') {
             if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
             const alpha = (effect.endTime - Date.now()) / 5000 * 0.3;
@@ -800,16 +827,6 @@ export function gameTick(mx, my) {
                     if (target.health <= 0) state.gameOver = true;
                 }
             });
-        } else if (effect.type === 'slow_zone') {
-            if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
-            const alpha = (effect.endTime - Date.now()) / 6000 * 0.3;
-            for(let i=0; i<3; i++) {
-                ctx.strokeStyle = `rgba(223, 230, 233, ${alpha * (0.5 + Math.sin(Date.now()/200 + i*2)*0.5)})`;
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.arc(effect.x, effect.y, effect.r * (0.6 + i*0.2), 0, Math.PI*2);
-                ctx.stroke();
-            }
         } else if (effect.type === 'juggernaut_charge_ring') {
             const progress = (Date.now() - effect.startTime) / effect.duration;
             if (progress >= 1) { state.effects.splice(index, 1); return; }
@@ -820,7 +837,7 @@ export function gameTick(mx, my) {
             ctx.stroke();
         } else if (effect.type === 'teleport_indicator') {
             if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
-            const progress = 1 - ((effect.endTime - Date.now()) / 1000); // from 0 to 1
+            const progress = 1 - ((effect.endTime - Date.now()) / 1000);
             ctx.strokeStyle = `rgba(255, 0, 0, ${1 - progress})`;
             ctx.lineWidth = 5 + (10 * progress);
             ctx.beginPath();
