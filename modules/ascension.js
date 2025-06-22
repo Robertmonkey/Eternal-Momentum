@@ -1,6 +1,7 @@
 // modules/ascension.js
 import { state, savePlayerState } from './state.js';
 import { TALENT_GRID_CONFIG } from './talents.js';
+import { updateUI } from './ui.js';
 
 const gridContainer = document.querySelector("#ascensionGridModal .ascension-content");
 
@@ -8,6 +9,10 @@ const allTalents = {};
 Object.values(TALENT_GRID_CONFIG).forEach(constellation => {
     Object.assign(allTalents, constellation);
 });
+
+function findTalentById(talentId) {
+    return allTalents[talentId] || null;
+}
 
 function drawConnectorLines() {
     for (const talentId in allTalents) {
@@ -98,7 +103,6 @@ function purchaseTalent(talentId) {
         applyAllTalentEffects();
         savePlayerState();
 
-        // TODO: Play shimmer/unlock sound effect
         renderAscensionGrid();
         document.getElementById("ap-total-asc-grid").innerText = state.player.ascensionPoints;
         document.getElementById("ascension-points-display").innerText = `AP: ${state.player.ascensionPoints}`;
@@ -110,13 +114,12 @@ function purchaseTalent(talentId) {
 }
 
 export function applyAllTalentEffects() {
-    // Reset to base stats
     let baseMaxHealth = 100;
     let baseSpeed = 1.0;
-    // Add other base stats here
+    let baseEssenceGain = 1.0;
 
     state.player.purchasedTalents.forEach((rank, id) => {
-        const talent = allTalents[id];
+        const talent = findTalentById(id);
         if (talent) {
             for (let i = 1; i <= rank; i++) {
                 if (id === 'exo-weave-plating') baseMaxHealth += [15, 15, 20][i-1];
@@ -128,6 +131,7 @@ export function applyAllTalentEffects() {
 
     state.player.maxHealth = baseMaxHealth;
     state.player.speed = baseSpeed;
+    state.player.essenceGainModifier = baseEssenceGain;
 }
 
 export function renderAscensionGrid() {
