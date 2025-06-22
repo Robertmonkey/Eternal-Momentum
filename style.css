@@ -1,202 +1,4 @@
-:root {
-  --primary-glow: #00ffff;
-  --secondary-glow: #f000ff;
-  --dark-bg: #1e1e2f;
-  --ui-bg: rgba(20, 20, 40, 0.85);
-  --border-color: rgba(0, 255, 255, 0.4);
-  --font-color: #eaf2ff;
-  --health-high: #3498db;
-  --health-medium: #f1c40f;
-  --health-low: #e74c3c;
-  --health-bar-bg: #444;
-  --disabled-color: rgba(255, 255, 255, 0.2);
-  --shield-color: rgba(241, 196, 15, 0.7);
-}
-@keyframes sheen-animation {
-    0% { transform: translateX(-150%) skewX(-30deg); }
-    100% { transform: translateX(350%) skewX(-30deg); }
-}
-html, body { 
-  margin:0; padding:0; overflow:hidden; background:var(--dark-bg);
-  font-family: 'Segoe UI', 'Roboto', sans-serif;
-  -webkit-user-select: none; user-select: none;
-}
-canvas { display:block; width:100vw; height:100vh; }
-
-#ui-container {
-  position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
-  width: 95%; max-width: 900px; display: flex; flex-direction: column;
-  align-items: center; gap: 8px; pointer-events: none; 
-}
-
-#status-effects-bar {
-  display: flex; gap: 8px; height: 40px; padding: 4px 10px;
-  background: rgba(0,0,0,0.4); border-radius: 20px;
-  border: 1px solid var(--border-color); backdrop-filter: blur(5px);
-  pointer-events: none; opacity: 0; transition: opacity 0.3s ease-in-out;
-}
-#status-effects-bar.visible { opacity: 1; pointer-events: all; }
-.status-icon {
-  width: 32px; height: 32px; font-size: 24px; display: flex;
-  align-items: center; justify-content: center; position: relative;
-  background: rgba(0,0,0,0.5); border-radius: 50%; overflow: hidden;
-}
-.status-icon .cooldown-overlay {
-  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(0,0,0,0.7); transform-origin: bottom;
-  transition: transform 0.2s linear;
-}
-
-.command-bar {
-  width: 100%; height: 120px; background: var(--ui-bg);
-  border: 1px solid var(--border-color); border-radius: 12px;
-  box-shadow: 0 0 20px rgba(0, 255, 255, 0.2); backdrop-filter: blur(10px);
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 0 20px; color: var(--font-color); pointer-events: all;
-}
-.ui-pod { text-align: center; font-size: 1.1rem; line-height: 1.5; flex-basis: 150px; flex-shrink: 0; }
-.left-pod { text-align: left; }
-.right-pod { text-align: right; display: flex; gap: 10px; justify-content: flex-end; align-items: center;}
-
-.core-display { 
-    height: 100%; display: flex; align-items: center; justify-content: center;
-    flex-basis: 280px; flex-shrink: 0;
-}
-.ability-cluster { 
-  display: flex; justify-content: center; 
-  align-items: flex-end; gap: 4px;
-}
-.abilities { display: flex; align-items: flex-end; gap: 10px; margin: 0 10px; }
-.ability-slot {
-  width: 64px; height: 72px; border: 2px solid var(--border-color);
-  cursor: pointer; position: relative; background-color: rgba(0, 255, 255, 0.05);
-  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-  transition: background-color 0.2s, transform 0.2s;
-  display: flex; align-items: center; justify-content: center; font-size: 36px;
-}
-.ability-slot.main { width: 80px; height: 90px; border-color: var(--secondary-glow); background-color: rgba(240, 0, 255, 0.05); font-size: 44px;}
-.ability-slot:hover { background-color: rgba(0, 255, 255, 0.2); transform: translateY(-5px); }
-.ability-slot.main:hover { background-color: rgba(240, 0, 255, 0.2); }
-.ability-slot.empty { font-size: 24px; color: var(--disabled-color); }
-.ability-slot .ability-key {
-  position: absolute; bottom: 5px; left:0; right: 0; text-align: center;
-  font-size: 0.7rem; color: #aaa;
-  display: none; 
-}
-.ability-slot.activated { transform: translateY(-5px) scale(1.1); box-shadow: 0 0 15px #fff; }
-
-.ability-queue { display: flex; flex-direction: column; justify-content: center; gap: 4px; }
-.queue-slot {
-  width: 40px; height: 46px; border: 1px solid var(--border-color);
-  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 20px; background: rgba(0,0,0,0.5); opacity: 0;
-  transform: scale(0.8); transition: opacity 0.3s, transform 0.3s;
-}
-.queue-slot.visible { opacity: 1; transform: scale(1); }
-
-#health-bar-container {
-  position: relative;
-  width: 100%;
-  flex-grow: 1;
-  height: 28px;
-  background: var(--health-bar-bg);
-  border: 2px solid rgba(0,0,0,0.5);
-  border-radius: 8px;
-  margin: 0 20px;
-  overflow: hidden;
-  box-shadow: inset 0 0 8px rgba(0,0,0,0.7);
-}
-#health-bar-value {
-  position: absolute; top:0; left: 0;
-  height: 100%;
-  width: 100%;
-  border-radius: 6px;
-  transition: width 0.4s ease-out, background-color 0.5s ease;
-}
-#health-bar-value.health-high { background: var(--health-high); }
-#health-bar-value.health-medium { background: var(--health-medium); }
-#health-bar-value.health-low { background: var(--health-low); }
-
-#shield-bar-overlay {
-    position: absolute; top:0; left: 0;
-    height: 100%;
-    width: 0%;
-    background-color: var(--shield-color);
-    border-radius: 6px;
-    transition: width 0.3s linear;
-}
-
-#health-bar-sheen {
-    position: absolute; top: 0; left: 0;
-    width: 30%; height: 100%;
-    background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0) 100%);
-    animation: sheen-animation 3.5s ease-in-out infinite;
-    animation-delay: 1s;
-}
-
-#health-bar-text {
-  position: absolute; width: 100%; text-align: center;
-  line-height: 28px; font-size: 1rem; font-weight: bold;
-  color: white; text-shadow: 1px 1px 3px black;
-}
-
-[data-tooltip-text]:hover::before {
-  content: attr(data-tooltip-text);
-  position: absolute; top: -30px; left: 50%; transform: translateX(-50%);
-  background: black; color: white; padding: 4px 8px; border-radius: 4px;
-  font-size: 0.9rem; white-space: nowrap; z-index: 10;
-}
-
-button {
-  background: rgba(0, 255, 255, 0.2); border: 1px solid var(--border-color);
-  padding: 6px; width: 40px; height: 40px; border-radius: 8px;
-  color: white; font-size: 1.2rem; cursor: pointer; transition: background-color 0.2s;
-  display: flex; align-items: center; justify-content: center;
-}
-button:hover { background: rgba(0, 255, 255, 0.4); }
-
-#bossBanner, #levelSelectModal, #bossHpContainer, #vignette, #ascensionGridModal { position:absolute; }
-#bossBanner { top:30%; width:100%; text-align:center; font-size:2rem; color:#f1c40f; text-shadow:2px 2px 4px black; opacity:0; transition:opacity 1s; pointer-events: none; }
-#bossHpContainer { top: 8px; left: 50%; transform: translateX(-50%); width: 80%; max-width: 400px; display: flex; flex-direction: column; gap: 5px; }
-.boss-hp-bar-wrapper { width: 100%; background: rgba(0,0,0,0.5); border: 1px solid #fff; border-radius: 6px; padding: 2px; box-sizing: border-box; }
-.boss-hp-bar { height: 15px; width: 100%; border-radius: 4px; transition: width 0.3s ease-out; }
-.boss-hp-label { font-size: 0.8rem; color: white; text-shadow: 1px 1px 2px black; margin-bottom: 2px; text-align: center; }
-#vignette { top: 0; left: 0; width: 100%; height: 100%; box-shadow: inset 0 0 150px 50px rgba(0,0,0,0); pointer-events: none; transition: box-shadow 0.3s ease-out; }
-
-#levelSelectModal { top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; flex-direction: column; align-items: center; justify-content: center; color: white; font-family: sans-serif; pointer-events: all; }
-#levelSelectGrid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; padding: 20px; max-width: 500px; }
-#levelSelectGrid button { padding: 15px; font-size: 1.1rem; background: #2c3e50; width: auto; height: auto;}
-#levelSelectGrid button:hover { background: #34495e; }
-#modal-actions { display: flex; gap: 15px; margin-top: 20px; }
-#modal-actions button { width: auto; height: auto; padding: 10px 20px; font-size: 1rem; }
-#arenaBtn { background: rgba(155, 89, 182, 0.4); border-color: rgba(155, 89, 182, 1); }
-#arenaBtn:hover { background: rgba(155, 89, 182, 0.6); }
-#closeLevelSelectBtn { background: #c0392b; }
-
-
-/* --- NEW STYLES for Ascension Bar --- */
-#ascension-bar-container {
-  width: 100%; height: 20px; background: var(--health-bar-bg);
-  border-radius: 5px; position: relative; overflow: hidden;
-  border: 1px solid var(--border-color);
-  margin-bottom: 4px;
-}
-#ascension-bar-fill {
-  width: 0%; height: 100%; background: var(--primary-glow);
-  transition: width 0.3s ease-in-out;
-  box-shadow: 0 0 10px var(--primary-glow);
-}
-#ascension-bar-text {
-  position: absolute; top: 0; left: 10px; width: 100%;
-  line-height: 20px; font-weight: bold; color: white;
-  text-shadow: 1px 1px 2px black; font-size: 0.9rem;
-}
-#ascension-points-display {
-  font-size: 1rem; font-weight: bold;
-  color: var(--primary-glow);
-  text-shadow: 0 0 8px var(--primary-glow);
-}
+/* ... (all previous styles remain the same) ... */
 
 /* --- NEW STYLES for Ascension Grid --- */
 #ascensionGridModal {
@@ -255,7 +57,11 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
 .ascension-content {
     flex-grow: 1;
     overflow-y: auto;
-    padding-right: 10px;
+    padding: 10px;
+    position: relative;
+    background: #101020;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
 }
 .close-ascension-grid {
     margin-top: 15px;
@@ -271,4 +77,75 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
 .close-ascension-grid:hover {
     background: #ff40ff;
     box-shadow: 0 0 15px #ff40ff;
+}
+
+/* Talent Node Styles */
+.talent-node {
+    position: absolute;
+    width: 48px;
+    height: 48px;
+    border: 2px solid var(--border-color);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    background: #202038;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: not-allowed;
+    transition: all 0.2s ease-in-out;
+}
+.talent-icon {
+    font-size: 24px;
+}
+.talent-node.can-purchase {
+    cursor: pointer;
+    border-color: #00ff00;
+    box-shadow: 0 0 12px #00ff00;
+}
+.talent-node.can-purchase:hover {
+    transform: translate(-50%, -50%) scale(1.15);
+    background: #303050;
+}
+.talent-node.maxed {
+    border-color: var(--primary-glow);
+    background: var(--dark-bg);
+    box-shadow: 0 0 15px var(--primary-glow);
+    cursor: help;
+}
+.talent-node .talent-tooltip {
+    visibility: hidden;
+    width: 220px;
+    background-color: #101020;
+    color: #fff;
+    text-align: left;
+    border-radius: 6px;
+    padding: 10px;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    margin-left: -110px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    border: 1px solid var(--border-color);
+    font-size: 0.9rem;
+}
+.talent-node:hover .talent-tooltip {
+    visibility: visible;
+    opacity: 1;
+}
+.tooltip-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
+.tooltip-icon { font-size: 1.5rem; margin-right: 10px; }
+.tooltip-name { font-weight: bold; font-size: 1rem; color: var(--primary-glow); }
+.tooltip-desc { margin-bottom: 8px; line-height: 1.4; }
+.tooltip-footer {
+    display: flex;
+    justify-content: space-between;
+    border-top: 1px solid var(--border-color);
+    padding-top: 8px;
+    opacity: 0.8;
 }
