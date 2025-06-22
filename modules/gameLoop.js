@@ -24,6 +24,16 @@ const spawnParticlesCallback = (x, y, c, n, spd, life, r) => utils.spawnParticle
 
 export function addStatusEffect(name, emoji, duration) {
     const now = Date.now();
+    
+    if (name === 'Stunned' || name === 'Petrified') {
+        const isBerserk = state.player.berserkUntil > now;
+        const hasTalent = state.player.purchasedTalents.has('havoc-berserk');
+        if (isBerserk && hasTalent) {
+            // Immune to stuns
+            return; 
+        }
+    }
+
     state.player.statusEffects = state.player.statusEffects.filter(e => e.name !== name);
     state.player.statusEffects.push({ name, emoji, startTime: now, endTime: now + duration });
 }
@@ -102,7 +112,22 @@ export function spawnPickup() {
         for (let i = 0; i < weight; i++) types.push(type);
     }
     const type = types[Math.floor(Math.random() * types.length)];
-    state.pickups.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, dx: (Math.random() - 0.5) * 1, dy: (Math.random() - 0.5) * 1, r: 12, type });
+    
+    let life = 10000; // Powerups last 10 seconds by default
+    const anomalyRank = state.player.purchasedTalents.get('temporal-anomaly');
+    if (anomalyRank) {
+        life *= (1 + [0.25, 0.5][anomalyRank - 1]);
+    }
+
+    state.pickups.push({ 
+        x: Math.random() * canvas.width, 
+        y: Math.random() * canvas.height, 
+        r: 12, 
+        type, 
+        vx: 0, 
+        vy: 0,
+        lifeEnd: Date.now() + life
+    });
 }
 
 export function gameTick(mx, my) {
@@ -137,16 +162,27 @@ export function gameTick(mx, my) {
     } else {
         state.player.talent_states.phaseMomentum.active = false;
     }
+    
     let playerSpeedMultiplier = state.player.talent_states.phaseMomentum.active ? 1.10 : 1.0;
+    
+    // Unstoppable Rage Talent Logic (Slow Resistance)
+    const isBerserkImmune = state.player.berserkUntil > Date.now() && state.player.purchasedTalents.has('havoc-berserk');
+    state.effects.forEach(effect => { 
+        if(effect.type === 'slow_zone' && Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < effect.r && !isBerserkImmune) {
+            playerSpeedMultiplier *= 0.5;
+        } 
+    });
 
     if (Date.now() > state.player.stunnedUntil) {
         state.player.x += (finalMx - state.player.x) * 0.015 * state.player.speed * playerSpeedMultiplier;
         state.player.y += (finalMy - state.player.y) * 0.015 * state.player.speed * playerSpeedMultiplier;
     }
 
+    // Phase Momentum Visual Effect
     if (state.player.talent_states.phaseMomentum.active) {
-        ctx.globalAlpha = 0.7;
+        ctx.globalAlpha = 0.3;
         utils.drawCircle(ctx, state.player.x, state.player.y, state.player.r + 5, 'rgba(0, 255, 255, 0.5)');
+        utils.spawnParticles(state.particles, state.player.x, state.player.y, 'rgba(0, 255, 255, 0.5)', 1, 0.5, 10, state.player.r * 0.5);
         ctx.globalAlpha = 1.0;
     }
 
@@ -158,8 +194,20 @@ export function gameTick(mx, my) {
         ctx.stroke();
     }
     utils.drawCircle(ctx, state.player.x, state.player.y, state.player.r, state.player.shield ? "#f1c40f" : ((state.player.berserkUntil > Date.now()) ? '#e74c3c' : (state.player.infected ? '#55efc4' : "#3498db")));
+    
+    // Decoy Mastery Visual Effect
     if (state.decoy) {
-        utils.drawCircle(ctx, state.decoy.x, state.decoy.y, state.decoy.r, "#9b59b6");
+        let decoyColor = "#9b59b6";
+        if (state.decoy.isTaunting) {
+            const pulse = Math.sin(Date.now() / 200) * 5;
+            ctx.strokeStyle = `rgba(240, 0, 255, 0.6)`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(state.decoy.x, state.decoy.y, state.decoy.r + 10 + pulse, 0, 2*Math.PI);
+            ctx.stroke();
+            decoyColor = "#f000ff";
+        }
+        utils.drawCircle(ctx, state.decoy.x, state.decoy.y, state.decoy.r, decoyColor);
         if (Date.now() > state.decoy.expires) state.decoy = null;
     }
 
@@ -192,11 +240,14 @@ export function gameTick(mx, my) {
                 addEssence(10);
                 const scavengerRank = state.player.purchasedTalents.get('power-scavenger');
                 if (scavengerRank && Math.random() < [0.01, 0.025][scavengerRank-1]) {
-                    state.pickups.push({ x: e.x, y: e.y, dx: 0, dy: 0, r: 12, type: 'score' });
+                    state.pickups.push({ x: e.x, y: e.y, r: 12, type: 'score', vx: 0, vy: 0, lifeEnd: Date.now() + 10000 });
                 }
+                
                 const cryoRank = state.player.purchasedTalents.get('aegis-freeze');
                 if (cryoRank && e.wasFrozen && Math.random() < [0.25, 0.5][cryoRank-1]) {
-                    state.effects.push({ type: 'shockwave', caster: state.player, x: e.x, y: e.y, radius: 0, maxRadius: 100, speed: 500, startTime: Date.now(), hitEnemies: new Set(), damage: 5 * state.player.talent_modifiers.damage_multiplier });
+                    // Cryo-Core shatter effect
+                    utils.spawnParticles(state.particles, e.x, e.y, '#ADD8E6', 40, 4, 30, 2);
+                    state.effects.push({ type: 'shockwave', caster: state.player, x: e.x, y: e.y, radius: 0, maxRadius: 100, speed: 500, startTime: Date.now(), hitEnemies: new Set(), damage: 5 * state.player.talent_modifiers.damage_multiplier, color: 'rgba(0, 200, 255, 0.5)' });
                 }
                 state.enemies.splice(i, 1);
             }
@@ -206,7 +257,31 @@ export function gameTick(mx, my) {
         if(!e.frozen && !e.hasCustomMovement){ 
             let tgt = (state.decoy?.isTaunting && !e.boss) ? state.decoy : state.player;
             let enemySpeedMultiplier = 1;
-            state.effects.forEach(effect => { if(effect.type === 'slow_zone' && Math.hypot(e.x - effect.x, e.y - effect.y) < effect.r) { enemySpeedMultiplier = 0.5; } });
+            let pullStrength = e.boss ? 0.03 : 0.1;
+            // Gravitic Dampeners talent
+            pullStrength *= (1 - state.player.talent_modifiers.pull_resistance_modifier);
+
+            state.effects.forEach(effect => { 
+                if(effect.type === 'slow_zone' && Math.hypot(e.x - effect.x, e.y - effect.y) < effect.r) { 
+                    enemySpeedMultiplier = 0.5; 
+                }
+                if (effect.type === 'black_hole') {
+                    const dist = Math.hypot(e.x - effect.x, e.y - effect.y);
+                    const progress = 1 - (effect.endTime - Date.now()) / 4000; 
+                    const currentPullRadius = effect.maxRadius * progress;
+                    if (dist < currentPullRadius) {
+                        e.x += (effect.x - e.x) * pullStrength;
+                        e.y += (effect.y - e.y) * pullStrength;
+                        if (dist < effect.radius + e.r && Date.now() - effect.lastDamage[e] > effect.damageRate) {
+                             e.hp -= e.boss ? effect.damage : 15;
+                             if(state.player.purchasedTalents.has('unstable-singularity')) {
+                                e.hp -= 5 * state.player.talent_modifiers.damage_multiplier;
+                             }
+                             effect.lastDamage[e] = Date.now();
+                        }
+                    }
+                }
+            });
             if (tgt) {
               const vx = (tgt.x - e.x) * 0.005 * enemySpeedMultiplier; 
               const vy = (tgt.y - e.y) * 0.005 * enemySpeedMultiplier; 
@@ -242,6 +317,7 @@ export function gameTick(mx, my) {
                     if(reactiveRank && damage >= 20 && Date.now() > state.player.talent_states.reactivePlating.cooldownUntil) {
                         const shieldDuration = [1, 2, 3][reactiveRank-1] * 1000;
                         addStatusEffect('Reactive Shield', '🛡️', shieldDuration);
+                        utils.spawnParticles(state.particles, state.player.x, state.player.y, '#f1c40f', 40, 4, 35, 3);
                         state.player.talent_states.reactivePlating.cooldownUntil = Date.now() + 30000;
                     } else {
                         state.player.health -= damage; 
@@ -263,16 +339,34 @@ export function gameTick(mx, my) {
     // --- Pickup Logic & Drawing ---
     for (let i = state.pickups.length - 1; i >= 0; i--) {
         const p = state.pickups[i];
-        p.x += p.dx || 0;
-        p.y += p.dy || 0;
+        
+        if (Date.now() > p.lifeEnd) {
+            state.pickups.splice(i, 1);
+            continue;
+        }
+
+        const pickupRadius = 75 + state.player.talent_modifiers.pickup_radius_bonus;
+        const d = Math.hypot(state.player.x - p.x, state.player.y - p.y);
+        
+        // Resonance Magnet talent
+        if (d < pickupRadius) {
+            const angle = Math.atan2(state.player.y - p.y, state.player.x - p.x);
+            const acceleration = 0.5;
+            p.vx += Math.cos(angle) * acceleration;
+            p.vy += Math.sin(angle) * acceleration;
+        }
+        
+        p.vx *= 0.95; // friction
+        p.vy *= 0.95; // friction
+        p.x += p.vx;
+        p.y += p.vy;
+
         utils.drawCircle(ctx, p.x, p.y, p.r, "#2ecc71");
         ctx.fillStyle="#fff"; ctx.font="16px sans-serif"; ctx.textAlign = "center";
         ctx.fillText(powers[p.type]?.emoji || '?', p.x, p.y+6);
         ctx.textAlign = "left";
 
-        const pickupRadius = 75 + state.player.talent_modifiers.pickup_radius_bonus;
-        const d=Math.hypot(state.player.x-p.x,state.player.y-p.y);
-        if(d < pickupRadius + p.r){
+        if(d < state.player.r + p.r){
             const isOffensive = offensivePowers.includes(p.type);
             const targetInventory = isOffensive ? state.offensiveInventory : state.defensiveInventory;
             const maxSlots = isOffensive ? state.player.unlockedOffensiveSlots : state.player.unlockedDefensiveSlots;
@@ -291,7 +385,7 @@ export function gameTick(mx, my) {
         if (effect.type === 'shockwave') {
             const elapsed = (Date.now() - effect.startTime) / 1000;
             effect.radius = elapsed * effect.speed;
-            ctx.strokeStyle = `rgba(255, 255, 255, ${1-(effect.radius/effect.maxRadius)})`;
+            ctx.strokeStyle = effect.color || `rgba(255, 255, 255, ${1-(effect.radius/effect.maxRadius)})`;
             ctx.lineWidth = 10;
             ctx.beginPath();
             ctx.arc(effect.x, effect.y, effect.radius, 0, 2 * Math.PI);
@@ -356,8 +450,7 @@ export function gameTick(mx, my) {
             } 
             const progress = 1 - (effect.endTime - Date.now()) / 4000; const currentPullRadius = effect.maxRadius * progress; 
             utils.drawCircle(ctx, effect.x, effect.y, effect.radius, "#000"); 
-            ctx.strokeStyle = `rgba(155, 89, 182, ${0.6 * progress})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(effect.x, effect.y, currentPullRadius, 0, 2*Math.PI); ctx.stroke(); 
-            state.enemies.forEach(e => { const dist = Math.hypot(e.x - effect.x, e.y - effect.y); if (dist < currentPullRadius) { const pullStrength = e.boss ? 0.03 : 0.1; e.x += (effect.x - e.x) * pullStrength; e.y += (effect.y - e.y) * pullStrength; if (dist < effect.radius + e.r && Date.now() - effect.lastDamage > effect.damageRate) { e.hp -= e.boss ? effect.damage : 15; if (state.player.purchasedTalents.has('unstable-singularity')) { e.hp -= 5 * state.player.talent_modifiers.damage_multiplier; } effect.lastDamage = Date.now(); } } });
+            ctx.strokeStyle = `rgba(155, 89, 182, ${0.6 * progress})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(effect.x, effect.y, currentPullRadius, 0, 2*Math.PI); ctx.stroke();
         } else if (effect.type === 'seeking_shrapnel') {
              let closest = null;
             let minDist = Infinity;
