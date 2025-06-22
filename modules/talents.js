@@ -15,12 +15,12 @@ export const TALENT_GRID_CONFIG = {
         },
     },
 
-    // --- AEGIS CONSTALLATION (Defense & Survival) ---
+    // --- AEGIS CONSTALLATION (Defense & Survival - Cyan) ---
     aegis: {
         'exo-weave-plating': {
             id: 'exo-weave-plating',
             name: 'Exo-Weave Plating',
-            description: (rank) => `Increases Max Health by ${[15, 15, 20][rank-1] || 0}.`,
+            description: (rank) => `Increases Max Health by ${[15, 15, 20][rank-1] || 0}. Total: +${[15, 30, 50][rank-1] || 0}`,
             icon: '❤️',
             maxRanks: 3,
             costPerRank: [1, 1, 2],
@@ -41,7 +41,7 @@ export const TALENT_GRID_CONFIG = {
             id: 'aegis-shield',
             name: 'Extended Capacitor',
             powerPrerequisite: 'shield',
-            description: (rank) => `Shield power-up duration +1.5s.`,
+            description: () => `Shield power-up duration +1.5s per rank.`,
             icon: '⏱️',
             maxRanks: 2,
             costPerRank: [1, 1],
@@ -62,7 +62,7 @@ export const TALENT_GRID_CONFIG = {
         'phase-momentum': {
             id: 'phase-momentum',
             name: 'Capstone: Phase Momentum',
-            description: () => 'After 8s of not taking damage, gain +10% speed and move through non-boss enemies.',
+            description: () => 'After avoiding damage for 8s, gain +10% speed & move through non-boss enemies.',
             icon: '💨',
             maxRanks: 1,
             costPerRank: [3],
@@ -71,7 +71,7 @@ export const TALENT_GRID_CONFIG = {
         }
     },
     
-    // --- HAVOC CONSTALLATION (Offense & Destruction) ---
+    // --- HAVOC CONSTALLATION (Offense & Destruction - Orange/Red) ---
     havoc: {
         'high-frequency-emitters': {
             id: 'high-frequency-emitters',
@@ -87,7 +87,7 @@ export const TALENT_GRID_CONFIG = {
             id: 'havoc-chain',
             name: 'High Voltage',
             powerPrerequisite: 'chain',
-            description: () => `Chain Lightning jumps to +1 additional target.`,
+            description: () => `Chain Lightning jumps to +1 additional target per rank.`,
             icon: '⚡',
             maxRanks: 2,
             costPerRank: [1, 1],
@@ -109,7 +109,7 @@ export const TALENT_GRID_CONFIG = {
             id: 'havoc-missile',
             name: 'Bigger Boom',
             powerPrerequisite: 'missile',
-            description: () => `Missile explosion radius +15%.`,
+            description: () => `Missile explosion radius +15% per rank.`,
             icon: '🎯',
             maxRanks: 2,
             costPerRank: [1, 1],
@@ -127,10 +127,60 @@ export const TALENT_GRID_CONFIG = {
             position: { x: 80, y: 70 },
             prerequisites: ['havoc-missile'],
         },
+        'havoc-black-hole': {
+            id: 'havoc-black-hole',
+            name: 'Event Horizon',
+            powerPrerequisite: 'black_hole',
+            description: () => `Black Hole pull radius +15% per rank.`,
+            icon: '⚫',
+            maxRanks: 2,
+            costPerRank: [1, 2],
+            position: { x: 70, y: 85 },
+            prerequisites: ['volatile-finish', 'seeking-shrapnel'],
+        },
     },
 
-    // --- FLUX CONSTALLATION (Utility & Mastery) ---
+    // --- FLUX CONSTALLATION (Utility & Mastery - Purple) ---
     flux: {
-        // Will be populated in a future step
+        'resonance-magnet': {
+            id: 'resonance-magnet',
+            name: 'Resonance Magnet',
+            description: () => `Increases pickup radius for power-ups by 75px per rank.`,
+            icon: '🧲',
+            maxRanks: 2,
+            costPerRank: [1, 1],
+            position: { x: 50, y: 30 },
+            prerequisites: ['core-nexus'],
+        },
+        'essence-conduit': {
+            id: 'essence-conduit',
+            name: 'Essence Conduit',
+            description: (rank) => `Gain ${[10, 15][rank-1] || 0}% more Essence (XP) from all sources.`,
+            icon: '💰',
+            maxRanks: 2,
+            costPerRank: [1, 2],
+            position: { x: 50, y: 50 },
+            prerequisites: ['resonance-magnet'],
+        },
+        'power-scavenger': {
+            id: 'power-scavenger',
+            name: 'Power Scavenger',
+            description: (rank) => `Non-boss enemies now have a ${[1, 1.5][rank-1] || 0}% chance to drop Essence Crystals.`,
+            icon: '💎',
+            maxRanks: 2,
+            costPerRank: [2, 2],
+            position: { x: 50, y: 70 },
+            prerequisites: ['essence-conduit'],
+        },
+        'energetic-recycling': {
+            id: 'energetic-recycling',
+            name: 'Capstone: Energetic Recycling',
+            description: () => `Using a power-up from a Queued Slot has a 20% chance that it is not consumed.`,
+            icon: '♻️',
+            maxRanks: 1,
+            costPerRank: [3],
+            position: { x: 50, y: 90 },
+            prerequisites: ['power-scavenger'],
+        },
     }
 };
