@@ -11,6 +11,14 @@
   <div id="vignette"></div>
   <div id="unlock-notification"></div>
 
+  <div id="gameOverMenu">
+      <h1>GAME OVER</h1>
+      <div id="gameOverActions">
+          <button id="restartStageBtn">Restart Stage</button>
+          <button id="levelSelectMenuBtn">Stage Select</button>
+      </div>
+  </div>
+
   <div id="ui-container">
     <div id="status-effects-bar"></div>
     <div class="command-bar">
@@ -52,7 +60,7 @@
 
         <div class="ui-pod right-pod">
             <button id="ascensionBtn" title="Ascension Grid">✨</button>
-            <button id="levelSelectBtn" title="Level Select">⚙️</button>
+            <button id="levelSelectBtn" title="Stage Select">🗺️</button>
             <button id="soundToggle" title="Toggle Sound">🔊</button>
         </div>
     </div>
@@ -62,7 +70,7 @@
   <div id="bossHpContainer"></div>
 
   <div id="levelSelectModal">
-      <h2>Select a Level to Test</h2>
+      <h2>Select Stage</h2>
       <div id="levelSelectGrid"></div>
       <div id="modal-actions">
         <button id="arenaBtn" title="Arena Mode">⚔️ Arena Mode</button>
@@ -80,8 +88,7 @@
             </div>
         </div>
         <div class="ascension-content">
-            <p style="text-align: center; margin-top: 50px; font-size: 1.2rem;">Feature coming soon!</p>
-        </div>
+            </div>
         <button id="closeAscensionBtn" class="close-ascension-grid">CLOSE</button>
     </div>
   </div>
