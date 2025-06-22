@@ -29,9 +29,7 @@ export const powers={
           if(state.player.shield_end_time <= shieldEndTime){
               state.player.shield=false;
               if(state.player.purchasedTalents.has('aegis-retaliation')){
-                  // The Aegis Retaliation talent also uses the repulsion logic
-                  const hasKineticOverload = state.player.purchasedTalents.has('kinetic-overload');
-                  state.effects.push({ type: 'repulsion_field', x: state.player.x, y: state.player.y, radius: 250, startTime: Date.now(), endTime: Date.now() + 5000, isOverloaded: hasKineticOverload });
+                  state.effects.push({ type: 'shockwave', caster: state.player, x: state.player.x, y: state.player.y, radius: 0, maxRadius: 250, speed: 1000, startTime: Date.now(), hitEnemies: new Set(), damage: 0, color: 'rgba(255, 255, 255, 0.5)' });
                   play('shockwave');
               }
           }
@@ -120,8 +118,8 @@ export const powers={
       state.effects.push({ type: 'chain_lightning', targets: targets, links: [], startTime: Date.now(), durationPerLink: 80, damage: damage, caster: state.player }); 
     }
   },
-  gravity:{emoji:"🌀",desc:"Pulls enemies for 1s",apply:(utils, game)=>{ play('gravity'); state.gravityActive=true; state.gravityEnd=Date.now()+1000; utils.spawnParticles(state.particles, innerWidth/2, innerHeight/2,"#9b59b6",100,4,40); }},
-  speed:{emoji:"🚀",desc:"Speed Boost for 5s",apply:(utils, game)=>{ state.player.speed*=1.5; game.addStatusEffect('Speed Boost', '🚀', 5000); utils.spawnParticles(state.particles, state.player.x,state.player.y,"#00f5ff",40,3,30); setTimeout(()=>state.player.speed/=1.5,5000); }},
+  gravity:{emoji:"🌀",desc:"Pulls enemies for 1s",apply:(utils, game)=>{ play('gravity'); state.gravityActive=true; state.gravityEnd=Date.now()+1000; utils.spawnParticles(innerWidth/2, innerHeight/2,"#9b59b6",100,4,40); }},
+  speed:{emoji:"🚀",desc:"Speed Boost for 5s",apply:(utils, game)=>{ state.player.speed*=1.5; game.addStatusEffect('Speed Boost', '🚀', 5000); utils.spawnParticles(state.player.x,state.player.y,"#00f5ff",40,3,30); setTimeout(()=>state.player.speed/=1.5,5000); }},
   freeze:{emoji:"🧊",desc:"Freeze enemies for 4s",apply:(utils, game)=>{ state.enemies.forEach(e=>{ if (e.frozen) return; e.frozen=true; e.wasFrozen = true; e._dx=e.dx; e._dy=e.dy; e.dx=e.dy=0; }); utils.spawnParticles(state.particles, state.player.x,state.player.y,"#0ff",60,3,30); setTimeout(()=>{ state.enemies.forEach(e=>{ if (!e.frozen) return; e.frozen=false; e.dx=e._dx; e.dy=e._dy; }); },4000); }},
   decoy:{emoji:"🔮",desc:"Decoy lasts 5s",apply:(utils, game)=>{
       const isMobile = state.player.purchasedTalents.has('quantum-duplicate');
@@ -133,9 +131,9 @@ export const powers={
           isTaunting: true,
           isMobile: isMobile
       }; 
-      utils.spawnParticles(state.particles, state.player.x,state.player.y,"#8e44ad",50,3,30); 
+      utils.spawnParticles(state.player.x,state.player.y,"#8e44ad",50,3,30); 
   }},
-  stack:{emoji:"🧠",desc:"Double next power-up",apply:(utils, game)=>{ state.stacked=true; game.addStatusEffect('Stacked', '🧠', 60000); utils.spawnParticles(state.particles, state.player.x,state.player.y,"#aaa",40,4,30); }},
+  stack:{emoji:"🧠",desc:"Double next power-up",apply:(utils, game)=>{ state.stacked=true; game.addStatusEffect('Stacked', '🧠', 60000); utils.spawnParticles(state.player.x,state.player.y,"#aaa",40,4,30); }},
   score: {emoji: "💎", desc: "Gain a large amount of Essence.", apply: (utils, game) => { game.addEssence(200 + state.player.level * 10); utils.spawnParticles(state.particles, state.player.x, state.player.y, "#f1c40f", 40, 4, 30); }},
   repulsion: {emoji: "🖐️", desc: "Creates a 5s push-away field.", apply: () => { 
       const hasKineticOverload = state.player.purchasedTalents.has('kinetic-overload');
@@ -169,7 +167,7 @@ export const powers={
     }},
   black_hole: {emoji: "⚫", desc: "Pulls and damages enemies for 4s", apply: () => { let damage = ((state.player.berserkUntil > Date.now()) ? 6 : 3) * state.player.talent_modifiers.damage_multiplier; let radius = 350; state.effects.push({ type: 'black_hole', x: state.player.x, y: state.player.y, radius: 20, maxRadius: radius, damageRate: 200, lastDamage: new Map(), endTime: Date.now() + 4000, damage: damage, caster: state.player }); play('gravity'); }},
   berserk: {emoji: "💢", desc: "8s: Deal 2x damage, take 2x damage", apply:(utils, game)=>{ state.player.berserkUntil = Date.now() + 8000; game.addStatusEffect('Berserk', '💢', 8000); utils.spawnParticles(state.particles, state.player.x, state.player.y, "#e74c3c", 40, 3, 30); }},
-  ricochetShot: {emoji: "🔄", desc: "Fires a shot that bounces multiple times", apply:(utils, game, mx, my) => { 
+  ricochetShot: {emoji: "🔄", desc: "Fires a shot that bounces 6 times", apply:(utils, game, mx, my) => { 
       let bounceCount = 6; 
       const angle = Math.atan2(my - state.player.y, mx - state.player.x); 
       const speed = 10; 
@@ -237,6 +235,6 @@ export function usePower(queueType, utils, game, mx, my){
     }
   }
 
-  utils.spawnParticles(state.particles, state.player.x, state.player.y, "#fff", 20, 3, 25);
+  utils.spawnParticles(state.player.x, state.player.y, "#fff", 20, 3, 25);
   powers[powerType].apply(...applyArgs);
 }
