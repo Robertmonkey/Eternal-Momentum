@@ -8,8 +8,28 @@ import { usePower } from './modules/powers.js';
 import * as utils from './modules/utils.js';
 import { renderAscensionGrid, applyAllTalentEffects } from './modules/ascension.js';
 
-window.addEventListener('DOMContentLoaded', (event) => {
-    
+const loadingScreen = document.getElementById('loading-screen');
+const progressFill = document.getElementById('loading-progress-fill');
+const statusText = document.getElementById('loading-status-text');
+let progressInterval = null;
+
+function simulateProgress() {
+    let currentProgress = 0;
+    progressInterval = setInterval(() => {
+        currentProgress += 1;
+        if (currentProgress > 95) {
+             clearInterval(progressInterval);
+        } else {
+            progressFill.style.width = `${currentProgress}%`;
+        }
+    }, 20);
+}
+
+window.addEventListener('load', (event) => {
+    clearInterval(progressInterval);
+    progressFill.style.width = '100%';
+    statusText.innerText = 'Momentum Stabilized!';
+
     // --- DOM & Canvas Setup ---
     const canvas = document.getElementById("gameCanvas");
     const soundBtn = document.getElementById("soundToggle");
@@ -76,7 +96,6 @@ window.addEventListener('DOMContentLoaded', (event) => {
         document.body.addEventListener("click", () => AudioManager.unlockAudio(), { once: true });
         document.body.addEventListener("touchstart", () => AudioManager.unlockAudio(), { once: true });
 
-        // Modal Listeners
         levelSelectBtn.addEventListener("click", () => { 
             state.isPaused = true; 
             populateLevelSelect(bossData, startSpecificLevel);
@@ -111,7 +130,6 @@ window.addEventListener('DOMContentLoaded', (event) => {
             );
         });
 
-        // Game Over Menu Listeners
         restartStageBtn.addEventListener("click", () => {
             startSpecificLevel(state.currentStage);
         });
@@ -177,9 +195,19 @@ window.addEventListener('DOMContentLoaded', (event) => {
         updateUI();
     };
 
-    // --- START THE GAME ---
-    initialize();
-    const startStage = state.player.highestStageBeaten > 0 ? state.player.highestStageBeaten + 1 : 1;
-    startSpecificLevel(startStage);
-    updateUI();
+    // --- FADE OUT LOADING SCREEN AND START ---
+    setTimeout(() => {
+        loadingScreen.style.opacity = '0';
+        loadingScreen.addEventListener('transitionend', () => {
+            loadingScreen.style.display = 'none';
+        });
+
+        initialize();
+        const startStage = state.player.highestStageBeaten > 0 ? state.player.highestStageBeaten + 1 : 1;
+        startSpecificLevel(startStage);
+        updateUI();
+    }, 200);
 });
+
+// Start the simulated progress bar immediately
+simulateProgress();
