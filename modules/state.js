@@ -1,8 +1,6 @@
 // modules/state.js
 
-// The single, central state object for the entire game.
 export const state = {
-  // Player-specific data
   player:{
     x:0, y:0, r:20, speed:1,
     maxHealth:100, health:100,
@@ -17,59 +15,37 @@ export const state = {
     ascensionPoints: 0,
     unlockedPowers: new Set(['heal', 'missile']),
     
-    // Infection mechanic
+    // Ascension Grid Data
+    purchasedTalents: new Map(),
+    essenceGainModifier: 1.0,
+
     infected: false, infectionEnd: 0, lastSpore: 0,
   },
   
   // Game world data
-  enemies:[], 
-  pickups:[], 
-  effects: [],
-  particles: [],
-  decoy:null, 
+  enemies:[], pickups:[], effects: [], particles: [], decoy:null, 
   
-  // Inventories and status
-  offensiveInventory:[null,null,null], 
-  defensiveInventory:[null,null,null],
-  stacked:false, 
-  
-  // Game flow properties
-  currentStage: 1, // <-- NEW: Tracks boss progression
+  currentStage: 1,
   currentBoss:null, 
   bossActive:false,
   gameOver:false,
   isPaused: false,
   gameLoopId: null,
-
-  // Arena mode properties
-  arenaMode: false, 
-  wave: 0, 
-  lastArenaSpawn: 0,
-
-  // Boss-specific states
-  gravityActive:false, 
-  gravityEnd:0,
-  bossSpawnCooldownEnd: 0,
+  
+  // ... rest of state
 };
 
-// This function resets the state for a new game.
 export function resetGame(isArena = false) {
     const canvas = document.getElementById("gameCanvas");
     
+    // Non-persistent stats are reset here
     state.player.x = canvas.width / 2;
     state.player.y = canvas.height / 2;
-    state.player.maxHealth = 100;
-    state.player.health = 100;
-    state.player.speed = 1;
+    state.player.health = state.player.maxHealth; // Reset health to the potentially upgraded maxHealth
+    state.player.speed = 1; // Base speed, talents will modify this
     state.player.statusEffects = [];
     state.player.shield = false;
     state.player.berserkUntil = 0;
-    
-    state.player.level = 1;
-    state.player.essence = 0;
-    state.player.essenceToNextLevel = 100;
-    state.player.ascensionPoints = 0;
-    state.player.unlockedPowers = new Set(['heal', 'missile']);
     
     Object.assign(state, {
         enemies: [], pickups: [], effects: [], particles: [], decoy: null,
@@ -78,10 +54,32 @@ export function resetGame(isArena = false) {
         currentBoss: null, bossActive: false, stacked: false, gameOver: false, 
         gravityActive: false, gravityEnd: 0, 
         isPaused: false, 
-        currentStage: 1, // <-- NEW: Reset stage
+        currentStage: 1,
         
         arenaMode: isArena, wave: 0, lastArenaSpawn: Date.now(),
-        // Set a short cooldown at the start of a new game before the first boss spawns
         bossSpawnCooldownEnd: Date.now() + 3000, 
     });
+
+    // Re-apply all purchased talent effects
+    // This part will be more complex later, for now we reset stats that are affected by talents
+    let baseMaxHealth = 100;
+    state.player.purchasedTalents.forEach((rank, id) => {
+        const talent = findTalentById(id);
+        if (talent && talent.id === 'core-health') {
+             baseMaxHealth += [10, 15, 25][rank-1];
+        }
+    });
+    state.player.maxHealth = baseMaxHealth;
+    state.player.health = state.player.maxHealth;
+
+}
+
+// Helper function to find a talent by ID across all constellations
+function findTalentById(talentId) {
+    for (const constellation in TALENT_GRID_CONFIG) {
+        if (TALENT_GRID_CONFIG[constellation][talentId]) {
+            return TALENT_GRID_CONFIG[constellation][talentId];
+        }
+    }
+    return null;
 }
