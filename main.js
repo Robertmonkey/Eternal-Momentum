@@ -83,8 +83,11 @@ window.addEventListener('DOMContentLoaded', (event) => {
             levelSelectModal.style.display = 'flex'; 
         });
         closeLevelSelectBtn.addEventListener("click", () => { 
-            state.isPaused = false; 
+            state.isPaused = false;
             levelSelectModal.style.display = 'none'; 
+            if (state.stageCleared) { // If we closed the menu after clearing a stage, start the next one
+                startSpecificLevel(state.player.highestStageBeaten + 1);
+            }
         });
         
         ascensionBtn.addEventListener("click", () => {
@@ -127,12 +130,19 @@ window.addEventListener('DOMContentLoaded', (event) => {
 
     // --- Game Flow ---
     function loop() {
+        if (state.stageCleared) {
+            state.isPaused = true;
+            populateLevelSelect(bossData, startSpecificLevel);
+            levelSelectModal.style.display = 'flex';
+            if (state.gameLoopId) cancelAnimationFrame(state.gameLoopId);
+            return;
+        }
+
         if (!gameTick(mx, my)) {
             if (state.gameLoopId) cancelAnimationFrame(state.gameLoopId);
             return;
         }
         if (!state.isPaused) {
-            // BUG FIX: Use bossHasSpawnedThisRun to prevent respawns in stage mode
             if (!state.bossActive && !state.bossHasSpawnedThisRun && !state.arenaMode && Date.now() > state.bossSpawnCooldownEnd) {
                 spawnEnemy(true);
             }
@@ -170,16 +180,22 @@ window.addEventListener('DOMContentLoaded', (event) => {
     };
 
     const startSpecificLevel = (levelNum) => {
-        startNewGame(false);
+        if (state.gameLoopId) cancelAnimationFrame(state.gameLoopId);
+        applyAllTalentEffects();
+        resetGame(false);
         state.currentStage = levelNum;
+        state.isPaused = false;
+        levelSelectModal.style.display = 'none';
+
         state.enemies = [];
         spawnEnemy(true);
         updateUI();
+        loop();
     };
 
     // --- START THE GAME ---
     initialize();
     populateLevelSelect(bossData, startSpecificLevel);
-    startNewGame(false); // Start a default run
+    startSpecificLevel(1); 
     updateUI();
 });
