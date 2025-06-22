@@ -153,7 +153,6 @@ export function gameTick(mx, my) {
         finalMy = state.player.y - (my - state.player.y);
     }
     
-    // Phase Momentum Talent Logic
     const phaseMomentumTalent = state.player.purchasedTalents.get('phase-momentum');
     if (phaseMomentumTalent) {
         if (Date.now() - state.player.talent_states.phaseMomentum.lastDamageTime > 8000) {
@@ -165,7 +164,6 @@ export function gameTick(mx, my) {
     
     let playerSpeedMultiplier = state.player.talent_states.phaseMomentum.active ? 1.10 : 1.0;
     
-    // Unstoppable Rage Talent Logic (Slow Resistance)
     const isBerserkImmune = state.player.berserkUntil > Date.now() && state.player.purchasedTalents.has('havoc-berserk');
     state.effects.forEach(effect => { 
         if(effect.type === 'slow_zone' && Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < effect.r && !isBerserkImmune) {
@@ -178,7 +176,34 @@ export function gameTick(mx, my) {
         state.player.y += (finalMy - state.player.y) * 0.015 * state.player.speed * playerSpeedMultiplier;
     }
 
-    // Phase Momentum Visual Effect
+    // BUG FIX: Added missing collision logic for boss objects
+    // Architect pillar collision logic
+    const architect = state.enemies.find(e => e.id === 'architect');
+    if(architect && architect.pillars) {
+        architect.pillars.forEach(pillar => {
+            const dist = Math.hypot(state.player.x - pillar.x, state.player.y - pillar.y);
+            if (dist < state.player.r + pillar.r) {
+                const angle = Math.atan2(state.player.y - pillar.y, state.player.x - pillar.x);
+                state.player.x = pillar.x + Math.cos(angle) * (state.player.r + pillar.r);
+                state.player.y = pillar.y + Math.sin(angle) * (state.player.r + pillar.r);
+            }
+        });
+    }
+
+    // Annihilator pillar collision logic
+    const annihilator = state.enemies.find(e => e.id === 'annihilator' && e.pillar);
+    if (annihilator) {
+        const pillar = annihilator.pillar;
+        const dx = state.player.x - pillar.x;
+        const dy = state.player.y - pillar.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < state.player.r + pillar.r) {
+            const angle = Math.atan2(dy, dx);
+            state.player.x = pillar.x + Math.cos(angle) * (state.player.r + pillar.r);
+            state.player.y = pillar.y + Math.sin(angle) * (state.player.r + pillar.r);
+        }
+    }
+
     if (state.player.talent_states.phaseMomentum.active) {
         ctx.globalAlpha = 0.3;
         utils.drawCircle(ctx, state.player.x, state.player.y, state.player.r + 5, 'rgba(0, 255, 255, 0.5)');
@@ -195,7 +220,6 @@ export function gameTick(mx, my) {
     }
     utils.drawCircle(ctx, state.player.x, state.player.y, state.player.r, state.player.shield ? "#f1c40f" : ((state.player.berserkUntil > Date.now()) ? '#e74c3c' : (state.player.infected ? '#55efc4' : "#3498db")));
     
-    // Decoy Mastery Visual Effect
     if (state.decoy) {
         let decoyColor = "#9b59b6";
         if (state.decoy.isTaunting) {
@@ -216,25 +240,27 @@ export function gameTick(mx, my) {
         const e = state.enemies[i];
         if (e.hp <= 0) {
             if (e.boss) {
-                if (state.currentStage > state.player.highestStageBeaten) {
-                    state.player.highestStageBeaten = state.currentStage;
-                    state.player.ascensionPoints += 3;
-                    showUnlockNotification("Stage Cleared! +3 AP", `Level ${state.currentStage + 1} Unlocked`);
-                    handleThematicUnlock(state.currentStage);
-                }
-                
-                utils.triggerScreenShake(250, 5);
-                addEssence(300);
-                
-                state.currentStage++;
-                state.bossActive = false;
-                state.bossSpawnCooldownEnd = Date.now() + 5000;
-                savePlayerState();
-
                 if (e.onDeath) e.onDeath(e, state, spawnEnemy, spawnParticlesCallback, play, stopLoopingSfx);
+                
                 state.enemies.splice(i, 1);
+                
                 if (state.currentBoss === e) {
                     state.currentBoss = state.enemies.find(en => en.boss) || null;
+                }
+                
+                if (!state.enemies.some(en => en.boss)) {
+                    state.bossActive = false;
+                    state.bossSpawnCooldownEnd = Date.now() + 5000;
+                    
+                    if (state.currentStage > state.player.highestStageBeaten) {
+                        state.player.highestStageBeaten = state.currentStage;
+                        state.player.ascensionPoints += 3;
+                        showUnlockNotification("Stage Cleared! +3 AP", `Level ${state.currentStage + 1} Unlocked`);
+                        handleThematicUnlock(state.currentStage);
+                    }
+                    
+                    addEssence(300);
+                    savePlayerState();
                 }
             } else {
                 addEssence(10);
@@ -245,7 +271,6 @@ export function gameTick(mx, my) {
                 
                 const cryoRank = state.player.purchasedTalents.get('aegis-freeze');
                 if (cryoRank && e.wasFrozen && Math.random() < [0.25, 0.5][cryoRank-1]) {
-                    // Cryo-Core shatter effect
                     utils.spawnParticles(state.particles, e.x, e.y, '#ADD8E6', 40, 4, 30, 2);
                     state.effects.push({ type: 'shockwave', caster: state.player, x: e.x, y: e.y, radius: 0, maxRadius: 100, speed: 500, startTime: Date.now(), hitEnemies: new Set(), damage: 5 * state.player.talent_modifiers.damage_multiplier, color: 'rgba(0, 200, 255, 0.5)' });
                 }
@@ -350,7 +375,6 @@ export function gameTick(mx, my) {
         const pickupRadius = 75 + state.player.talent_modifiers.pickup_radius_bonus;
         const d = Math.hypot(state.player.x - p.x, state.player.y - p.y);
         
-        // Resonance Magnet talent
         if (d < pickupRadius) {
             const angle = Math.atan2(state.player.y - p.y, state.player.x - p.x);
             const acceleration = 0.5;
