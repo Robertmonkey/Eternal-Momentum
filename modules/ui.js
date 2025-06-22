@@ -73,29 +73,32 @@ export function updateUI() {
     
     const offP = state.offensiveInventory[0];
     const defP = state.defensiveInventory[0];
-    offSlot.innerHTML = offP ? powers[offP].emoji : '<span class="ability-key">L-Click</span>';
-    defSlot.innerHTML = defP ? powers[defP].emoji : '<span class="ability-key">R-Click</span>';
+    offSlot.innerHTML = offP ? powers[offP].emoji : '';
+    defSlot.innerHTML = defP ? powers[defP].emoji : '';
     offSlot.className = `ability-slot main ${offP ? '' : 'empty'}`;
     defSlot.className = `ability-slot ${defP ? '' : 'empty'}`;
-    offSlot.setAttribute('data-tooltip-text', offP ? powers[offP].desc : 'Offensive Power');
-    defSlot.setAttribute('data-tooltip-text', defP ? powers[defP].desc : 'Defensive Power');
+    offSlot.setAttribute('data-tooltip-text', offP ? powers[offP].desc : 'Offensive Power (Left-Click)');
+    defSlot.setAttribute('data-tooltip-text', defP ? powers[defP].desc : 'Defensive Power (Right-Click)');
 
     for (let i = 1; i <= 2; i++) {
         const offPower = state.offensiveInventory[i];
         const defPower = state.defensiveInventory[i];
-        const qOffSlot = document.getElementById(`q-off-${i}`);
-        const qDefSlot = document.getElementById(`q-def-${i}`);
+        const qOffSlot = document.getElementById(`slot-off-${i}`);
+        const qDefSlot = document.getElementById(`slot-def-${i}`);
         
-        const isOffSlotVisible = (i < state.player.unlockedOffensiveSlots) && offPower;
-        qOffSlot.classList.toggle('visible', isOffSlotVisible);
+        if (qOffSlot) {
+            const isOffSlotVisible = (i < state.player.unlockedOffensiveSlots) && offPower;
+            qOffSlot.classList.toggle('visible', isOffSlotVisible);
+            qOffSlot.innerHTML = offPower ? powers[offPower].emoji : '';
+            qOffSlot.setAttribute('data-tooltip-text', offPower ? powers[offPower].desc : '');
+        }
 
-        const isDefSlotVisible = (i < state.player.unlockedDefensiveSlots) && defPower;
-        qDefSlot.classList.toggle('visible', isDefSlotVisible);
-
-        qOffSlot.innerHTML = offPower ? powers[offPower].emoji : '';
-        qOffSlot.setAttribute('data-tooltip-text', offPower ? powers[offPower].desc : '');
-        qDefSlot.innerHTML = defPower ? powers[defPower].emoji : '';
-        qDefSlot.setAttribute('data-tooltip-text', defPower ? powers[defPower].desc : '');
+        if (qDefSlot) {
+            const isDefSlotVisible = (i < state.player.unlockedDefensiveSlots) && defPower;
+            qDefSlot.classList.toggle('visible', isDefSlotVisible);
+            qDefSlot.innerHTML = defPower ? powers[defPower].emoji : '';
+            qDefSlot.setAttribute('data-tooltip-text', defPower ? powers[defPower].desc : '');
+        }
     }
 
     bossContainer.innerHTML = '';
