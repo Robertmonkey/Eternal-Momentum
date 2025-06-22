@@ -13,11 +13,17 @@ window.addEventListener('DOMContentLoaded', (event) => {
     // --- DOM & Canvas Setup ---
     const canvas = document.getElementById("gameCanvas");
     const soundBtn = document.getElementById("soundToggle");
-    const restartBtn = document.getElementById("restartBtn");
-    const arenaBtn = document.getElementById("arenaBtn");
+    const ascensionBtn = document.getElementById("ascensionBtn");
     const levelSelectBtn = document.getElementById("levelSelectBtn");
+    
+    // Modals and their controls
     const levelSelectModal = document.getElementById("levelSelectModal");
-    const closeModalBtn = document.getElementById("closeModalBtn");
+    const closeLevelSelectBtn = document.getElementById("closeLevelSelectBtn");
+    const arenaBtn = document.getElementById("arenaBtn");
+    const ascensionGridModal = document.getElementById("ascensionGridModal");
+    const closeAscensionBtn = document.getElementById("closeAscensionBtn");
+    const apDisplayAscGrid = document.getElementById("ap-total-asc-grid");
+
 
     let mx = 0, my = 0;
     const allAudioElements = Array.from(document.querySelectorAll('audio'));
@@ -63,10 +69,27 @@ window.addEventListener('DOMContentLoaded', (event) => {
         document.body.addEventListener("click", () => AudioManager.unlockAudio(), { once: true });
         document.body.addEventListener("touchstart", () => AudioManager.unlockAudio(), { once: true });
 
-        restartBtn.addEventListener("click", () => startNewGame(false));
+        // Modal Listeners
+        levelSelectBtn.addEventListener("click", () => { 
+            state.isPaused = true; 
+            levelSelectModal.style.display = 'flex'; 
+        });
+        closeLevelSelectBtn.addEventListener("click", () => { 
+            state.isPaused = false; 
+            levelSelectModal.style.display = 'none'; 
+        });
+        
+        ascensionBtn.addEventListener("click", () => {
+            state.isPaused = true;
+            apDisplayAscGrid.innerText = state.player.ascensionPoints; // Update AP display when opening
+            ascensionGridModal.style.display = 'flex';
+        });
+        closeAscensionBtn.addEventListener("click", () => {
+            state.isPaused = false;
+            ascensionGridModal.style.display = 'none';
+        });
+
         arenaBtn.addEventListener("click", () => startNewGame(true));
-        levelSelectBtn.addEventListener("click", () => { state.isPaused = true; levelSelectModal.style.display = 'flex'; });
-        closeModalBtn.addEventListener("click", () => { state.isPaused = false; levelSelectModal.style.display = 'none'; });
     }
 
     // --- Game Flow ---
@@ -116,9 +139,6 @@ window.addEventListener('DOMContentLoaded', (event) => {
     const startSpecificLevel = (levelNum) => {
         startNewGame(false);
         state.player.level = levelNum;
-        // This function does not exist in main.js, it's in gameLoop. We call it from there.
-        // Let's assume for now this needs to be refactored or the logic handled differently.
-        // For now, we'll just set the level and spawn the boss.
         state.enemies = [];
         spawnEnemy(true);
         updateUI();
