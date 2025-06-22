@@ -109,11 +109,49 @@ export const powers={
   decoy:{emoji:"🔮",desc:"Decoy lasts 5s",apply:(utils, game)=>{ state.decoy={x:state.player.x,y:state.player.y,r:20,expires:Date.now()+5000, isTaunting: state.player.purchasedTalents.has('decoy-mastery')}; utils.spawnParticles(state.particles, state.player.x,state.player.y,"#8e44ad",50,3,30); }},
   stack:{emoji:"🧠",desc:"Double next power-up",apply:(utils, game)=>{ state.stacked=true; game.addStatusEffect('Stacked', '🧠', 60000); utils.spawnParticles(state.particles, state.player.x,state.player.y,"#aaa",40,4,30); }},
   score: {emoji: "💎", desc: "Gain a large amount of Essence.", apply: (utils, game) => { game.addEssence(200 + state.player.level * 10); utils.spawnParticles(state.particles, state.player.x, state.player.y, "#f1c40f", 40, 4, 30); }},
-  repulsion: {emoji: "🖐️", desc: "Pushes enemies away.", apply: () => { state.effects.push({ type: 'repulsion_field', x: state.player.x, y: state.player.y, radius: 250, endTime: Date.now() + 100 }); play('shockwave'); }},
-  orbitalStrike: {emoji: "☄️", desc: "Calls 3 meteors on random enemies", apply: () => { const availableTargets = state.enemies.filter(e => !e.boss); for (let i = 0; i < 3; i++) { if (availableTargets.length > 0) { const targetIndex = Math.floor(Math.random() * availableTargets.length); const target = availableTargets.splice(targetIndex, 1)[0]; state.effects.push({type: 'orbital_target', x: target.x, y: target.y, startTime: Date.now(), caster: state.player}); } } }},
+  repulsion: {emoji: "🖐️", desc: "Pushes enemies away.", apply: () => { 
+      const hasKineticOverload = state.player.purchasedTalents.has('aegis-repulsion');
+      state.effects.push({ type: 'repulsion_field', x: state.player.x, y: state.player.y, radius: 250, endTime: Date.now() + 300, knockback: hasKineticOverload }); 
+      play('shockwave'); 
+  }},
+  orbitalStrike: {emoji: "☄️", desc: "Calls 3 meteors on random enemies", apply: () => { 
+      const availableTargets = state.enemies.filter(e => !e.boss); 
+      for (let i = 0; i < 3; i++) { 
+          if (availableTargets.length > 0) { 
+              const targetIndex = Math.floor(Math.random() * availableTargets.length); 
+              const target = availableTargets.splice(targetIndex, 1)[0]; 
+              state.effects.push({
+                  type: 'orbital_target', 
+                  target: target, // Pass the whole target object
+                  x: target.x, 
+                  y: target.y, 
+                  startTime: Date.now(), 
+                  caster: state.player
+              }); 
+            } 
+        } 
+    }},
   black_hole: {emoji: "⚫", desc: "Pulls and damages enemies for 4s", apply: () => { let damage = ((state.player.berserkUntil > Date.now()) ? 6 : 3) * state.player.talent_modifiers.damage_multiplier; let radius = 350; state.effects.push({ type: 'black_hole', x: state.player.x, y: state.player.y, radius: 20, maxRadius: radius, damageRate: 200, lastDamage: new Map(), endTime: Date.now() + 4000, damage: damage, caster: state.player }); play('gravity'); }},
   berserk: {emoji: "💢", desc: "8s: Deal 2x damage, take 2x damage", apply:(utils, game)=>{ state.player.berserkUntil = Date.now() + 8000; game.addStatusEffect('Berserk', '💢', 8000); utils.spawnParticles(state.particles, state.player.x, state.player.y, "#e74c3c", 40, 3, 30); }},
-  ricochetShot: {emoji: "🔄", desc: "Fires a shot that bounces multiple times", apply:(utils, game, mx, my) => { let bounceCount = 6; if(state.player.purchasedTalents.has('havoc-ricochet')) bounceCount += 2; const angle = Math.atan2(my - state.player.y, mx - state.player.x); const speed = 10; state.effects.push({ type: 'ricochet_projectile', x: state.player.x, y: state.player.y, dx: Math.cos(angle) * speed, dy: Math.sin(angle) * speed, r: 8, bounces: bounceCount, hitEnemies: new Set(), caster: state.player }); }},
+  ricochetShot: {emoji: "🔄", desc: "Fires a shot that bounces multiple times", apply:(utils, game, mx, my) => { 
+      let bounceCount = 6; 
+      if(state.player.purchasedTalents.has('havoc-ricochet')) bounceCount += 2; 
+      const angle = Math.atan2(my - state.player.y, mx - state.player.x); 
+      const speed = 10; 
+      state.effects.push({ 
+          type: 'ricochet_projectile', 
+          x: state.player.x, 
+          y: state.player.y, 
+          dx: Math.cos(angle) * speed, 
+          dy: Math.sin(angle) * speed, 
+          r: 8,
+          damage: 10,
+          bounces: bounceCount, 
+          initialBounces: bounceCount,
+          hitEnemies: new Set(), 
+          caster: state.player 
+      }); 
+    }},
   bulletNova: {emoji: "💫", desc: "Unleashes a spiral of bullets", apply:()=>{ state.effects.push({ type: 'nova_controller', startTime: Date.now(), duration: 2000, lastShot: 0, angle: Math.random() * Math.PI * 2 }); }},
 };
 
@@ -133,7 +171,6 @@ export function usePower(queueType, utils, game, mx, my){
   const recycleTalent = state.player.purchasedTalents.get('energetic-recycling');
   let consumed = true;
 
-  // BUG FIX: Correctly implement the Energetic Recycling talent logic
   if (recycleTalent && Math.random() < 0.20) {
       consumed = false;
       utils.spawnParticles(state.particles, state.player.x, state.player.y, "#2ecc71", 40, 5, 40);
