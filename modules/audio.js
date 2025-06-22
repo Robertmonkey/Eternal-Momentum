@@ -1,6 +1,5 @@
 // modules/audio.js
 
-// The AudioManager handles all sound playback, including muting and the initial user interaction unlock.
 export const AudioManager = {
     unlocked: false, 
     userMuted: false, 
