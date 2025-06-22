@@ -21,6 +21,9 @@ function stopLoopingSfx(soundId) {
 
 const gameHelpers = { addStatusEffect, spawnEnemy, spawnPickup, play, stopLoopingSfx };
 
+// This is the function that gets passed to onDamage handlers
+const spawnParticlesCallback = (x, y, c, n, spd, life, r) => utils.spawnParticles(state.particles, x, y, c, n, spd, life, r);
+
 export function addStatusEffect(name, emoji, duration) {
     const now = Date.now();
     state.player.statusEffects = state.player.statusEffects.filter(e => e.name !== name);
@@ -164,7 +167,7 @@ export function gameTick(mx, my) {
                 state.bossSpawnCooldownEnd = Date.now() + 5000;
                 savePlayerState();
 
-                if (e.onDeath) e.onDeath(e, state, spawnEnemy, (x, y, c, n, spd, life, r) => utils.spawnParticles(state.particles, x, y, c, n, spd, life, r), play, stopLoopingSfx);
+                if (e.onDeath) e.onDeath(e, state, spawnEnemy, spawnParticlesCallback, play, stopLoopingSfx);
                 state.enemies.splice(i, 1);
                 if (state.currentBoss === e) {
                     state.currentBoss = state.enemies.find(en => en.boss) || null;
@@ -199,7 +202,22 @@ export function gameTick(mx, my) {
         if(e.enraged) { ctx.strokeStyle = "yellow"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(e.x,e.y,e.r+5,0,2*Math.PI); ctx.stroke(); }
         
         const pDist = Math.hypot(state.player.x-e.x,state.player.y-e.y);
-        if(pDist < e.r+state.player.r){ if (e.onCollision) e.onCollision(e, state.player, addStatusEffect); if(!state.player.shield){ let damage = e.boss ? (e.enraged ? 20 : 10) : 1; if (state.player.berserkUntil > Date.now()) damage *= 2; state.player.health -= damage; play('hit'); if(e.onDamage) e.onDamage(e, damage, state.player, state, (x,y,c,n,spd,life,r)=>utils.spawnParticles(state.particles,x,y,c,n,spd,life,r)); if(state.player.health<=0) state.gameOver=true; } else { state.player.shield=false; } const ang=Math.atan2(state.player.y-e.y,state.player.x-e.x); state.player.x=e.x+Math.cos(ang)*(e.r+state.player.r); state.player.y=e.y+Math.sin(ang)*(e.r+state.player.r); }
+        if(pDist < e.r+state.player.r){ 
+            if (e.onCollision) e.onCollision(e, state.player, addStatusEffect); 
+            if(!state.player.shield){ 
+                let damage = e.boss ? (e.enraged ? 20 : 10) : 1; 
+                if (state.player.berserkUntil > Date.now()) damage *= 2; 
+                state.player.health -= damage; 
+                play('hit'); 
+                if(e.onDamage) e.onDamage(e, damage, state.player, state, spawnParticlesCallback); 
+                if(state.player.health<=0) state.gameOver=true; 
+            } else { 
+                state.player.shield=false; 
+            } 
+            const ang=Math.atan2(state.player.y-e.y,state.player.x-e.x); 
+            state.player.x=e.x+Math.cos(ang)*(e.r+state.player.r); 
+            state.player.y=e.y+Math.sin(ang)*(e.r+state.player.r); 
+        }
     }
 
     // --- Pickup Logic & Drawing ---
@@ -242,7 +260,7 @@ export function gameTick(mx, my) {
                 if (!effect.hitEnemies.has(target) && Math.abs(Math.hypot(target.x - effect.x, target.y - effect.y) - effect.radius) < target.r + 5) {
                     let dmg = (target.boss || target === state.player) ? effect.damage : 1000;
                     if(target.health) target.health -= dmg; else target.hp -= dmg;
-                    if (target.onDamage) target.onDamage(target, dmg, effect.caster);
+                    if (target.onDamage) target.onDamage(target, dmg, effect.caster, state, spawnParticlesCallback); // CORRECTED
                     effect.hitEnemies.add(target);
                 }
             });
@@ -260,8 +278,9 @@ export function gameTick(mx, my) {
                 utils.drawLightning(ctx, from.x, from.y, to.x, to.y, '#00ffff', 4);
                 if (!effect.links.includes(to)) {
                     utils.spawnParticles(state.particles, to.x, to.y, '#ffffff', 30, 5, 20);
-                    to.hp -= to.boss ? effect.damage : 50;
-                    if (to.onDamage) to.onDamage(to, effect.damage, effect.caster);
+                    let dmg = to.boss ? effect.damage : 50;
+                    to.hp -= dmg;
+                    if (to.onDamage) to.onDamage(to, dmg, effect.caster, state, spawnParticlesCallback); // CORRECTED
                     effect.links.push(to);
                 }
             }
