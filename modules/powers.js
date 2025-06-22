@@ -111,7 +111,7 @@ export const powers={
   score: {emoji: "💎", desc: "Gain a large amount of Essence.", apply: (utils, game) => { game.addEssence(200 + state.player.level * 10); utils.spawnParticles(state.particles, state.player.x, state.player.y, "#f1c40f", 40, 4, 30); }},
   repulsion: {emoji: "🖐️", desc: "Pushes enemies away.", apply: () => { 
       const hasKineticOverload = state.player.purchasedTalents.has('aegis-repulsion');
-      state.effects.push({ type: 'repulsion_field', x: state.player.x, y: state.player.y, radius: 250, endTime: Date.now() + 3000, knockback: hasKineticOverload }); 
+      state.effects.push({ type: 'repulsion_field', x: state.player.x, y: state.player.y, radius: 250, endTime: Date.now() + 5000, knockback: hasKineticOverload }); 
       play('shockwave'); 
   }},
   orbitalStrike: {emoji: "☄️", desc: "Calls 3 meteors on random enemies", apply: () => { 
