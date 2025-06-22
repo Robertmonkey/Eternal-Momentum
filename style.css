@@ -587,3 +587,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     background: #555;
     border-color: #888;
 }
+
+.capstone-connector {
+    filter: drop-shadow(0 0 5px var(--nexus-glow));
+}
