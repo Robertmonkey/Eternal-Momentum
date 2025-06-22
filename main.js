@@ -3,7 +3,7 @@ import { state, resetGame, loadPlayerState } from './modules/state.js';
 import { bossData } from './modules/bosses.js';
 import { AudioManager } from './modules/audio.js';
 import { updateUI, populateLevelSelect, showCustomConfirm } from './modules/ui.js';
-import { gameTick, spawnEnemy, spawnPickup, addStatusEffect, handleThematicUnlock, addEssence } from './modules/gameLoop.js';
+import { gameTick, spawnBossesForStage, addStatusEffect, addEssence } from './modules/gameLoop.js';
 import { usePower } from './modules/powers.js';
 import * as utils from './modules/utils.js';
 import { renderAscensionGrid, applyAllTalentEffects } from './modules/ascension.js';
@@ -100,7 +100,7 @@ window.addEventListener('load', (event) => {
 
         levelSelectBtn.addEventListener("click", () => { 
             state.isPaused = true; 
-            populateLevelSelect(bossData, startSpecificLevel);
+            populateLevelSelect(startSpecificLevel);
             levelSelectModal.style.display = 'flex'; 
         });
         closeLevelSelectBtn.addEventListener("click", () => { 
@@ -122,7 +122,7 @@ window.addEventListener('load', (event) => {
         arenaBtn.addEventListener("click", () => startNewGame(true));
         jumpToFrontierBtn.addEventListener("click", () => {
             let frontierStage = (state.player.highestStageBeaten > 0 ? state.player.highestStageBeaten + 1 : 1);
-            frontierStage = Math.min(frontierStage, bossData.length);
+            // REMOVED the line that capped the stage at 20
             startSpecificLevel(frontierStage);
         });
 
@@ -144,7 +144,7 @@ window.addEventListener('load', (event) => {
         levelSelectMenuBtn.addEventListener("click", () => {
             gameOverMenu.style.display = 'none';
             state.isPaused = true;
-            populateLevelSelect(bossData, startSpecificLevel);
+            populateLevelSelect(startSpecificLevel);
             levelSelectModal.style.display = 'flex';
         });
     }
@@ -157,7 +157,7 @@ window.addEventListener('load', (event) => {
         }
         if (!state.isPaused) {
             if (!state.bossActive && !state.arenaMode && Date.now() > state.bossSpawnCooldownEnd) {
-                spawnEnemy(true);
+                spawnBossesForStage(state.currentStage);
             }
             if (state.bossActive && Math.random() < (0.007 + state.player.level * 0.001)) {
                  spawnEnemy(false);
@@ -176,7 +176,7 @@ window.addEventListener('load', (event) => {
             if (Date.now() - state.lastArenaSpawn > spawnInterval) {
                 state.lastArenaSpawn = Date.now();
                 state.wave++;
-                spawnEnemy(true);
+                spawnEnemy(true, null, {x: canvas.width/2, y: 100});
             }
             if (Math.random() < 0.02) { spawnPickup(); }
         }
@@ -193,13 +193,20 @@ window.addEventListener('load', (event) => {
         if (isArena) { arenaLoop(); } else { loop(); }
     };
 
+    // REWRITTEN to properly handle starting any stage
     const startSpecificLevel = (levelNum) => {
-        startNewGame(false);
-        state.currentStage = levelNum;
+        if (state.gameLoopId) cancelAnimationFrame(state.gameLoopId);
+        applyAllTalentEffects();
+        resetGame(false); 
+        state.currentStage = levelNum; 
         
-        state.enemies = [];
-        spawnEnemy(true);
+        gameOverMenu.style.display = 'none';
+        levelSelectModal.style.display = 'none';
+        
+        spawnBossesForStage(state.currentStage);
+
         updateUI();
+        loop();
     };
     
     // --- FADE OUT LOADING SCREEN AND START ---
@@ -212,7 +219,6 @@ window.addEventListener('load', (event) => {
         initialize();
         const startStage = state.player.highestStageBeaten > 0 ? state.player.highestStageBeaten + 1 : 1;
         startSpecificLevel(startStage);
-        updateUI();
     }, 500);
 });
 
