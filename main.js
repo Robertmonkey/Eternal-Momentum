@@ -36,7 +36,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
     // --- INITIALIZATION ---
     function initialize() {
         loadPlayerState();
-        applyAllTalentEffects(); // Apply talents on initial load
+        applyAllTalentEffects();
 
         mx = canvas.width / 2;
         my = canvas.height / 2;
@@ -132,9 +132,9 @@ window.addEventListener('DOMContentLoaded', (event) => {
             return;
         }
         if (!state.isPaused) {
-            if (!state.bossActive && !state.arenaMode && Date.now() > state.bossSpawnCooldownEnd) {
+            // BUG FIX: Use bossHasSpawnedThisRun to prevent respawns in stage mode
+            if (!state.bossActive && !state.bossHasSpawnedThisRun && !state.arenaMode && Date.now() > state.bossSpawnCooldownEnd) {
                 spawnEnemy(true);
-                state.bossSpawnCooldownEnd = Infinity; 
             }
             if (state.bossActive && Math.random() < (0.007 + state.player.level * 0.001)) {
                  spawnEnemy(false);
@@ -162,7 +162,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
 
     const startNewGame = (isArena) => {
         if (state.gameLoopId) cancelAnimationFrame(state.gameLoopId);
-        applyAllTalentEffects(); // Apply talents before resetting the game
+        applyAllTalentEffects();
         resetGame(isArena);
         state.isPaused = false;
         levelSelectModal.style.display = 'none';
@@ -172,16 +172,14 @@ window.addEventListener('DOMContentLoaded', (event) => {
     const startSpecificLevel = (levelNum) => {
         startNewGame(false);
         state.currentStage = levelNum;
-        // The incorrect unlock loop has been removed from here.
         state.enemies = [];
         spawnEnemy(true);
-        state.bossSpawnCooldownEnd = Infinity;
         updateUI();
     };
 
     // --- START THE GAME ---
     initialize();
     populateLevelSelect(bossData, startSpecificLevel);
-    startNewGame(false);
+    startNewGame(false); // Start a default run
     updateUI();
 });
