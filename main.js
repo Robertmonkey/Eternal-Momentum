@@ -3,10 +3,10 @@ import { state, resetGame, loadPlayerState } from './modules/state.js';
 import { bossData } from './modules/bosses.js';
 import { AudioManager } from './modules/audio.js';
 import { updateUI, populateLevelSelect } from './modules/ui.js';
-import { gameTick, spawnEnemy, spawnPickup, addStatusEffect, handleThematicUnlock } from './gameLoop.js';
-import { usePower } from './powers.js';
-import * as utils from './utils.js';
-import { renderAscensionGrid } from './ascension.js';
+import { gameTick, spawnEnemy, spawnPickup, addStatusEffect, handleThematicUnlock } from './modules/gameLoop.js';
+import { usePower } from './modules/powers.js';
+import * as utils from './modules/utils.js';
+import { renderAscensionGrid } from './modules/ascension.js';
 
 window.addEventListener('DOMContentLoaded', (event) => {
     
@@ -30,7 +30,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
 
     // --- INITIALIZATION ---
     function initialize() {
-        loadPlayerState(); // Load saved data first
+        loadPlayerState(); 
 
         mx = canvas.width / 2;
         my = canvas.height / 2;
