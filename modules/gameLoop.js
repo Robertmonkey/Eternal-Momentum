@@ -53,8 +53,11 @@ export function handleThematicUnlock(stageJustCleared) {
         if (unlock.id === 'queueSlot1') {
             if (state.player.unlockedOffensiveSlots < 2) state.player.unlockedOffensiveSlots++;
             if (state.player.unlockedDefensiveSlots < 2) state.player.unlockedDefensiveSlots++;
-            showUnlockNotification(`Inventory Slot Unlocked!`);
+        } else if (unlock.id === 'queueSlot2') {
+            if (state.player.unlockedOffensiveSlots < 3) state.player.unlockedOffensiveSlots++;
+            if (state.player.unlockedDefensiveSlots < 3) state.player.unlockedDefensiveSlots++;
         }
+        showUnlockNotification(`Inventory Slot Unlocked!`);
     } else if (unlock.type === 'bonus') {
         state.player.ascensionPoints += unlock.value;
         showUnlockNotification(`Bonus: +${unlock.value} Ascension Points!`);
@@ -456,9 +459,20 @@ export function gameTick(mx, my) {
             const idx=targetInventory.indexOf(null);
             
             if(idx !== -1 && idx < maxSlots){
-                targetInventory[idx]=p.type; play('pickup'); state.pickups.splice(i,1);
+                targetInventory[idx]=p.type; 
+                play('pickup'); 
+                state.pickups.splice(i,1);
             } else {
-                utils.spawnParticles(state.particles, p.x, p.y, "#f00", 15, 2, 20); state.pickups.splice(i,1);
+                const power = powers[p.type];
+                if (power && power.apply) {
+                    addStatusEffect('Auto-Used', p.emoji || powers[p.type]?.emoji || '?', 2000);
+                    power.apply(utils, gameHelpers, mx, my);
+                    play('pickup');
+                    state.pickups.splice(i, 1);
+                } else {
+                    utils.spawnParticles(state.particles, p.x, p.y, "#f00", 15, 2, 20); 
+                    state.pickups.splice(i,1);
+                }
             }
         }
     }
@@ -573,7 +587,7 @@ export function gameTick(mx, my) {
             if(Date.now() > effect.startTime + effect.life) state.effects.splice(index, 1);
         } else if (effect.type === 'repulsion_field') {
             if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
-            const alpha = (effect.endTime - Date.now()) / 300 * 0.4;
+            const alpha = (effect.endTime - Date.now()) / 3000 * 0.4;
             ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
             ctx.lineWidth = 4;
             ctx.beginPath();
