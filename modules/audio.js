@@ -48,6 +48,12 @@ export const AudioManager = {
         } 
     },
 
+    playLoopingSfx(sfxElement) {
+        if (sfxElement && this.unlocked && !this.userMuted && sfxElement.paused) {
+            sfxElement.play().catch(e => console.warn("Looping SFX playback failed for:", sfxElement.id, e));
+        }
+    },
+
     stopLoopingSfx(sfxElement) {
         if (sfxElement && !sfxElement.paused) {
             sfxElement.pause();
