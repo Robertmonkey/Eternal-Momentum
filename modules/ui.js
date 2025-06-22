@@ -1,7 +1,7 @@
 // modules/ui.js
 import { state } from './state.js';
 import { powers } from './powers.js';
-import { bossData } from './bosses.js'; // Import bossData to display names
+import { bossData } from './bosses.js';
 
 const ascensionFill = document.getElementById('ascension-bar-fill');
 const ascensionText = document.getElementById('ascension-bar-text');
@@ -14,7 +14,7 @@ const defSlot = document.getElementById('slot-def-0');
 const bossContainer = document.getElementById("bossHpContainer");
 const statusBar = document.getElementById('status-effects-bar');
 const bossBannerEl = document.getElementById("bossBanner");
-const levelSelectList = document.getElementById("level-select-list"); // New list container
+const levelSelectList = document.getElementById("level-select-list");
 const notificationBanner = document.getElementById('unlock-notification');
 const customConfirm = document.getElementById('custom-confirm');
 const confirmTitle = document.getElementById('custom-confirm-title');
@@ -139,7 +139,6 @@ export function showUnlockNotification(text, subtext = '') {
     }, 3500);
 }
 
-// COMPLETELY REWRITTEN for the new menu design
 export function populateLevelSelect(startSpecificLevel) {
     if (!levelSelectList) return;
     levelSelectList.innerHTML = '';
@@ -153,7 +152,7 @@ export function populateLevelSelect(startSpecificLevel) {
         
         let bossNames = '';
         if (stage <= 20) {
-            bossNames = bossData[stage - 1].name;
+            bossNames = bossData[stage - 1]?.name || 'Unknown Anomaly';
         } else {
             const bossNum1 = ((stage - 1) % 10) + 1;
             const bossNum2 = bossNum1 + 10;
@@ -164,8 +163,8 @@ export function populateLevelSelect(startSpecificLevel) {
             const name2 = bossData[bossNum2 - 1]?.name || '???';
             
             let names = [];
-            if(count1 > 0) names.push(`${count1}x ${name1}`);
-            if(count2 > 0) names.push(`${count2}x ${name2}`);
+            if(count1 > 0) names.push(`${count1 > 1 ? count1 + 'x ' : ''}${name1}`);
+            if(count2 > 0) names.push(`${count2 > 1 ? count2 + 'x ' : ''}${name2}`);
             bossNames = names.join(', ');
         }
         
@@ -179,8 +178,7 @@ export function populateLevelSelect(startSpecificLevel) {
         };
         levelSelectList.appendChild(item);
     }
-    // Auto-scroll to the bottom to show the latest stage
-    levelSelectList.scrollTop = levelSelectList.scrollHeight;
+    levelSelectList.parentElement.scrollTop = levelSelectList.parentElement.scrollHeight;
 }
 
 export function showCustomConfirm(title, text, onConfirm) {
