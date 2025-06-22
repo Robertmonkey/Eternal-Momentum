@@ -87,33 +87,53 @@ export function addEssence(amount) {
     }
 }
 
-// MODIFIED: This function is now exported
+function getSafeSpawnLocation() {
+    const edgeMargin = 100;
+    let x, y;
+    const side = Math.floor(Math.random() * 4);
+    switch (side) {
+        case 0: // Top
+            x = Math.random() * canvas.width;
+            y = edgeMargin;
+            break;
+        case 1: // Bottom
+            x = Math.random() * canvas.width;
+            y = canvas.height - edgeMargin;
+            break;
+        case 2: // Left
+            x = edgeMargin;
+            y = Math.random() * canvas.height;
+            break;
+        case 3: // Right
+            x = canvas.width - edgeMargin;
+            y = Math.random() * canvas.height;
+            break;
+    }
+    return { x, y };
+}
+
 export function spawnBossesForStage(stageNum) {
     if (stageNum <= 20) {
         const bossIndex = stageNum - 1;
         if (bossIndex < bossData.length) {
-            spawnEnemy(true, bossData[bossIndex].id);
+            spawnEnemy(true, bossData[bossIndex].id, getSafeSpawnLocation());
         }
     } else {
         const bossNum1 = ((stageNum - 1) % 10) + 1;
         const bossNum2 = bossNum1 + 10;
-
         const count1 = 1 + Math.floor((stageNum - 11) / 20);
         const count2 = 1 + Math.floor((stageNum - 21) / 20);
-
         const bossId1 = bossData[bossNum1 - 1]?.id;
         const bossId2 = bossData[bossNum2 - 1]?.id;
         
         if (bossId1) {
             for (let i = 0; i < count1; i++) {
-                const location = { x: canvas.width/2 + (Math.random()-0.5)*100, y: canvas.height/2 + (Math.random()-0.5)*100 };
-                spawnEnemy(true, bossId1, location);
+                spawnEnemy(true, bossId1, getSafeSpawnLocation());
             }
         }
         if (bossId2 && count2 > 0) {
             for (let i = 0; i < count2; i++) {
-                const location = { x: canvas.width/2 + (Math.random()-0.5)*100, y: canvas.height/2 + (Math.random()-0.5)*100 };
-                spawnEnemy(true, bossId2, location);
+                spawnEnemy(true, bossId2, getSafeSpawnLocation());
             }
         }
     }
@@ -178,6 +198,28 @@ export function spawnPickup() {
 
 export function gameTick(mx, my) {
     if (state.isPaused) return true;
+
+    // --- All Spawning Logic now lives inside gameTick ---
+    if (state.arenaMode) {
+        const spawnInterval = Math.max(1000, 8000 * Math.pow(0.95, state.wave));
+        if (Date.now() - state.lastArenaSpawn > spawnInterval) {
+            state.lastArenaSpawn = Date.now();
+            state.wave++;
+            spawnEnemy(true, null, {x: canvas.width/2, y: 100});
+        }
+    } else {
+        if (!state.bossActive && Date.now() > state.bossSpawnCooldownEnd) {
+            spawnBossesForStage(state.currentStage);
+        }
+    }
+    if (state.bossActive && Math.random() < (0.007 + state.player.level * 0.001)) {
+        spawnEnemy(false);
+    }
+    if (Math.random() < (0.02 + state.player.level * 0.0002)) {
+        spawnPickup();
+    }
+    // --- End Spawning Logic ---
+
     if (state.gameOver) {
         stopLoopingSfx("beamHum");
         const gameOverMenu = document.getElementById('gameOverMenu');
@@ -689,38 +731,6 @@ export function gameTick(mx, my) {
             utils.drawCircle(ctx, effect.x, effect.y, effect.r, '#ff9944');
             state.enemies.forEach(e => { if(Math.hypot(e.x - effect.x, e.y - effect.y) < e.r + effect.r) { e.hp -= effect.damage; state.effects.splice(index, 1); }});
             if(Date.now() > effect.startTime + effect.life) state.effects.splice(index, 1);
-        } else if (effect.type === 'repulsion_field') {
-            if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
-            effect.x = state.player.x;
-            effect.y = state.player.y;
-            
-            let knockbackForce = 5;
-            const isOverloaded = effect.isOverloaded && Date.now() < effect.startTime + 2000;
-
-            if (isOverloaded) {
-                knockbackForce = 15;
-                const pulseAlpha = 0.8 * (1 - (Date.now() - effect.startTime) / 2000);
-                ctx.strokeStyle = `rgba(0, 255, 255, ${pulseAlpha})`;
-                ctx.lineWidth = 6;
-            } else {
-                const alpha = (effect.endTime - Date.now()) / 5000 * 0.4;
-                ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
-                ctx.lineWidth = 4;
-            }
-            ctx.beginPath();
-            ctx.arc(effect.x, effect.y, effect.radius, 0, 2*Math.PI);
-            ctx.stroke();
-            
-            state.enemies.forEach(e => {
-                if (!e.boss) {
-                    const dist = Math.hypot(e.x - effect.x, e.y - effect.y);
-                    if (dist < effect.radius) {
-                        const angle = Math.atan2(e.y - effect.y, e.x - effect.x);
-                        e.x += Math.cos(angle) * knockbackForce;
-                        e.y += Math.sin(angle) * knockbackForce;
-                    }
-                }
-            });
         } else if (effect.type === 'glitch_zone') {
             if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
             const alpha = (effect.endTime - Date.now()) / 5000 * 0.3;
