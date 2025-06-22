@@ -74,7 +74,7 @@ function levelUp() {
     state.player.level++;
     state.player.essence -= state.player.essenceToNextLevel;
     state.player.essenceToNextLevel = Math.floor(state.player.essenceToNextLevel * 1.5);
-    state.player.ascensionPoints += 1; // AP Gain Reduced
+    state.player.ascensionPoints += 1;
     utils.spawnParticles(state.particles, state.player.x, state.player.y, '#00ffff', 80, 6, 50, 5);
     savePlayerState();
 }
@@ -101,7 +101,7 @@ export function spawnEnemy(isBoss = false, bossId = null, location = null) {
         Object.assign(e, bd);
         
         const baseHp = bd.maxHP || 200;
-        const scalingFactor = 15; // Health bonus per stage level, squared. Reduced from 25.
+        const scalingFactor = 15;
         const finalHp = baseHp + (bossIndex * bossIndex * scalingFactor);
         e.maxHP = finalHp;
         e.hp = e.maxHP;
@@ -581,8 +581,6 @@ export function gameTick(mx, my) {
             ctx.strokeStyle = `rgba(155, 89, 182, ${0.6 * progress})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(effect.x, effect.y, currentPullRadius, 0, 2*Math.PI); ctx.stroke();
         } else if (effect.type === 'seeking_shrapnel') {
             let closest = null;
-            let minDist = Infinity;
-            
             const sortedEnemies = [...state.enemies].sort((a,b) => Math.hypot(a.x-effect.x, a.y-effect.y) - Math.hypot(b.x-effect.x, b.y-effect.y));
             if(sortedEnemies[effect.targetIndex]) {
                 closest = sortedEnemies[effect.targetIndex];
@@ -592,9 +590,14 @@ export function gameTick(mx, my) {
 
             if(closest){
                 const angle = Math.atan2(closest.y - effect.y, closest.x - effect.x);
-                effect.x += Math.cos(angle) * effect.speed;
-                effect.y += Math.sin(angle) * effect.speed;
+                const turnSpeed = 0.1; 
+                effect.dx = effect.dx * (1-turnSpeed) + (Math.cos(angle) * effect.speed) * turnSpeed;
+                effect.dy = effect.dy * (1-turnSpeed) + (Math.sin(angle) * effect.speed) * turnSpeed;
             }
+            
+            effect.x += effect.dx; 
+            effect.y += effect.dy;
+
             utils.drawCircle(ctx, effect.x, effect.y, effect.r, '#ff9944');
             state.enemies.forEach(e => { if(Math.hypot(e.x - effect.x, e.y - effect.y) < e.r + effect.r) { e.hp -= effect.damage; state.effects.splice(index, 1); }});
             if(Date.now() > effect.startTime + effect.life) state.effects.splice(index, 1);
