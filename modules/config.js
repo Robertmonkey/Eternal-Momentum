@@ -15,29 +15,16 @@ export const THEMATIC_UNLOCKS = {
   13: { type: 'power', id: 'berserk' },
   14: { type: 'power', id: 'bulletNova' },
   15: { type: 'power', id: 'gravity' },
-  16: { type: 'power', id: 'score' }, // This is the "Essence Crystal" power-up
+  16: { type: 'power', id: 'score' }, 
   17: { type: 'power', id: 'shockwave' },
-  18: { type: 'bonus', value: 5 }, // Bonus AP
+  18: { type: 'bonus', value: 5 },
   19: { type: 'slot', id: 'defensiveQueue1' },
   20: { type: 'victory' },
 };
 
 export const SPAWN_WEIGHTS = {
-    shield: 2, 
-    heal: 3, 
-    speed: 2, 
-    freeze: 1, 
-    decoy: 1, 
-    stack: 1, 
-    score: 1,
-    shockwave: 3,
-    missile: 3,
-    chain: 3,
-    orbitalStrike: 2,
-    ricochetShot: 2,
-    bulletNova: 2,
-    repulsion: 1,
-    black_hole: 1,
-    gravity: 1,
-    berserk: 1
+    shield: 2, heal: 3, speed: 2, freeze: 1, decoy: 1, stack: 1, 
+    score: 1, shockwave: 3, missile: 3, chain: 3, orbitalStrike: 2,
+    ricochetShot: 2, bulletNova: 2, repulsion: 1, black_hole: 1,
+    gravity: 1, berserk: 1
 };
