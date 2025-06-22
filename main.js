@@ -3,6 +3,7 @@ import { state, resetGame, loadPlayerState } from './modules/state.js';
 import { bossData } from './modules/bosses.js';
 import { AudioManager } from './modules/audio.js';
 import { updateUI, populateLevelSelect, showCustomConfirm } from './modules/ui.js';
+// MODIFIED: spawnBossesForStage is now called from startSpecificLevel
 import { gameTick, spawnBossesForStage, addStatusEffect, addEssence } from './modules/gameLoop.js';
 import { usePower } from './modules/powers.js';
 import * as utils from './modules/utils.js';
@@ -122,7 +123,6 @@ window.addEventListener('load', (event) => {
         arenaBtn.addEventListener("click", () => startNewGame(true));
         jumpToFrontierBtn.addEventListener("click", () => {
             let frontierStage = (state.player.highestStageBeaten > 0 ? state.player.highestStageBeaten + 1 : 1);
-            // REMOVED the line that capped the stage at 20
             startSpecificLevel(frontierStage);
         });
 
@@ -150,36 +150,18 @@ window.addEventListener('load', (event) => {
     }
 
     // --- Game Flow ---
+    // MODIFIED: Simplified loop, all spawn logic is now in gameTick
     function loop() {
         if (!gameTick(mx, my)) {
             if (state.gameLoopId) cancelAnimationFrame(state.gameLoopId);
             return;
-        }
-        if (!state.isPaused) {
-            if (!state.bossActive && !state.arenaMode && Date.now() > state.bossSpawnCooldownEnd) {
-                spawnBossesForStage(state.currentStage);
-            }
-            if (state.bossActive && Math.random() < (0.007 + state.player.level * 0.001)) {
-                 spawnEnemy(false);
-            }
-            if (Math.random() < (0.02 + state.player.level * 0.0002)) {
-                 spawnPickup();
-            }
         }
         state.gameLoopId = requestAnimationFrame(loop);
     }
 
     function arenaLoop() {
         if (!gameTick(mx, my)) { if (state.gameLoopId) cancelAnimationFrame(state.gameLoopId); return; }
-        if (!state.isPaused) {
-            const spawnInterval = Math.max(1000, 8000 * Math.pow(0.95, state.wave));
-            if (Date.now() - state.lastArenaSpawn > spawnInterval) {
-                state.lastArenaSpawn = Date.now();
-                state.wave++;
-                spawnEnemy(true, null, {x: canvas.width/2, y: 100});
-            }
-            if (Math.random() < 0.02) { spawnPickup(); }
-        }
+        // Note: Arena spawning logic is also now inside gameTick
         state.gameLoopId = requestAnimationFrame(arenaLoop);
     }
 
@@ -190,10 +172,14 @@ window.addEventListener('load', (event) => {
         state.isPaused = false;
         gameOverMenu.style.display = 'none';
         levelSelectModal.style.display = 'none';
-        if (isArena) { arenaLoop(); } else { loop(); }
+        if (isArena) { 
+            arenaLoop(); 
+        } else { 
+            spawnBossesForStage(state.currentStage);
+            loop(); 
+        }
     };
-
-    // REWRITTEN to properly handle starting any stage
+    
     const startSpecificLevel = (levelNum) => {
         if (state.gameLoopId) cancelAnimationFrame(state.gameLoopId);
         applyAllTalentEffects();
@@ -202,6 +188,7 @@ window.addEventListener('load', (event) => {
         
         gameOverMenu.style.display = 'none';
         levelSelectModal.style.display = 'none';
+        state.isPaused = false;
         
         spawnBossesForStage(state.currentStage);
 
