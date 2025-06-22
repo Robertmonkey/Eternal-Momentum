@@ -50,14 +50,18 @@ function drawConnectorLines() {
                     line.setAttribute('y2', `${talent.position.y}%`);
                     line.classList.add('connector-line');
                     
+                    const isNexusConnection = talent.isNexus || prereqTalent.isNexus;
                     const isPrereqPurchased = state.player.purchasedTalents.has(prereqId);
+
                     if (isPrereqPurchased) {
                         line.classList.add('unlocked');
-                        line.style.stroke = constellationColor;
+                        // MODIFIED: Only apply constellation color if NOT a nexus connection
+                        if (!isNexusConnection) {
+                            line.style.stroke = constellationColor;
+                        }
                     }
 
-                    // --- NEW: Cleaner logic for nexus glow effect ---
-                    if (talent.isNexus || prereqTalent.isNexus) {
+                    if (isNexusConnection) {
                         line.classList.add('nexus-connector');
                     }
 
@@ -121,14 +125,19 @@ function createTalentNode(talent, constellationColor) {
     
     node.addEventListener('mouseenter', () => {
         requestAnimationFrame(() => {
-            const rect = tooltip.getBoundingClientRect();
+            const tooltipRect = tooltip.getBoundingClientRect();
             const containerRect = gridContainer.getBoundingClientRect();
-            if (rect.right > containerRect.right - 10) {
+
+            // MODIFIED: Reset classes and check both left and right overflow
+            tooltip.classList.remove('show-left', 'show-right');
+
+            if (tooltipRect.right > containerRect.right - 10) {
                 tooltip.classList.add('show-left');
-            } else {
-                tooltip.classList.remove('show-left');
+            } else if (tooltipRect.left < containerRect.left + 10) {
+                tooltip.classList.add('show-right');
             }
-            if (rect.top < containerRect.top + 10) {
+
+            if (tooltipRect.top < containerRect.top + 10) {
                 tooltip.classList.add('show-bottom');
             } else {
                 tooltip.classList.remove('show-bottom');
