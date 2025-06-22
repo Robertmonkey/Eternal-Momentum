@@ -47,48 +47,52 @@
             </div>
             <div id="ascension-points-display">AP: 0</div>
         </div>
+
+        <div id="health-bar-container">
+            <div id="shield-bar-overlay"></div>
+            <div id="health-bar-value" class="health-high"></div>
+            <div id="health-bar-text">100 / 100</div>
+            <div id="health-bar-sheen"></div>
+        </div>
+
         <div class="core-display">
             <div class="ability-cluster">
                 <div class="ability-queue defensive">
-                    <div class="queue-slot" id="slot-def-2"></div>
-                    <div class="queue-slot" id="slot-def-1"></div>
+                    <div class="queue-slot" id="q-def-1"></div>
+                    <div class="queue-slot" id="q-def-2"></div>
                 </div>
                 <div class="abilities">
                     <div class="ability-slot" id="slot-def-0" data-tooltip-text="Defensive Power (Right-Click)"></div>
                     <div class="ability-slot main" id="slot-off-0" data-tooltip-text="Offensive Power (Left-Click)"></div>
                 </div>
                 <div class="ability-queue offensive">
-                    <div class="queue-slot" id="slot-off-1"></div>
-                    <div class="queue-slot" id="slot-off-2"></div>
+                    <div class="queue-slot" id="q-off-1"></div>
+                    <div class="queue-slot" id="q-off-2"></div>
                 </div>
             </div>
         </div>
+
         <div class="ui-pod right-pod">
             <button id="ascensionBtn" data-tooltip-text="Ascension Grid">💠</button>
             <button id="levelSelectBtn" data-tooltip-text="Stage Select">🗺️</button>
             <button id="soundToggle">🔊</button>
         </div>
     </div>
-    <div id="health-bar-container">
-        <div id="shield-bar-overlay"></div>
-        <div id="health-bar-value" class="health-high"></div>
-        <div id="health-bar-text">100 / 100</div>
-        <div id="health-bar-sheen"></div>
-    </div>
   </div>
   
+  <div id="bossBanner"></div>
   <div id="bossHpContainer"></div>
 
   <div id="levelSelectModal">
-      <div id="modal-content">
-          <h2>Select a Stage</h2>
-          <div id="levelSelectGrid"></div>
-          <div id="modal-actions">
-              <button id="arenaBtn">Arena Mode</button>
-              <button id="closeLevelSelectBtn">Close</button>
-              <button id="clearSaveBtn">Clear Save</button>
-          </div>
-      </div>
+    <div id="modal-content">
+        <h2>Select a Stage</h2>
+        <div id="levelSelectGrid"></div>
+        <div id="modal-actions">
+            <button id="arenaBtn">Arena Mode</button>
+            <button id="clearSaveBtn">ERASE TIMELINE</button>
+            <button id="closeLevelSelectBtn">Close</button>
+        </div>
+    </div>
   </div>
   
   <div id="ascensionGridModal">
