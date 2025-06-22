@@ -40,7 +40,6 @@ export const state = {
   currentBoss:null, 
   bossActive:false,
   bossHasSpawnedThisRun: false,
-  stageCleared: false, // For handling stage progression
   gameOver:false,
   isPaused: false,
   gameLoopId: null,
@@ -103,10 +102,9 @@ export function resetGame(isArena = false) {
         defensiveInventory: [null, null, null], 
         currentBoss: null, bossActive: false, stacked: false, gameOver: false, 
         bossHasSpawnedThisRun: false,
-        stageCleared: false, // Reset stage cleared flag
         gravityActive: false, gravityEnd: 0, 
         isPaused: false, 
-        currentStage: isArena ? 1 : state.player.highestStageBeaten + 1,
+        currentStage: isArena ? 1 : state.player.highestStageBeaten > 0 ? state.player.highestStageBeaten + 1 : 1,
         arenaMode: isArena, wave: 0, lastArenaSpawn: Date.now(),
         bossSpawnCooldownEnd: Date.now() + 3000, 
     });
