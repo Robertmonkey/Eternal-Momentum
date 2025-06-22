@@ -29,7 +29,9 @@ export const powers={
           if(state.player.shield_end_time <= shieldEndTime){
               state.player.shield=false;
               if(state.player.purchasedTalents.has('aegis-retaliation')){
-                  state.effects.push({ type: 'shockwave', caster: state.player, x: state.player.x, y: state.player.y, radius: 0, maxRadius: 250, speed: 1000, startTime: Date.now(), hitEnemies: new Set(), damage: 0, color: 'rgba(255, 255, 255, 0.5)' });
+                  // The Aegis Retaliation talent also uses the repulsion logic
+                  const hasKineticOverload = state.player.purchasedTalents.has('kinetic-overload');
+                  state.effects.push({ type: 'repulsion_field', x: state.player.x, y: state.player.y, radius: 250, startTime: Date.now(), endTime: Date.now() + 5000, isOverloaded: hasKineticOverload });
                   play('shockwave');
               }
           }
@@ -93,7 +95,7 @@ export const powers={
       play('chain'); 
       let chainCount = 6;
       const chainTalentRank = state.player.purchasedTalents.get('havoc-chain');
-      if(chainTalentRank) chainCount += chainTalentRank * 2; // Fixed to use rank
+      if(chainTalentRank) chainCount += chainTalentRank * 2; 
 
       const targets = []; 
       let currentTarget = state.player; 
@@ -135,33 +137,17 @@ export const powers={
   }},
   stack:{emoji:"🧠",desc:"Double next power-up",apply:(utils, game)=>{ state.stacked=true; game.addStatusEffect('Stacked', '🧠', 60000); utils.spawnParticles(state.particles, state.player.x,state.player.y,"#aaa",40,4,30); }},
   score: {emoji: "💎", desc: "Gain a large amount of Essence.", apply: (utils, game) => { game.addEssence(200 + state.player.level * 10); utils.spawnParticles(state.particles, state.player.x, state.player.y, "#f1c40f", 40, 4, 30); }},
-  repulsion: {emoji: "🖐️", desc: "Pushes enemies away.", apply: () => { 
-      const radius = 250;
-      if (state.player.purchasedTalents.has('kinetic-overload')) {
-          const knockbackDuration = 2000;
-          state.enemies.forEach(e => {
-              if (!e.boss) {
-                  const dist = Math.hypot(e.x - state.player.x, e.y - state.player.y);
-                  if (dist < radius) {
-                      e.knockbackUntil = Date.now() + knockbackDuration;
-                  }
-              }
-          });
-      } else {
-          // Base effect: A simple, one-time push for non-talented version
-          state.enemies.forEach(e => {
-              if (!e.boss) {
-                  const dist = Math.hypot(e.x - state.player.x, e.y - state.player.y);
-                  if (dist < radius) {
-                      const angle = Math.atan2(e.y - state.player.y, e.x - state.player.x);
-                      const knockbackForce = 25; 
-                      e.x += Math.cos(angle) * knockbackForce;
-                      e.y += Math.sin(angle) * knockbackForce;
-                  }
-              }
-          });
-      }
-      state.effects.push({ type: 'shockwave', caster: state.player, x: state.player.x, y: state.player.y, radius: 0, maxRadius: radius, speed: 1000, startTime: Date.now(), hitEnemies: new Set(), damage: 0, color: 'rgba(255, 255, 255, 0.5)' });
+  repulsion: {emoji: "🖐️", desc: "Creates a 5s push-away field.", apply: () => { 
+      const hasKineticOverload = state.player.purchasedTalents.has('kinetic-overload');
+      state.effects.push({ 
+          type: 'repulsion_field', 
+          x: state.player.x, 
+          y: state.player.y, 
+          radius: 250, 
+          startTime: Date.now(),
+          endTime: Date.now() + 5000, 
+          isOverloaded: hasKineticOverload 
+      }); 
       play('shockwave'); 
   }},
   orbitalStrike: {emoji: "☄️", desc: "Calls 3 meteors on random enemies", apply: () => { 
