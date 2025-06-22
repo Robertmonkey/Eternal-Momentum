@@ -1,6 +1,7 @@
 // modules/ui.js
 import { state } from './state.js';
 import { powers } from './powers.js';
+import { bossData } from './bosses.js'; // Import bossData to display names
 
 const ascensionFill = document.getElementById('ascension-bar-fill');
 const ascensionText = document.getElementById('ascension-bar-text');
@@ -13,7 +14,7 @@ const defSlot = document.getElementById('slot-def-0');
 const bossContainer = document.getElementById("bossHpContainer");
 const statusBar = document.getElementById('status-effects-bar');
 const bossBannerEl = document.getElementById("bossBanner");
-const levelSelectGrid = document.getElementById("levelSelectGrid");
+const levelSelectList = document.getElementById("level-select-list"); // New list container
 const notificationBanner = document.getElementById('unlock-notification');
 const customConfirm = document.getElementById('custom-confirm');
 const confirmTitle = document.getElementById('custom-confirm-title');
@@ -61,7 +62,7 @@ export function updateUI() {
     healthBarValue.classList.toggle('health-medium', healthPct <= 0.6 && healthPct > 0.3);
     healthBarValue.classList.toggle('health-low', healthPct <= 0.3);
     
-    const shieldEffect = state.player.statusEffects.find(e => e.name === 'Shield');
+    const shieldEffect = state.player.statusEffects.find(e => e.name === 'Shield' || e.name === 'Contingency Protocol');
     if (shieldEffect) {
         const now = Date.now();
         const remaining = shieldEffect.endTime - now;
@@ -138,25 +139,48 @@ export function showUnlockNotification(text, subtext = '') {
     }, 3500);
 }
 
-export function populateLevelSelect(bossData, startSpecificLevel) {
-    levelSelectGrid.innerHTML = '';
-    bossData.forEach((boss, index) => {
-        const level = index + 1;
-        const button = document.createElement('button');
-        button.innerText = level;
-        button.title = boss.name;
+// COMPLETELY REWRITTEN for the new menu design
+export function populateLevelSelect(startSpecificLevel) {
+    if (!levelSelectList) return;
+    levelSelectList.innerHTML = '';
 
-        if (level > state.player.highestStageBeaten + 1) {
-            button.disabled = true;
-            button.classList.add('locked');
-            button.title = 'Locked';
+    const maxStage = state.player.highestStageBeaten + 1;
+
+    for (let i = 1; i <= maxStage; i++) {
+        const stage = i;
+        const item = document.createElement('div');
+        item.className = 'stage-select-item';
+        
+        let bossNames = '';
+        if (stage <= 20) {
+            bossNames = bossData[stage - 1].name;
         } else {
-            button.onclick = () => {
-                startSpecificLevel(level);
-            };
+            const bossNum1 = ((stage - 1) % 10) + 1;
+            const bossNum2 = bossNum1 + 10;
+            const count1 = 1 + Math.floor((stage - 11) / 20);
+            const count2 = 1 + Math.floor((stage - 21) / 20);
+
+            const name1 = bossData[bossNum1 - 1]?.name || '???';
+            const name2 = bossData[bossNum2 - 1]?.name || '???';
+            
+            let names = [];
+            if(count1 > 0) names.push(`${count1}x ${name1}`);
+            if(count2 > 0) names.push(`${count2}x ${name2}`);
+            bossNames = names.join(', ');
         }
-        levelSelectGrid.appendChild(button);
-    });
+        
+        item.innerHTML = `
+            <span class="stage-select-number">STAGE ${stage}</span>
+            <span class="stage-select-bosses">${bossNames}</span>
+        `;
+        
+        item.onclick = () => {
+            startSpecificLevel(stage);
+        };
+        levelSelectList.appendChild(item);
+    }
+    // Auto-scroll to the bottom to show the latest stage
+    levelSelectList.scrollTop = levelSelectList.scrollHeight;
 }
 
 export function showCustomConfirm(title, text, onConfirm) {
