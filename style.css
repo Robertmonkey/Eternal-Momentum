@@ -11,16 +11,12 @@
   --health-bar-bg: #444;
   --disabled-color: rgba(255, 255, 255, 0.2);
   --shield-color: rgba(241, 196, 15, 0.7);
+  --nexus-glow: #00ff00;
 }
 @keyframes sheen-animation {
     0% { transform: translateX(-150%) skewX(-30deg); }
     100% { transform: translateX(350%) skewX(-30deg); }
 }
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
 html, body { 
   margin:0; padding:0; overflow:hidden; background:var(--dark-bg);
   font-family: 'Segoe UI', 'Roboto', sans-serif;
@@ -34,7 +30,7 @@ canvas { display:block; width:100vw; height:100vh; }
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: var(--dark-bg); /* Fallback color */
+    background-color: var(--dark-bg);
     background-image: url('./assets/load.png');
     background-size: cover;
     background-position: center;
@@ -53,7 +49,7 @@ canvas { display:block; width:100vw; height:100vh; }
     border-radius: 10px;
     background-color: rgba(0,0,0,0.5);
     padding: 2px;
-    margin-top: 20px; /* Add some space from the center */
+    margin-top: 20px; 
 }
 #loading-progress-fill {
     width: 0%;
@@ -226,20 +222,22 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
 #levelSelectGrid button.locked:hover {
     background: #444;
 }
-#modal-actions { display: flex; gap: 15px; margin-top: 20px; }
+#modal-actions { display: flex; justify-content: center; gap: 15px; margin-top: 20px; }
 #modal-actions button { width: auto; height: auto; padding: 10px 20px; font-size: 1rem; }
 #arenaBtn { background: rgba(155, 89, 182, 0.4); border-color: rgba(155, 89, 182, 1); }
 #arenaBtn:hover { background: rgba(155, 89, 182, 0.6); }
 #closeLevelSelectBtn { background: #555; }
-#clearSaveBtn {
-    background: #c0392b;
-    border-color: #e74c3c;
+#jumpToFrontierBtn {
+    background: var(--primary-glow);
+    color: var(--dark-bg);
+    border-color: var(--primary-glow);
     font-weight: bold;
+    text-shadow: none;
 }
-#clearSaveBtn:hover {
-    background: #e74c3c;
-    box-shadow: 0 0 10px #e74c3c;
+#jumpToFrontierBtn:hover {
+    background: #fff;
 }
+
 
 #unlock-notification {
     top: 20px; left: 50%;
@@ -355,24 +353,41 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
 .ascension-content {
     flex-grow: 1;
     position: relative;
-    overflow: visible;
+    overflow: hidden; /* Use hidden to contain the SVG, but a child can be visible */
+}
+.ascension-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 15px;
+    margin-top: 15px;
+    border-top: 1px solid var(--border-color);
+    flex-shrink: 0;
 }
 .close-ascension-grid {
-    margin-top: 15px;
-    padding: 10px 30px;
-    width: auto;
-    align-self: center;
     background: var(--secondary-glow);
     border-color: var(--secondary-glow);
     font-size: 1rem;
     font-weight: bold;
     color: white;
-    flex-shrink: 0;
 }
 .close-ascension-grid:hover {
     background: #ff40ff;
     box-shadow: 0 0 15px #ff40ff;
 }
+#clearSaveBtn {
+    background: #c0392b;
+    border-color: #e74c3c;
+    font-weight: bold;
+    padding: 10px 20px;
+    width: auto;
+    height: auto;
+}
+#clearSaveBtn:hover {
+    background: #e74c3c;
+    box-shadow: 0 0 10px #e74c3c;
+}
+
 
 .talent-node {
     position: absolute;
@@ -389,6 +404,10 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     transition: all 0.2s ease-in-out;
     z-index: 2;
 }
+.talent-node.nexus-node {
+    border-color: var(--nexus-glow);
+    box-shadow: 0 0 15px var(--nexus-glow);
+}
 .talent-node:hover {
     z-index: 3;
 }
@@ -397,8 +416,8 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
 }
 .talent-node.can-purchase {
     cursor: pointer;
-    border-color: #00ff00;
-    box-shadow: 0 0 12px #00ff00;
+    border-color: var(--nexus-glow);
+    box-shadow: 0 0 12px var(--nexus-glow);
 }
 .talent-node.can-purchase:hover {
     transform: translate(-50%, -50%) scale(1.15);
@@ -457,18 +476,17 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
 }
 
 .connector-line {
-    position: absolute;
-    height: 2px;
-    background-color: var(--border-color);
+    stroke-width: 2;
+    stroke: var(--border-color);
     opacity: 0.3;
-    transform-origin: 0 0;
-    z-index: 1;
     transition: all 0.4s ease-in-out;
 }
 .connector-line.unlocked {
-    background-color: var(--primary-glow);
-    box-shadow: 0 0 5px var(--primary-glow);
     opacity: 1;
+}
+.connector-line.synergy {
+    stroke-width: 4px;
+    filter: drop-shadow(0 0 3px var(--nexus-glow));
 }
 
 #gameOverMenu {
