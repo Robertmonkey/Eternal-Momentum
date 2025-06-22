@@ -16,6 +16,8 @@ export const state = {
     purchasedTalents: new Map(),
     essenceGainModifier: 1.0,
     highestStageBeaten: 0, 
+    unlockedOffensiveSlots: 1,
+    unlockedDefensiveSlots: 1,
     infected: false, infectionEnd: 0, lastSpore: 0,
   },
   enemies:[], pickups:[], effects: [], particles: [], decoy:null, 
@@ -45,9 +47,9 @@ export function savePlayerState() {
         unlockedPowers: [...state.player.unlockedPowers],
         purchasedTalents: [...state.player.purchasedTalents],
         highestStageBeaten: state.player.highestStageBeaten,
-        maxHealth: state.player.maxHealth,
-        speed: state.player.speed,
-        essenceGainModifier: state.player.essenceGainModifier,
+        unlockedOffensiveSlots: state.player.unlockedOffensiveSlots,
+        unlockedDefensiveSlots: state.player.unlockedDefensiveSlots,
+        // We don't save maxHealth/speed directly, they are recalculated from talents
     };
     localStorage.setItem('eternalMomentumSave', JSON.stringify(persistentData));
 }
@@ -56,6 +58,7 @@ export function loadPlayerState() {
     const savedData = localStorage.getItem('eternalMomentumSave');
     if (savedData) {
         const parsedData = JSON.parse(savedData);
+        // Load all saved properties into the state.player object
         Object.assign(state.player, {
             ...parsedData,
             unlockedPowers: new Set(parsedData.unlockedPowers),
