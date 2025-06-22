@@ -15,6 +15,11 @@ const statusBar = document.getElementById('status-effects-bar');
 const bossBannerEl = document.getElementById("bossBanner");
 const levelSelectGrid = document.getElementById("levelSelectGrid");
 const notificationBanner = document.getElementById('unlock-notification');
+const customConfirm = document.getElementById('custom-confirm');
+const confirmTitle = document.getElementById('custom-confirm-title');
+const confirmText = document.getElementById('custom-confirm-text');
+const confirmYesBtn = document.getElementById('confirm-yes');
+const confirmNoBtn = document.getElementById('confirm-no');
 
 function updateStatusEffectsUI() {
     const now = Date.now();
@@ -81,8 +86,8 @@ export function updateUI() {
         const qOffSlot = document.getElementById(`q-off-${i}`);
         const qDefSlot = document.getElementById(`q-def-${i}`);
         
-        qOffSlot.classList.toggle('visible', !!offPower && i < state.player.unlockedOffensiveSlots);
-        qDefSlot.classList.toggle('visible', !!defPower && i < state.player.unlockedDefensiveSlots);
+        qOffSlot.classList.toggle('visible', i < state.player.unlockedOffensiveSlots);
+        qDefSlot.classList.toggle('visible', i < state.player.unlockedDefensiveSlots);
 
         qOffSlot.innerHTML = offPower ? powers[offPower].emoji : '';
         qOffSlot.setAttribute('data-tooltip-text', offPower ? powers[offPower].desc : '');
@@ -146,4 +151,29 @@ export function populateLevelSelect(bossData, startSpecificLevel) {
         }
         levelSelectGrid.appendChild(button);
     });
+}
+
+export function showCustomConfirm(title, text, onConfirm) {
+    confirmTitle.innerText = title;
+    confirmText.innerText = text;
+
+    const close = () => {
+        customConfirm.style.display = 'none';
+        confirmYesBtn.removeEventListener('click', handleYes);
+        confirmNoBtn.removeEventListener('click', handleNo);
+    }
+
+    const handleYes = () => {
+        onConfirm();
+        close();
+    }
+
+    const handleNo = () => {
+        close();
+    }
+
+    confirmYesBtn.addEventListener('click', handleYes);
+    confirmNoBtn.addEventListener('click', handleNo);
+
+    customConfirm.style.display = 'flex';
 }
