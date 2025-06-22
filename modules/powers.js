@@ -2,13 +2,11 @@
 import { state } from './state.js';
 import { AudioManager } from './audio.js';
 
-// Helper to simplify audio calls within this module
 function play(soundId) {
     const soundElement = document.getElementById(soundId + "Sound");
     if (soundElement) AudioManager.playSfx(soundElement);
 }
 
-// All power-up definitions
 export const powers={
   shield:{emoji:"🛡️",desc:"Blocks damage for 6s",apply:(utils, game)=>{ state.player.shield=true; game.addStatusEffect('Shield', '🛡️', 6000); utils.spawnParticles(state.particles, state.player.x,state.player.y,"#f1c40f",30,4,30); setTimeout(()=>state.player.shield=false,6000); }},
   heal:{emoji:"❤️",desc:"+30 HP",apply:()=>{ state.player.health=Math.min(state.player.maxHealth,state.player.health+30); }},
@@ -31,7 +29,6 @@ export const powers={
 
 export const offensivePowers = ['shockwave', 'missile', 'chain', 'orbitalStrike', 'ricochetShot', 'bulletNova', 'black_hole'];
 
-// This function handles the logic of using a power from the UI.
 export function usePower(queueType, utils, game, mx, my){
   let powerType, inventory;
   const slotId = queueType === 'offensive' ? 'slot-off-0' : 'slot-def-0';
@@ -46,7 +43,6 @@ export function usePower(queueType, utils, game, mx, my){
   slotEl.classList.add('activated');
   setTimeout(()=> slotEl.classList.remove('activated'), 200);
 
-  // The 'apply' function now receives the necessary modules/data it might need
   const applyArgs = [utils, game, mx, my];
 
   if (state.stacked && powerType !== 'stack') {
@@ -55,7 +51,6 @@ export function usePower(queueType, utils, game, mx, my){
     state.player.statusEffects = state.player.statusEffects.filter(e => e.name !== 'Stacked');
   }
 
-  // CORRECTED: Added state.particles as the first argument
   utils.spawnParticles(state.particles, state.player.x, state.player.y, "#fff", 20, 3, 25);
   powers[powerType].apply(...applyArgs);
   inventory.shift();
