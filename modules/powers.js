@@ -118,8 +118,8 @@ export const powers={
       state.effects.push({ type: 'chain_lightning', targets: targets, links: [], startTime: Date.now(), durationPerLink: 80, damage: damage, caster: state.player }); 
     }
   },
-  gravity:{emoji:"🌀",desc:"Pulls enemies for 1s",apply:(utils, game)=>{ play('gravity'); state.gravityActive=true; state.gravityEnd=Date.now()+1000; utils.spawnParticles(innerWidth/2, innerHeight/2,"#9b59b6",100,4,40); }},
-  speed:{emoji:"🚀",desc:"Speed Boost for 5s",apply:(utils, game)=>{ state.player.speed*=1.5; game.addStatusEffect('Speed Boost', '🚀', 5000); utils.spawnParticles(state.player.x,state.player.y,"#00f5ff",40,3,30); setTimeout(()=>state.player.speed/=1.5,5000); }},
+  gravity:{emoji:"🌀",desc:"Pulls enemies for 1s",apply:(utils, game)=>{ play('gravity'); state.gravityActive=true; state.gravityEnd=Date.now()+1000; utils.spawnParticles(state.particles, innerWidth/2, innerHeight/2,"#9b59b6",100,4,40); }},
+  speed:{emoji:"🚀",desc:"Speed Boost for 5s",apply:(utils, game)=>{ state.player.speed*=1.5; game.addStatusEffect('Speed Boost', '🚀', 5000); utils.spawnParticles(state.particles, state.player.x,state.player.y,"#00f5ff",40,3,30); setTimeout(()=>state.player.speed/=1.5,5000); }},
   freeze:{emoji:"🧊",desc:"Freeze enemies for 4s",apply:(utils, game)=>{ state.enemies.forEach(e=>{ if (e.frozen) return; e.frozen=true; e.wasFrozen = true; e._dx=e.dx; e._dy=e.dy; e.dx=e.dy=0; }); utils.spawnParticles(state.particles, state.player.x,state.player.y,"#0ff",60,3,30); setTimeout(()=>{ state.enemies.forEach(e=>{ if (!e.frozen) return; e.frozen=false; e.dx=e._dx; e.dy=e._dy; }); },4000); }},
   decoy:{emoji:"🔮",desc:"Decoy lasts 5s",apply:(utils, game)=>{
       const isMobile = state.player.purchasedTalents.has('quantum-duplicate');
@@ -131,9 +131,9 @@ export const powers={
           isTaunting: true,
           isMobile: isMobile
       }; 
-      utils.spawnParticles(state.player.x,state.player.y,"#8e44ad",50,3,30); 
+      utils.spawnParticles(state.particles, state.player.x,state.player.y,"#8e44ad",50,3,30); 
   }},
-  stack:{emoji:"🧠",desc:"Double next power-up",apply:(utils, game)=>{ state.stacked=true; game.addStatusEffect('Stacked', '🧠', 60000); utils.spawnParticles(state.player.x,state.player.y,"#aaa",40,4,30); }},
+  stack:{emoji:"🧠",desc:"Double next power-up",apply:(utils, game)=>{ state.stacked=true; game.addStatusEffect('Stacked', '🧠', 60000); utils.spawnParticles(state.particles, state.player.x,state.player.y,"#aaa",40,4,30); }},
   score: {emoji: "💎", desc: "Gain a large amount of Essence.", apply: (utils, game) => { game.addEssence(200 + state.player.level * 10); utils.spawnParticles(state.particles, state.player.x, state.player.y, "#f1c40f", 40, 4, 30); }},
   repulsion: {emoji: "🖐️", desc: "Creates a 5s push-away field.", apply: () => { 
       const hasKineticOverload = state.player.purchasedTalents.has('kinetic-overload');
@@ -235,6 +235,6 @@ export function usePower(queueType, utils, game, mx, my){
     }
   }
 
-  utils.spawnParticles(state.player.x, state.player.y, "#fff", 20, 3, 25);
+  utils.spawnParticles(state.particles, state.player.x, state.player.y, "#fff", 20, 3, 25);
   powers[powerType].apply(...applyArgs);
 }
