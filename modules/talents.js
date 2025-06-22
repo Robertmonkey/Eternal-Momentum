@@ -6,14 +6,13 @@ export const TALENT_GRID_CONFIG = {
         'core-nexus': {
             id: 'core-nexus',
             name: 'Core Nexus',
-            description: (rank, maxed) => maxed 
-                ? 'Unlocks the primary constellations.'
-                : 'Unlock the primary constellations, allowing for further specialization.',
+            description: (rank, maxed) => 'The heart of the Stellar Weave. Unlocks the primary constellations.',
             icon: '💠',
             maxRanks: 1,
             costPerRank: [1],
-            position: { x: 50, y: 5 }, // Top center
+            position: { x: 50, y: 5 },
             prerequisites: [],
+            isNexus: true,
         },
         'overload-protocol': {
             id: 'overload-protocol',
@@ -22,41 +21,44 @@ export const TALENT_GRID_CONFIG = {
             icon: '⚛️',
             maxRanks: 1,
             costPerRank: [50],
-            position: { x: 50, y: 95 }, // Bottom center
+            position: { x: 50, y: 95 },
             prerequisites: ['phase-momentum', 'unstable-singularity', 'energetic-recycling'],
+            isNexus: true,
         }
     },
 
-    // --- AEGIS CONSTALLATION (Defense & Survival - Left side) ---
+    // --- AEGIS CONSTALLATION (Defense & Survival) ---
     aegis: {
         color: 'var(--primary-glow)',
         'exo-weave-plating': {
             id: 'exo-weave-plating',
             name: 'Exo-Weave Plating',
-            description: (rank, maxed) => {
-                const values = [15, 15, 20];
-                const total = values.reduce((a, b) => a + b, 0);
-                return maxed
-                    ? `Increases Max Health by a total of ${total}.`
-                    : `Increases Max Health by ${values[rank-1] || 0}.`;
-            },
+            description: (rank, maxed) => `Increases Max Health by ${[15, 20, 25][rank-1] || 0}. Total: +60.`,
             icon: '❤️',
             maxRanks: 3,
-            costPerRank: [1, 1, 2],
-            position: { x: 35, y: 20 },
+            costPerRank: [1, 2, 2],
+            position: { x: 30, y: 25 },
             prerequisites: ['core-nexus'],
         },
         'aegis-shield': {
             id: 'aegis-shield',
             name: 'Extended Capacitor',
             powerPrerequisite: 'shield',
-            description: (rank, maxed) => maxed
-                ? 'Shield power-up duration +3s total.'
-                : `Shield power-up duration +1.5s per rank.`,
+            description: (rank, maxed) => `Shield power-up duration +${[1.5, 1.5][rank-1] || 0}s. Total: +3s.`,
             icon: '⏱️',
             maxRanks: 2,
             costPerRank: [1, 1],
-            position: { x: 25, y: 35 },
+            position: { x: 20, y: 40 },
+            prerequisites: ['exo-weave-plating'],
+        },
+        'fleet-footed': {
+            id: 'fleet-footed',
+            name: 'Fleet Footed',
+            description: (rank, maxed) => `Increases base movement speed by ${[6, 6][rank-1] || 0}%. Total: +12%.`,
+            icon: '🏃',
+            maxRanks: 2,
+            costPerRank: [1, 2],
+            position: { x: 40, y: 45 },
             prerequisites: ['exo-weave-plating'],
         },
         'aegis-retaliation': {
@@ -64,22 +66,10 @@ export const TALENT_GRID_CONFIG = {
             name: 'Mastery: Aegis Retaliation',
             powerPrerequisite: 'shield',
             description: () => 'When your Shield expires or breaks, it releases a Repulsion wave.',
-            icon: '🖐️',
+            icon: '💥',
             maxRanks: 1,
             costPerRank: [2],
-            position: { x: 15, y: 50 },
-            prerequisites: ['aegis-shield'],
-        },
-        'fleet-footed': {
-            id: 'fleet-footed',
-            name: 'Fleet Footed',
-            description: (rank, maxed) => maxed
-                ? 'Increases base movement speed by a total of 12%.'
-                : `Increases base movement speed by ${[5, 7][rank-1] || 0}%.`,
-            icon: '🏃',
-            maxRanks: 2,
-            costPerRank: [1, 2],
-            position: { x: 35, y: 50 },
+            position: { x: 10, y: 55 },
             prerequisites: ['aegis-shield'],
         },
         'kinetic-overload': {
@@ -90,20 +80,18 @@ export const TALENT_GRID_CONFIG = {
             icon: '✋',
             maxRanks: 1,
             costPerRank: [2],
-            position: { x: 25, y: 65 },
-            prerequisites: ['aegis-retaliation', 'fleet-footed'],
-        },
-        'reactive-plating': {
-            id: 'reactive-plating',
-            name: 'Reactive Plating',
-            description: (rank, maxed) => maxed
-                ? 'After taking a single hit of 20+ damage, gain a temporary shield for 3s. (30s Cooldown)'
-                : `After taking a single hit of 20+ damage, gain a temporary shield for ${[1, 2, 3][rank-1] || 0}s. (30s Cooldown)`,
-            icon: '🛡️',
-            maxRanks: 3,
-            costPerRank: [2, 2, 3],
-            position: { x: 45, y: 65 },
+            position: { x: 30, y: 60 },
             prerequisites: ['fleet-footed'],
+        },
+        'last-stand': { // <-- NEW DEAD-END TALENT
+            id: 'last-stand',
+            name: 'Last Stand',
+            description: () => 'Once per stage, taking fatal damage instead sets your Health to 1 and grants 3s of invulnerability.',
+            icon: '💪',
+            maxRanks: 1,
+            costPerRank: [4],
+            position: { x: 5, y: 75 },
+            prerequisites: ['aegis-retaliation'],
         },
         'phase-momentum': {
             id: 'phase-momentum',
@@ -112,22 +100,22 @@ export const TALENT_GRID_CONFIG = {
             icon: '👻',
             maxRanks: 1,
             costPerRank: [3],
-            position: { x: 35, y: 80 },
-            prerequisites: ['kinetic-overload', 'reactive-plating'],
+            position: { x: 30, y: 80 },
+            prerequisites: ['kinetic-overload'],
         }
     },
     
-    // --- HAVOC CONSTALLATION (Offense & Destruction - Right side) ---
+    // --- HAVOC CONSTALLATION (Offense & Destruction) ---
     havoc: {
         color: '#ff8800',
         'high-frequency-emitters': {
             id: 'high-frequency-emitters',
             name: 'High-Frequency Emitters',
-            description: (rank, maxed) => maxed ? 'All damage increased by a total of 12%.' : `All damage increased by ${[5, 7][rank-1] || 0}%.`,
-            icon: '💥',
+            description: (rank, maxed) => `All damage increased by ${[5, 7][rank-1] || 0}%. Total: +12%.`,
+            icon: '📈',
             maxRanks: 2,
             costPerRank: [1, 2],
-            position: { x: 65, y: 20 },
+            position: { x: 70, y: 25 },
             prerequisites: ['core-nexus'],
         },
         'targeting-algorithm': {
@@ -138,19 +126,8 @@ export const TALENT_GRID_CONFIG = {
             icon: '☄️',
             maxRanks: 1,
             costPerRank: [3],
-            position: { x: 75, y: 35 },
+            position: { x: 60, y: 40 },
             prerequisites: ['high-frequency-emitters'],
-        },
-        'havoc-berserk': {
-            id: 'havoc-berserk',
-            name: 'Unstoppable Rage',
-            powerPrerequisite: 'berserk',
-            description: () => `While Berserk, you are immune to stuns and slows.`,
-            icon: '💢',
-            maxRanks: 1,
-            costPerRank: [3],
-            position: { x: 65, y: 50 },
-            prerequisites: ['targeting-algorithm'],
         },
         'unstable-payload': {
             id: 'unstable-payload',
@@ -160,30 +137,40 @@ export const TALENT_GRID_CONFIG = {
             icon: '🔄',
             maxRanks: 1,
             costPerRank: [2],
-            position: { x: 85, y: 50 },
-            prerequisites: ['targeting-algorithm'],
+            position: { x: 80, y: 45 },
+            prerequisites: ['high-frequency-emitters'],
         },
         'havoc-chain': {
             id: 'havoc-chain',
             name: 'High Voltage',
             powerPrerequisite: 'chain',
-            description: (rank, maxed) => maxed ? 'Chain Lightning jumps to +2 additional targets.' : `Chain Lightning jumps to +1 additional target per rank.`,
+            description: (rank, maxed) => `Chain Lightning jumps to +${[1,1][rank-1] || 0} additional target. Total: +2.`,
             icon: '⚡',
             maxRanks: 2,
             costPerRank: [1, 1],
-            position: { x: 65, y: 65 },
-            prerequisites: ['havoc-berserk'],
+            position: { x: 60, y: 60 },
+            prerequisites: ['targeting-algorithm'],
         },
         'nova-pulsar': {
             id: 'nova-pulsar',
             name: 'Nova Pulsar',
             powerPrerequisite: 'bulletNova',
-            description: () => 'Your Bullet Nova power now fires three simultaneous spirals of projectiles, tripling its density and area coverage.',
+            description: () => 'Your Bullet Nova power now fires three simultaneous spirals of projectiles, tripling its density.',
             icon: '💫',
             maxRanks: 1,
             costPerRank: [2],
-            position: { x: 85, y: 65 },
+            position: { x: 90, y: 60 },
             prerequisites: ['unstable-payload'],
+        },
+        'glass-cannon': { // <-- NEW DEAD-END TALENT
+            id: 'glass-cannon',
+            name: 'Glass Cannon',
+            description: () => 'Increases all damage dealt by 15%, but also increases all damage received by 15%.',
+            icon: '⚠️',
+            maxRanks: 1,
+            costPerRank: [3],
+            position: { x: 55, y: 75 },
+            prerequisites: ['havoc-chain'],
         },
         'unstable-singularity': {
             id: 'unstable-singularity',
@@ -193,18 +180,18 @@ export const TALENT_GRID_CONFIG = {
             icon: '⚫',
             maxRanks: 1,
             costPerRank: [3],
-            position: { x: 75, y: 80 },
-            prerequisites: ['havoc-chain', 'nova-pulsar'],
+            position: { x: 80, y: 80 },
+            prerequisites: ['nova-pulsar'],
         },
     },
 
-    // --- FLUX CONSTALLATION (Utility & Mastery - Center) ---
+    // --- FLUX CONSTALLATION (Utility & Mastery) ---
     flux: {
         color: 'var(--secondary-glow)',
         'essence-conduit': {
             id: 'essence-conduit',
             name: 'Essence Conduit',
-            description: (rank, maxed) => maxed ? 'Gain 25% more Essence (XP).' : `Gain ${[10, 15][rank-1] || 0}% more Essence (XP).`,
+            description: (rank, maxed) => `Gain ${[10, 15][rank-1] || 0}% more Essence (XP). Total: +25%.`,
             icon: '💰',
             maxRanks: 2,
             costPerRank: [1, 2],
@@ -214,7 +201,7 @@ export const TALENT_GRID_CONFIG = {
         'resonance-magnet': {
             id: 'resonance-magnet',
             name: 'Resonance Magnet',
-            description: (rank, maxed) => maxed ? 'Increases pickup radius by a total of 150px.' : `Increases pickup radius by 75px per rank.`,
+            description: (rank, maxed) => `Increases pickup radius by ${[75,75][rank-1] || 0}px. Total: +150px.`,
             icon: '🧲',
             maxRanks: 2,
             costPerRank: [1, 1],
@@ -224,9 +211,7 @@ export const TALENT_GRID_CONFIG = {
         'power-scavenger': {
             id: 'power-scavenger',
             name: 'Power Scavenger',
-            description: (rank, maxed) => maxed
-                ? 'Non-boss enemies have a 2.5% chance to drop an Essence Crystal, granting a burst of experience points when collected.'
-                : `Non-boss enemies have a ${[1, 1.5][rank-1] || 0}% chance to drop an Essence Crystal, granting a burst of experience points when collected.`,
+            description: (rank, maxed) => `Non-boss enemies have a ${[1, 1.5][rank-1] || 0}% chance to drop an Essence Crystal. Total: 2.5%.`,
             icon: '💎',
             maxRanks: 2,
             costPerRank: [2, 2],
@@ -237,34 +222,34 @@ export const TALENT_GRID_CONFIG = {
             id: 'temporal-collapse',
             name: 'Mastery: Temporal Collapse',
             powerPrerequisite: 'decoy',
-            description: () => `When the Decoy expires, it collapses, creating a temporary field that dramatically slows enemies.`,
+            description: () => `When the Decoy expires, it collapses into a temporary slow field.`,
             icon: '🕸️',
             maxRanks: 1,
             costPerRank: [2],
             position: { x: 60, y: 55 },
             prerequisites: ['resonance-magnet'],
         },
-        'temporal-echo': {
-            id: 'temporal-echo',
-            name: 'Temporal Echo',
-            description: () => 'Begin each new run with a single, random power-up in your inventory.',
-            icon: '❓',
-            maxRanks: 1,
-            costPerRank: [3],
-            position: { x: 50, y: 65 },
-            prerequisites: ['power-scavenger', 'temporal-collapse'],
-        },
         'temporal-anomaly': {
             id: 'temporal-anomaly',
             name: 'Temporal Anomaly',
-            description: (rank, maxed) => maxed ? 'Power-ups on the ground last 50% longer.' : `Power-ups on the ground last ${[25, 50][rank-1] || 0}% longer.`,
+            description: (rank, maxed) => `Power-ups on the ground last ${[25, 25][rank-1] || 0}% longer. Total: +50%.`,
             icon: '⏳',
             maxRanks: 2,
             costPerRank: [1, 1],
-            position: { x: 50, y: 80 },
-            prerequisites: ['temporal-echo'],
+            position: { x: 35, y: 70 },
+            prerequisites: ['power-scavenger'],
         },
-         'energetic-recycling': {
+        'preordinance': { // <-- NEW DEAD-END TALENT
+            id: 'preordinance',
+            name: 'Preordinance',
+            description: () => 'The first power-up you use each stage is duplicated, as if affected by the "Stack" power-up.',
+            icon: '🎲',
+            maxRanks: 1,
+            costPerRank: [4],
+            position: { x: 65, y: 70 },
+            prerequisites: ['temporal-collapse'],
+        },
+        'energetic-recycling': {
             id: 'energetic-recycling',
             name: 'Capstone: Energetic Recycling',
             description: () => `Using a power-up has a 20% chance that it is not consumed.`,
@@ -272,7 +257,7 @@ export const TALENT_GRID_CONFIG = {
             maxRanks: 1,
             costPerRank: [4],
             position: { x: 50, y: 85 },
-            prerequisites: ['temporal-anomaly'],
+            prerequisites: ['temporal-anomaly', 'preordinance'],
         },
     }
 };
