@@ -83,8 +83,8 @@ export function updateUI() {
     for (let i = 1; i <= 2; i++) {
         const offPower = state.offensiveInventory[i];
         const defPower = state.defensiveInventory[i];
-        const qOffSlot = document.getElementById(`slot-off-${i}`);
-        const qDefSlot = document.getElementById(`slot-def-${i}`);
+        const qOffSlot = document.getElementById(`q-off-${i}`);
+        const qDefSlot = document.getElementById(`q-def-${i}`);
         
         if (qOffSlot) {
             const isOffSlotVisible = (i < state.player.unlockedOffensiveSlots) && offPower;
