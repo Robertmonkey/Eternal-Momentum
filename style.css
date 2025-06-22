@@ -480,6 +480,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     margin-bottom: 25px;
     line-height: 1.6;
     opacity: 0.9;
+    color: var(--font-color);
 }
 #custom-confirm-actions {
     display: flex;
