@@ -81,7 +81,6 @@ export function spawnEnemy(isBoss = false, bossId = null, location = null) {
     if (isBoss) {
         const bossIndex = (state.currentStage - 1);
         if (bossIndex >= bossData.length) {
-            // Handle victory condition later
             console.log("All stages cleared!");
             return null;
         }
@@ -233,17 +232,7 @@ export function gameTick(mx, my) {
     utils.drawCircle(ctx, state.player.x, state.player.y, state.player.r, state.player.shield ? "#f1c40f" : ((state.player.berserkUntil > Date.now()) ? '#e74c3c' : (state.player.infected ? '#55efc4' : "#3498db")));
     
     if (state.decoy) {
-        let decoyColor = "#9b59b6";
-        if (state.decoy.isTaunting) {
-            const pulse = Math.sin(Date.now() / 200) * 5;
-            ctx.strokeStyle = `rgba(240, 0, 255, 0.6)`;
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(state.decoy.x, state.decoy.y, state.decoy.r + 10 + pulse, 0, 2*Math.PI);
-            ctx.stroke();
-            decoyColor = "#f000ff";
-        }
-        utils.drawCircle(ctx, state.decoy.x, state.decoy.y, state.decoy.r, decoyColor);
+        utils.drawCircle(ctx, state.decoy.x, state.decoy.y, state.decoy.r, "#9b59b6");
         if (Date.now() > state.decoy.expires) {
             if(state.player.purchasedTalents.has('temporal-collapse')) {
                 state.effects.push({ type: 'slow_zone', x: state.decoy.x, y: state.decoy.y, r: 150, endTime: Date.now() + 4000 });
@@ -276,7 +265,7 @@ export function gameTick(mx, my) {
                     }
                     
                     addEssence(300);
-                    state.currentStage++; // Go to next stage for next spawn
+                    state.currentStage++;
                     savePlayerState();
                 }
             } else {
