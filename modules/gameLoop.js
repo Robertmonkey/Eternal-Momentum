@@ -148,9 +148,11 @@ export function spawnEnemy(isBoss = false, bossId = null, location = null) {
         Object.assign(e, bd);
         
         const baseHp = bd.maxHP || 200;
-        const scalingFactor = 15;
         const bossIndex = (state.currentStage - 1);
-        const finalHp = baseHp + (bossIndex * bossIndex * scalingFactor);
+        
+        // MODIFIED: Boss health scaling is now less aggressive
+        const scalingFactor = 25; 
+        const finalHp = baseHp + (Math.pow(bossIndex, 1.5) * scalingFactor);
         e.maxHP = finalHp;
         e.hp = e.maxHP;
 
