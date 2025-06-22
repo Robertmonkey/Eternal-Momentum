@@ -1,5 +1,4 @@
 // modules/state.js
-import { applyAllTalentEffects } from './ascension.js';
 
 export const state = {
   player:{
@@ -89,9 +88,6 @@ export function loadPlayerState() {
 export function resetGame(isArena = false) {
     const canvas = document.getElementById("gameCanvas");
     
-    // Apply all permanent stat upgrades from the Ascension Grid
-    applyAllTalentEffects();
-
     // Reset only the run-specific stats
     state.player.x = canvas.width / 2;
     state.player.y = canvas.height / 2;
