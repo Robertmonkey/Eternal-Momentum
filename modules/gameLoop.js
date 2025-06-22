@@ -1,7 +1,7 @@
 // modules/gameLoop.js
 import { state, savePlayerState } from './state.js';
 import { THEMATIC_UNLOCKS, SPAWN_WEIGHTS } from './config.js';
-import { powers } from './powers.js';
+import { powers, offensivePowers } from './powers.js';
 import { bossData } from './bosses.js';
 import { updateUI, showBossBanner, showUnlockNotification } from './ui.js';
 import * as utils from './utils.js';
@@ -66,6 +66,7 @@ export function spawnEnemy(isBoss = false, bossId = null, location = null) {
     if (isBoss) {
         const bossIndex = (state.currentStage - 1);
         if (bossIndex >= bossData.length) {
+            console.log("All bosses defeated! VICTORY!");
             state.gameOver = true;
             return null;
         }
@@ -117,7 +118,7 @@ export function gameTick(mx, my) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     utils.applyScreenShake(ctx);
     
-    // --- Player Logic ---
+    // --- Player Logic & Drawing ---
     let finalMx = mx;
     let finalMy = my;
     if (state.player.controlsInverted) {
@@ -147,7 +148,7 @@ export function gameTick(mx, my) {
         if (Date.now() > state.decoy.expires) state.decoy = null;
     }
 
-    // --- Enemy Logic ---
+    // --- Enemy Logic & Drawing ---
     for (let i = state.enemies.length - 1; i >= 0; i--) {
         const e = state.enemies[i];
         if (e.hp <= 0) {
@@ -157,15 +158,12 @@ export function gameTick(mx, my) {
                     state.player.ascensionPoints += 3;
                     showUnlockNotification("Stage Cleared! +3 AP", `Level ${state.currentStage + 1} Unlocked`);
                 }
-                
                 utils.triggerScreenShake(250, 5);
                 addEssence(300);
-                
                 state.currentStage++;
                 state.bossActive = false;
                 state.bossSpawnCooldownEnd = Date.now() + 5000;
                 savePlayerState();
-
                 if (e.onDeath) e.onDeath(e, state, spawnEnemy, (x, y, c, n, spd, life, r) => utils.spawnParticles(state.particles, x, y, c, n, spd, life, r), play, stopLoopingSfx);
                 state.enemies.splice(i, 1);
                 if (state.currentBoss === e) {
@@ -178,13 +176,13 @@ export function gameTick(mx, my) {
             continue;
         }
 
-        let enemySpeedMultiplier = 1;
-        state.effects.forEach(effect => { if(effect.type === 'slow_zone' && Math.hypot(e.x - effect.x, e.y - effect.y) < effect.r) { enemySpeedMultiplier = 0.5; } });
         if(!e.frozen && !e.hasCustomMovement){ 
             let tgt = state.decoy || state.player;
+            let enemySpeedMultiplier = 1;
+            state.effects.forEach(effect => { if(effect.type === 'slow_zone' && Math.hypot(e.x - effect.x, e.y - effect.y) < effect.r) { enemySpeedMultiplier = 0.5; } });
             if (tgt) {
-              const vx = (tgt.x - e.x) * 0.005; 
-              const vy = (tgt.y - e.y) * 0.005; 
+              const vx = (tgt.x - e.x) * 0.005 * enemySpeedMultiplier; 
+              const vy = (tgt.y - e.y) * 0.005 * enemySpeedMultiplier; 
               e.x += vx; e.y += vy; 
             }
             e.x += e.dx * enemySpeedMultiplier; 
@@ -192,7 +190,7 @@ export function gameTick(mx, my) {
             if(e.x<e.r || e.x>canvas.width-e.r) e.dx*=-1; 
             if(e.y<e.r || e.y>canvas.height-e.r) e.dy*=-1;
         }
-
+        
         const bossLogicArgs = [e, ctx, state, utils, gameHelpers];
         if (e.boss && e.logic) e.logic(...bossLogicArgs);
         
@@ -204,7 +202,7 @@ export function gameTick(mx, my) {
         if(pDist < e.r+state.player.r){ if (e.onCollision) e.onCollision(e, state.player, addStatusEffect); if(!state.player.shield){ let damage = e.boss ? (e.enraged ? 20 : 10) : 1; if (state.player.berserkUntil > Date.now()) damage *= 2; state.player.health -= damage; play('hit'); if(e.onDamage) e.onDamage(e, damage, state.player, state, (x,y,c,n,spd,life,r)=>utils.spawnParticles(state.particles,x,y,c,n,spd,life,r)); if(state.player.health<=0) state.gameOver=true; } else { state.player.shield=false; } const ang=Math.atan2(state.player.y-e.y,state.player.x-e.x); state.player.x=e.x+Math.cos(ang)*(e.r+state.player.r); state.player.y=e.y+Math.sin(ang)*(e.r+state.player.r); }
     }
 
-    // --- Pickup Logic ---
+    // --- Pickup Logic & Drawing ---
     for (let i = state.pickups.length - 1; i >= 0; i--) {
         const p = state.pickups[i];
         p.x += p.dx || 0;
@@ -227,9 +225,27 @@ export function gameTick(mx, my) {
         }
     }
 
-    // --- Effects Logic ---
+    // --- Effects Logic & Drawing ---
     state.effects.forEach((effect, index) => {
-        // ... (all effect logic like shockwave, chain lightning, etc.)
+        if (effect.type === 'shockwave') {
+            const elapsed = (Date.now() - effect.startTime) / 1000;
+            effect.radius = elapsed * effect.speed;
+            ctx.strokeStyle = `rgba(255, 255, 255, ${1-(effect.radius/effect.maxRadius)})`;
+            ctx.lineWidth = 10;
+            ctx.beginPath();
+            ctx.arc(effect.x, effect.y, effect.radius, 0, 2 * Math.PI);
+            ctx.stroke();
+            let targets = (effect.caster === state.player) ? state.enemies : [state.player];
+            targets.forEach(target => {
+                if (!effect.hitEnemies.has(target) && Math.abs(Math.hypot(target.x - effect.x, target.y - effect.y) - effect.radius) < target.r + 5) {
+                    let dmg = (target.boss || target === state.player) ? effect.damage : 1000;
+                    if(target.health) target.health -= dmg; else target.hp -= dmg;
+                    if (target.onDamage) target.onDamage(target, dmg, effect.caster);
+                    effect.hitEnemies.add(target);
+                }
+            });
+            if (effect.radius >= effect.maxRadius) state.effects.splice(index, 1);
+        }
     });
     
     utils.updateParticles(ctx, state.particles);
