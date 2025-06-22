@@ -86,8 +86,11 @@ export function updateUI() {
         const qOffSlot = document.getElementById(`q-off-${i}`);
         const qDefSlot = document.getElementById(`q-def-${i}`);
         
-        qOffSlot.classList.toggle('visible', i < state.player.unlockedOffensiveSlots);
-        qDefSlot.classList.toggle('visible', i < state.player.unlockedDefensiveSlots);
+        const isOffSlotVisible = (i < state.player.unlockedOffensiveSlots) && offPower;
+        qOffSlot.classList.toggle('visible', isOffSlotVisible);
+
+        const isDefSlotVisible = (i < state.player.unlockedDefensiveSlots) && defPower;
+        qDefSlot.classList.toggle('visible', isDefSlotVisible);
 
         qOffSlot.innerHTML = offPower ? powers[offPower].emoji : '';
         qOffSlot.setAttribute('data-tooltip-text', offPower ? powers[offPower].desc : '');
