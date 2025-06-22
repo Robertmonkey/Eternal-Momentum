@@ -12,7 +12,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '💠',
             maxRanks: 1,
             costPerRank: [1],
-            position: { x: 50, y: 10 },
+            position: { x: 50, y: 5 }, // Top center
             prerequisites: [],
         },
         'overload-protocol': {
@@ -22,12 +22,12 @@ export const TALENT_GRID_CONFIG = {
             icon: '⚛️',
             maxRanks: 1,
             costPerRank: [5],
-            position: { x: 50, y: 100 },
+            position: { x: 50, y: 95 }, // Bottom center
             prerequisites: ['phase-momentum', 'unstable-singularity', 'energetic-recycling'],
         }
     },
 
-    // --- AEGIS CONSTALLATION (Defense & Survival - Cyan) ---
+    // --- AEGIS CONSTALLATION (Defense & Survival - Left side of the diamond) ---
     aegis: {
         color: 'var(--primary-glow)',
         'exo-weave-plating': {
@@ -43,20 +43,8 @@ export const TALENT_GRID_CONFIG = {
             icon: '❤️',
             maxRanks: 3,
             costPerRank: [1, 1, 2],
-            position: { x: 30, y: 25 },
+            position: { x: 35, y: 20 },
             prerequisites: ['core-nexus'],
-        },
-        'fleet-footed': {
-            id: 'fleet-footed',
-            name: 'Fleet Footed',
-            description: (rank, maxed) => maxed
-                ? 'Increases base movement speed by a total of 12%.'
-                : `Increases base movement speed by ${[5, 7][rank-1] || 0}%.`,
-            icon: '🏃',
-            maxRanks: 2,
-            costPerRank: [1, 2],
-            position: { x: 15, y: 40 },
-            prerequisites: ['exo-weave-plating'],
         },
         'aegis-shield': {
             id: 'aegis-shield',
@@ -68,7 +56,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '⏱️',
             maxRanks: 2,
             costPerRank: [1, 1],
-            position: { x: 30, y: 45 },
+            position: { x: 25, y: 35 },
             prerequisites: ['exo-weave-plating'],
         },
         'aegis-retaliation': {
@@ -79,32 +67,20 @@ export const TALENT_GRID_CONFIG = {
             icon: '🖐️',
             maxRanks: 1,
             costPerRank: [2],
-            position: { x: 30, y: 60 },
+            position: { x: 15, y: 50 },
             prerequisites: ['aegis-shield'],
         },
-        'aegis-repulsion': {
-            id: 'aegis-repulsion',
-            name: 'Kinetic Overload',
-            powerPrerequisite: 'repulsion',
-            description: () => 'Repulsion wave violently knocks enemies back.',
-            icon: '👊',
-            maxRanks: 1,
-            costPerRank: [2],
-            position: { x: 45, y: 25 },
-            prerequisites: ['core-nexus'],
-        },
-        'aegis-freeze': {
-            id: 'aegis-freeze',
-            name: 'Cryo-Core',
-            powerPrerequisite: 'freeze',
+        'fleet-footed': {
+            id: 'fleet-footed',
+            name: 'Fleet Footed',
             description: (rank, maxed) => maxed
-                ? 'Frozen enemies have a 50% chance to shatter on death, damaging nearby enemies.'
-                : `Frozen enemies have a ${[25, 50][rank-1] || 0}% chance to shatter on death, damaging nearby enemies.`,
-            icon: '🧊',
+                ? 'Increases base movement speed by a total of 12%.'
+                : `Increases base movement speed by ${[5, 7][rank-1] || 0}%.`,
+            icon: '🏃',
             maxRanks: 2,
-            costPerRank: [2, 2],
-            position: { x: 45, y: 40 },
-            prerequisites: ['aegis-repulsion'],
+            costPerRank: [1, 2],
+            position: { x: 35, y: 50 },
+            prerequisites: ['aegis-shield'],
         },
         'reactive-plating': {
             id: 'reactive-plating',
@@ -115,20 +91,8 @@ export const TALENT_GRID_CONFIG = {
             icon: '🛡️',
             maxRanks: 3,
             costPerRank: [2, 2, 3],
-            position: { x: 45, y: 60 },
-            prerequisites: ['aegis-freeze'],
-        },
-        'gravitic-dampeners': {
-            id: 'gravitic-dampeners',
-            name: 'Gravitic Dampeners',
-            description: (rank, maxed) => maxed
-                ? 'Reduces the intensity of enemy pull effects by 50%.'
-                : `Reduces the intensity of enemy pull effects by ${[25, 50][rank-1] || 0}%.`,
-            icon: '⚖️',
-            maxRanks: 2,
-            costPerRank: [1, 2],
-            position: { x: 15, y: 60 },
-            prerequisites: ['fleet-footed'],
+            position: { x: 25, y: 65 },
+            prerequisites: ['aegis-retaliation', 'fleet-footed'],
         },
         'phase-momentum': {
             id: 'phase-momentum',
@@ -137,12 +101,12 @@ export const TALENT_GRID_CONFIG = {
             icon: '👻',
             maxRanks: 1,
             costPerRank: [3],
-            position: { x: 15, y: 80 },
-            prerequisites: ['gravitic-dampeners', 'aegis-retaliation'],
+            position: { x: 35, y: 80 },
+            prerequisites: ['reactive-plating'],
         }
     },
     
-    // --- HAVOC CONSTALLATION (Offense & Destruction - Orange/Red) ---
+    // --- HAVOC CONSTALLATION (Offense & Destruction - Right side of the diamond) ---
     havoc: {
         color: '#ff8800',
         'high-frequency-emitters': {
@@ -154,7 +118,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '💥',
             maxRanks: 2,
             costPerRank: [1, 2],
-            position: { x: 70, y: 25 },
+            position: { x: 65, y: 20 },
             prerequisites: ['core-nexus'],
         },
         'havoc-missile': {
@@ -167,7 +131,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '🎯',
             maxRanks: 2,
             costPerRank: [1, 1],
-            position: { x: 60, y: 45 },
+            position: { x: 75, y: 35 },
             prerequisites: ['high-frequency-emitters'],
         },
         'seeking-shrapnel': {
@@ -178,54 +142,8 @@ export const TALENT_GRID_CONFIG = {
             icon: '🌀',
             maxRanks: 1,
             costPerRank: [2],
-            position: { x: 60, y: 60 },
+            position: { x: 85, y: 50 },
             prerequisites: ['havoc-missile'],
-        },
-        'havoc-chain': {
-            id: 'havoc-chain',
-            name: 'High Voltage',
-            powerPrerequisite: 'chain',
-            description: (rank, maxed) => maxed
-                ? 'Chain Lightning jumps to +2 additional targets.'
-                : `Chain Lightning jumps to +1 additional target per rank.`,
-            icon: '⚡',
-            maxRanks: 2,
-            costPerRank: [1, 1],
-            position: { x: 80, y: 45 },
-            prerequisites: ['high-frequency-emitters'],
-        },
-        'volatile-finish': {
-            id: 'volatile-finish',
-            name: 'Mastery: Volatile Finish',
-            powerPrerequisite: 'chain',
-            description: () => 'The final target of Chain Lightning explodes.',
-            icon: '💣',
-            maxRanks: 1,
-            costPerRank: [2],
-            position: { x: 80, y: 60 },
-            prerequisites: ['havoc-chain'],
-        },
-        'havoc-ricochet': {
-            id: 'havoc-ricochet',
-            name: 'Tungsten Rounds',
-            powerPrerequisite: 'ricochetShot',
-            description: () => `Ricochet Shot bounces +2 additional times.`,
-            icon: '🔄',
-            maxRanks: 1,
-            costPerRank: [2],
-            position: { x: 95, y: 60 },
-            prerequisites: ['havoc-berserk'],
-        },
-        'unstable-payload': {
-            id: 'unstable-payload',
-            name: 'Mastery: Unstable Payload',
-            powerPrerequisite: 'ricochetShot',
-            description: () => 'Ricochet Shot projectile grows larger and more damaging after each bounce.',
-            icon: '📈',
-            maxRanks: 1,
-            costPerRank: [3],
-            position: { x: 95, y: 80 },
-            prerequisites: ['havoc-ricochet'],
         },
         'havoc-berserk': {
             id: 'havoc-berserk',
@@ -235,19 +153,8 @@ export const TALENT_GRID_CONFIG = {
             icon: '💢',
             maxRanks: 1,
             costPerRank: [3],
-            position: { x: 95, y: 40 },
-            prerequisites: ['high-frequency-emitters'],
-        },
-        'targeting-algorithm': {
-            id: 'targeting-algorithm',
-            name: 'Targeting Algorithm',
-            powerPrerequisite: 'orbitalStrike',
-            description: () => `Orbital Strike targeting indicators will now follow their targets.`,
-            icon: '☄️',
-            maxRanks: 1,
-            costPerRank: [3],
-            position: { x: 70, y: 70 },
-            prerequisites: ['volatile-finish', 'seeking-shrapnel'],
+            position: { x: 65, y: 50 },
+            prerequisites: ['havoc-missile'],
         },
         'unstable-singularity': {
             id: 'unstable-singularity',
@@ -257,26 +164,25 @@ export const TALENT_GRID_CONFIG = {
             icon: '⚫',
             maxRanks: 1,
             costPerRank: [3],
-            position: { x: 85, y: 80 },
-            prerequisites: ['targeting-algorithm', 'volatile-finish'],
+            position: { x: 65, y: 80 },
+            prerequisites: ['targeting-algorithm'],
+        },
+        'targeting-algorithm': {
+            id: 'targeting-algorithm',
+            name: 'Targeting Algorithm',
+            powerPrerequisite: 'orbitalStrike',
+            description: () => `Orbital Strike targeting indicators will now follow their targets.`,
+            icon: '☄️',
+            maxRanks: 1,
+            costPerRank: [3],
+            position: { x: 75, y: 65 },
+            prerequisites: ['seeking-shrapnel', 'havoc-berserk'],
         },
     },
 
-    // --- FLUX CONSTALLATION (Utility & Mastery - Purple) ---
+    // --- FLUX CONSTALLATION (Utility & Mastery - Center path of the diamond) ---
     flux: {
         color: 'var(--secondary-glow)',
-        'resonance-magnet': {
-            id: 'resonance-magnet',
-            name: 'Resonance Magnet',
-            description: (rank, maxed) => maxed
-                ? 'Increases pickup radius by a total of 150px.'
-                : `Increases pickup radius by 75px per rank.`,
-            icon: '🧲',
-            maxRanks: 2,
-            costPerRank: [1, 1],
-            position: { x: 50, y: 25 },
-            prerequisites: ['core-nexus'],
-        },
         'essence-conduit': {
             id: 'essence-conduit',
             name: 'Essence Conduit',
@@ -286,8 +192,20 @@ export const TALENT_GRID_CONFIG = {
             icon: '💰',
             maxRanks: 2,
             costPerRank: [1, 2],
+            position: { x: 50, y: 25 },
+            prerequisites: ['core-nexus'],
+        },
+        'resonance-magnet': {
+            id: 'resonance-magnet',
+            name: 'Resonance Magnet',
+            description: (rank, maxed) => maxed
+                ? 'Increases pickup radius by a total of 150px.'
+                : `Increases pickup radius by 75px per rank.`,
+            icon: '🧲',
+            maxRanks: 2,
+            costPerRank: [1, 1],
             position: { x: 50, y: 40 },
-            prerequisites: ['resonance-magnet'],
+            prerequisites: ['essence-conduit'],
         },
         'power-scavenger': {
             id: 'power-scavenger',
@@ -298,8 +216,8 @@ export const TALENT_GRID_CONFIG = {
             icon: '💎',
             maxRanks: 2,
             costPerRank: [2, 2],
-            position: { x: 35, y: 60 },
-            prerequisites: ['essence-conduit'],
+            position: { x: 40, y: 55 },
+            prerequisites: ['resonance-magnet'],
         },
         'temporal-collapse': {
             id: 'temporal-collapse',
@@ -309,8 +227,8 @@ export const TALENT_GRID_CONFIG = {
             icon: '🕸️',
             maxRanks: 1,
             costPerRank: [2],
-            position: { x: 65, y: 60 },
-            prerequisites: ['essence-conduit'],
+            position: { x: 60, y: 55 },
+            prerequisites: ['resonance-magnet'],
         },
         'temporal-anomaly': {
             id: 'temporal-anomaly',
@@ -321,7 +239,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '⏳',
             maxRanks: 2,
             costPerRank: [1, 1],
-            position: { x: 50, y: 75 },
+            position: { x: 50, y: 70 },
             prerequisites: ['power-scavenger', 'temporal-collapse'],
         },
          'energetic-recycling': {
@@ -331,7 +249,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '♻️',
             maxRanks: 1,
             costPerRank: [4],
-            position: { x: 50, y: 90 },
+            position: { x: 50, y: 85 },
             prerequisites: ['temporal-anomaly'],
         },
     }
