@@ -29,7 +29,6 @@ export const powers={
           if(state.player.shield_end_time <= shieldEndTime){
               state.player.shield=false;
               if(state.player.purchasedTalents.has('aegis-retaliation')){
-                  // Mastery: Release repulsion wave on expiry
                   state.effects.push({ type: 'repulsion_field', x: state.player.x, y: state.player.y, radius: 250, endTime: Date.now() + 100 });
                   play('shockwave');
               }
@@ -62,11 +61,9 @@ export const powers={
       const radiusTalentRank = state.player.purchasedTalents.get('havoc-missile');
       if(radiusTalentRank) radius *= (1 + (radiusTalentRank * 0.15));
       
-      // Create a visible explosion instead of just invisible damage
       state.effects.push({ type: 'shockwave', caster: state.player, x: state.player.x, y: state.player.y, radius: 0, maxRadius: radius, speed: 1200, startTime: Date.now(), hitEnemies: new Set(), damage: damage, color: 'rgba(255, 153, 68, 0.7)' });
       utils.triggerScreenShake(200, 8); 
       
-      // Mastery: Seeking Shrapnel
       if(state.player.purchasedTalents.has('seeking-shrapnel')){
           for(let i = 0; i < 3; i++) {
               state.effects.push({ type: 'seeking_shrapnel', x: state.player.x, y: state.player.y, r: 6, speed: 4, damage: 5 * state.player.talent_modifiers.damage_multiplier, life: 3000, startTime: Date.now() });
@@ -134,12 +131,16 @@ export function usePower(queueType, utils, game, mx, my){
   if (!powerType) return;
   
   const recycleTalent = state.player.purchasedTalents.get('energetic-recycling');
+  let consumed = true;
 
-  if (inventory.indexOf(powerType) >= 1 && recycleTalent && Math.random() < 0.20) {
-      // It's a queued power and the talent triggers
-      utils.spawnParticles(state.particles, state.player.x, state.player.y, "#2ecc71", 30, 4, 30, 3);
-  } else {
-      // Consume the power
+  // BUG FIX: Correctly implement the Energetic Recycling talent logic
+  if (recycleTalent && Math.random() < 0.20) {
+      consumed = false;
+      utils.spawnParticles(state.particles, state.player.x, state.player.y, "#2ecc71", 40, 5, 40);
+      game.addStatusEffect('Recycled', '♻️', 2000);
+  }
+
+  if (consumed) {
       inventory.shift();
       inventory.push(null);
   }
