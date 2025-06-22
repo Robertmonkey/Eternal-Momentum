@@ -3,7 +3,7 @@ export const bossData = [{
     id: "splitter",
     name: "Splitter Sentinel",
     color: "#ff4500",
-    maxHP: 120,
+    maxHP: 96, // 120 * 0.8
     onDeath: (b, state, spawnEnemy, spawnParticles) => {
         spawnParticles(b.x, b.y, "#ff4500", 100, 6, 40, 5);
         const spawnInCircle = (count, radius, center) => {
@@ -25,7 +25,7 @@ export const bossData = [{
     id: "reflector",
     name: "Reflector Warden",
     color: "#2ecc71",
-    maxHP: 150,
+    maxHP: 120, // 150 * 0.8
     init: b => {
         b.phase = "idle";
         b.last = Date.now();
@@ -67,7 +67,7 @@ export const bossData = [{
     id: "vampire",
     name: "Vampire Veil",
     color: "#800020",
-    maxHP: 180,
+    maxHP: 144, // 180 * 0.8
     init: b => {
         b.lastHit = Date.now();
         b.lastHeal = Date.now();
@@ -103,7 +103,7 @@ export const bossData = [{
     id: "gravity",
     name: "Gravity Tyrant",
     color: "#9b59b6",
-    maxHP: 210,
+    maxHP: 168, // 210 * 0.8
     init: b => {
         b.wells = [];
         for (let i = 0; i < 8; i++) {
@@ -131,7 +131,7 @@ export const bossData = [{
     id: "swarm",
     name: "Swarm Link",
     color: "#c0392b",
-    maxHP: 250,
+    maxHP: 200, // 250 * 0.8
     init: b => {
         b.chain = [];
         for (let i = 0; i < 150; i++) b.chain.push({
@@ -152,7 +152,7 @@ export const bossData = [{
     id: "mirror",
     name: "Mirror Mirage",
     color: "#ff00ff",
-    maxHP: 300,
+    maxHP: 240, // 300 * 0.8
     init: (b, state, spawnEnemy, canvas) => {
         b.clones = [];
         for (let i = 0; i < 5; i++) b.clones.push({
@@ -178,7 +178,7 @@ export const bossData = [{
     id: "emp",
     name: "EMP Overload",
     color: "#3498db",
-    maxHP: 325,
+    maxHP: 260, // 325 * 0.8
     init: b => {
         b.lastEMP = Date.now();
         b.bolts = [];
@@ -218,7 +218,7 @@ export const bossData = [{
     id: "architect",
     name: "The Architect",
     color: "#7f8c8d",
-    maxHP: 350,
+    maxHP: 280, // 350 * 0.8
     init: b => {
         b.pillars = [];
         b.lastBuild = 0;
@@ -246,7 +246,7 @@ export const bossData = [{
     id: "twins",
     name: "Vortex Twins",
     color: "#f39c12",
-    maxHP: 350,
+    maxHP: 280, // 350 * 0.8
     init: (b, state, spawnEnemy) => {
         if (!state.enemies.find(e => e.id === 'twins' && e !== b)) {
             spawnEnemy(true, 'twins');
@@ -264,7 +264,7 @@ export const bossData = [{
     id: "looper",
     name: "Looping Eye",
     color: "#ecf0f1",
-    maxHP: 400,
+    maxHP: 320, // 400 * 0.8
     init: b => {
         b.lastTeleport = 0;
     },
@@ -283,7 +283,7 @@ export const bossData = [{
     id: "juggernaut",
     name: "The Juggernaut",
     color: "#636e72",
-    maxHP: 450,
+    maxHP: 360, // 450 * 0.8
     init: b => {
         b.lastCharge = Date.now();
         b.isCharging = false;
@@ -338,7 +338,7 @@ export const bossData = [{
     id: "puppeteer",
     name: "The Puppeteer",
     color: "#a29bfe",
-    maxHP: 400,
+    maxHP: 320, // 400 * 0.8
     init: b => {
         b.lastConvert = Date.now();
     },
@@ -377,7 +377,7 @@ export const bossData = [{
     id: "glitch",
     name: "The Glitch",
     color: "#fd79a8",
-    maxHP: 420,
+    maxHP: 336, // 420 * 0.8
     hasCustomDraw: true,
     init: b => {
         b.lastTeleport = Date.now();
@@ -415,7 +415,7 @@ export const bossData = [{
     id: "sentinel_pair",
     name: "Sentinel Pair",
     color: "#f1c40f",
-    maxHP: 500,
+    maxHP: 400, // 500 * 0.8
     hasCustomMovement: true,
     init: (b, state, spawnEnemy) => {
         if (!state.enemies.find(e => e.id === 'sentinel_pair' && e !== b)) {
@@ -500,7 +500,7 @@ export const bossData = [{
     id: "basilisk",
     name: "The Basilisk",
     color: "#00b894",
-    maxHP: 480,
+    maxHP: 384, // 480 * 0.8
     init: b => {
         b.lastPetrifyZone = Date.now();
     },
@@ -523,7 +523,7 @@ export const bossData = [{
     id: "annihilator",
     name: "The Annihilator",
     color: "#d63031",
-    maxHP: 600,
+    maxHP: 480, // 600 * 0.8
     init: (b, state, spawnEnemy, canvas) => {
         b.lastBeam = Date.now();
         b.isChargingBeam = false;
@@ -560,7 +560,7 @@ export const bossData = [{
     id: "parasite",
     name: "The Parasite",
     color: "#55efc4",
-    maxHP: 520,
+    maxHP: 416, // 520 * 0.8
     onCollision: (b, p, addStatusEffect) => {
         if (!p.infected) addStatusEffect('Infected', '☣️', 10000);
         p.infected = true;
@@ -585,7 +585,7 @@ export const bossData = [{
     id: "quantum_shadow",
     name: "Quantum Shadow",
     color: "#81ecec",
-    maxHP: 450,
+    maxHP: 360, // 450 * 0.8
     hasCustomDraw: true,
     init: b => {
         b.phase = 'seeking';
@@ -652,7 +652,7 @@ export const bossData = [{
     id: "time_eater",
     name: "Time Eater",
     color: "#dfe6e9",
-    maxHP: 550,
+    maxHP: 440, // 550 * 0.8
     init: b => {
         b.lastAbility = Date.now();
     },
@@ -675,7 +675,7 @@ export const bossData = [{
     id: "singularity",
     name: "The Singularity",
     color: "#000000",
-    maxHP: 750,
+    maxHP: 600, // 750 * 0.8
     init: (b, state, spawnEnemy) => {
         b.phase = 1;
         b.lastAction = 0;
