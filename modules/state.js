@@ -20,12 +20,12 @@ export const state = {
     infected: false, infectionEnd: 0, lastSpore: 0,
     
     // --- NEW/MODIFIED PROPERTIES FOR TALENTS ---
-    lastStandUsed: false,
+    contingencyUsed: false,
     preordinanceUsed: false,
     
     talent_modifiers: {
         damage_multiplier: 1.0,
-        damage_taken_multiplier: 1.0, // New modifier for Glass Cannon
+        damage_taken_multiplier: 1.0, // For Overcharged Capacitors
         pickup_radius_bonus: 0,
         essence_gain_modifier: 1.0,
         pull_resistance_modifier: 0,
@@ -103,7 +103,7 @@ export function resetGame(isArena = false) {
     state.player.talent_states.reactivePlating.cooldownUntil = 0;
 
     // --- RESET ONCE-PER-STAGE TALENTS ---
-    state.player.lastStandUsed = false;
+    state.player.contingencyUsed = false;
     state.player.preordinanceUsed = false;
     
     Object.assign(state, {
