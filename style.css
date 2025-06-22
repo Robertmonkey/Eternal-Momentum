@@ -367,7 +367,6 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     border-top: 1px solid var(--border-color);
     flex-shrink: 0;
 }
-/* MODIFIED: Renamed class for reusability */
 .btn-modal-close {
     background: var(--secondary-glow);
     border-color: var(--secondary-glow);
@@ -410,7 +409,6 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     transition: all 0.2s ease-in-out;
     z-index: 2;
 }
-/* MODIFIED: Added !important to prevent overrides */
 .talent-node.nexus-node {
     border-color: var(--nexus-glow) !important;
     box-shadow: 0 0 15px var(--nexus-glow) !important;
@@ -461,7 +459,6 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     right: 110%;
     transform: translateX(0);
 }
-/* NEW: Class to handle left-side overflow */
 .talent-node .talent-tooltip.show-right {
     left: 110%;
     transform: translateX(0);
@@ -501,7 +498,6 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
 .connector-line.unlocked {
     opacity: 1;
 }
-/* MODIFIED: Enhanced nexus connector style */
 .connector-line.nexus-connector {
     stroke: var(--nexus-glow);
     stroke-width: 3px;
