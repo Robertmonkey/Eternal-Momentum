@@ -181,7 +181,16 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
 #modal-actions button { width: auto; height: auto; padding: 10px 20px; font-size: 1rem; }
 #arenaBtn { background: rgba(155, 89, 182, 0.4); border-color: rgba(155, 89, 182, 1); }
 #arenaBtn:hover { background: rgba(155, 89, 182, 0.6); }
-#closeLevelSelectBtn { background: #c0392b; }
+#closeLevelSelectBtn { background: #555; }
+#clearSaveBtn {
+    background: #c0392b;
+    border-color: #e74c3c;
+    font-weight: bold;
+}
+#clearSaveBtn:hover {
+    background: #e74c3c;
+    box-shadow: 0 0 10px #e74c3c;
+}
 
 #unlock-notification {
     top: 20px; left: 50%;
