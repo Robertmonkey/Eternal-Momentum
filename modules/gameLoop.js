@@ -257,10 +257,7 @@ export function gameTick(mx, my) {
         if(!e.frozen && !e.hasCustomMovement){ 
             let tgt = (state.decoy?.isTaunting && !e.boss) ? state.decoy : state.player;
             let enemySpeedMultiplier = 1;
-            let pullStrength = e.boss ? 0.03 : 0.1;
-            // Gravitic Dampeners talent
-            pullStrength *= (1 - state.player.talent_modifiers.pull_resistance_modifier);
-
+            
             state.effects.forEach(effect => { 
                 if(effect.type === 'slow_zone' && Math.hypot(e.x - effect.x, e.y - effect.y) < effect.r) { 
                     enemySpeedMultiplier = 0.5; 
@@ -270,14 +267,15 @@ export function gameTick(mx, my) {
                     const progress = 1 - (effect.endTime - Date.now()) / 4000; 
                     const currentPullRadius = effect.maxRadius * progress;
                     if (dist < currentPullRadius) {
+                        let pullStrength = e.boss ? 0.03 : 0.1;
                         e.x += (effect.x - e.x) * pullStrength;
                         e.y += (effect.y - e.y) * pullStrength;
-                        if (dist < effect.radius + e.r && Date.now() - effect.lastDamage[e] > effect.damageRate) {
+                        if (dist < effect.radius + e.r && Date.now() - (effect.lastDamage.get(e) || 0) > effect.damageRate) {
                              e.hp -= e.boss ? effect.damage : 15;
                              if(state.player.purchasedTalents.has('unstable-singularity')) {
                                 e.hp -= 5 * state.player.talent_modifiers.damage_multiplier;
                              }
-                             effect.lastDamage[e] = Date.now();
+                             effect.lastDamage.set(e, Date.now());
                         }
                     }
                 }
@@ -328,6 +326,10 @@ export function gameTick(mx, my) {
                     if(state.player.health<=0) state.gameOver=true; 
                 } else { 
                     state.player.shield=false; 
+                    if(state.player.purchasedTalents.has('aegis-retaliation')){
+                        state.effects.push({ type: 'repulsion_field', x: state.player.x, y: state.player.y, radius: 250, endTime: Date.now() + 100 });
+                        play('shockwave');
+                    }
                 } 
                 const ang=Math.atan2(state.player.y-e.y,state.player.x-e.x); 
                 state.player.x=e.x+Math.cos(ang)*(e.r+state.player.r); 
