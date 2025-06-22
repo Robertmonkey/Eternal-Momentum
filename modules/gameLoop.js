@@ -25,7 +25,6 @@ function stopLoopingSfx(soundId) {
     if (soundElement) AudioManager.stopLoopingSfx(soundElement);
 }
 
-// BUG FIX: Added addEssence to the gameHelpers object
 const gameHelpers = { addStatusEffect, spawnEnemy, spawnPickup, play, stopLoopingSfx, playLooping, addEssence };
 const spawnParticlesCallback = (x, y, c, n, spd, life, r) => utils.spawnParticles(state.particles, x, y, c, n, spd, life, r);
 
@@ -75,7 +74,7 @@ function levelUp() {
     state.player.level++;
     state.player.essence -= state.player.essenceToNextLevel;
     state.player.essenceToNextLevel = Math.floor(state.player.essenceToNextLevel * 1.5);
-    state.player.ascensionPoints += 2;
+    state.player.ascensionPoints += 1; // AP Gain Reduced
     utils.spawnParticles(state.particles, state.player.x, state.player.y, '#00ffff', 80, 6, 50, 5);
     savePlayerState();
 }
@@ -91,7 +90,6 @@ export function addEssence(amount) {
 export function spawnEnemy(isBoss = false, bossId = null, location = null) {
     const e = { x: location ? location.x : Math.random() * canvas.width, y: location ? location.y : Math.random() * canvas.height, dx: (Math.random() - 0.5) * 0.75, dy: (Math.random() - 0.5) * 0.75, r: isBoss ? 50 : 15, hp: isBoss ? 200 : 1, maxHP: isBoss ? 200 : 1, boss: isBoss, frozen: false, targetBosses: false };
     if (isBoss) {
-        state.bossHasSpawnedThisRun = true;
         const bossIndex = (state.currentStage - 1);
         if (bossIndex >= bossData.length) {
             console.log("All stages cleared!");
@@ -101,8 +99,13 @@ export function spawnEnemy(isBoss = false, bossId = null, location = null) {
         
         if (!bd) { console.error("Boss data not found for stage", state.currentStage); return null; }
         Object.assign(e, bd);
-        e.maxHP = bd.maxHP || e.maxHP;
+        
+        const baseHp = bd.maxHP || 200;
+        const scalingFactor = 25; // Health bonus per stage level, squared
+        const finalHp = baseHp + (bossIndex * bossIndex * scalingFactor);
+        e.maxHP = finalHp;
         e.hp = e.maxHP;
+
         state.enemies.push(e);
         if (bd.init) bd.init(e, state, spawnEnemy, canvas);
         if (!state.currentBoss || state.currentBoss.hp <= 0) state.currentBoss = e;
@@ -272,8 +275,8 @@ export function gameTick(mx, my) {
                     
                     if (state.currentStage > state.player.highestStageBeaten) {
                         state.player.highestStageBeaten = state.currentStage;
-                        state.player.ascensionPoints += 3;
-                        showUnlockNotification("Stage Cleared! +3 AP", `Level ${state.currentStage + 1} Unlocked`);
+                        state.player.ascensionPoints += 1; // AP Gain Reduced
+                        showUnlockNotification("Stage Cleared! +1 AP", `Level ${state.currentStage + 1} Unlocked`);
                         handleThematicUnlock(state.currentStage);
                     }
                     
