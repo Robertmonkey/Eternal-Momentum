@@ -19,17 +19,22 @@ export const state = {
     unlockedDefensiveSlots: 1,
     infected: false, infectionEnd: 0, lastSpore: 0,
     
-    // Modifiers from talents will be stored here
+    // This sub-object will hold multipliers and bonuses from talents
     talent_modifiers: {
         damage_multiplier: 1.0,
         pickup_radius_bonus: 0,
         essence_gain_modifier: 1.0,
     },
 
-    // Properties for specific talents
-    phaseMomentum: {
-        active: false,
-        lastDamageTime: 0,
+    // This sub-object holds states for specific, complex talents
+    talent_states: {
+        phaseMomentum: {
+            active: false,
+            lastDamageTime: 0,
+        },
+        reactivePlating: {
+            cooldownUntil: 0,
+        }
     }
   },
   enemies:[], pickups:[], effects: [], particles: [], decoy:null, 
@@ -90,7 +95,8 @@ export function resetGame(isArena = false) {
     state.player.statusEffects = [];
     state.player.shield = false;
     state.player.berserkUntil = 0;
-    state.player.phaseMomentum.lastDamageTime = Date.now();
+    state.player.talent_states.phaseMomentum.lastDamageTime = Date.now();
+    state.player.talent_states.reactivePlating.cooldownUntil = 0;
     
     Object.assign(state, {
         enemies: [], pickups: [], effects: [], particles: [], decoy: null,
