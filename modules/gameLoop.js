@@ -1,7 +1,7 @@
 // modules/gameLoop.js
 import { state, savePlayerState } from './state.js';
 import { THEMATIC_UNLOCKS, SPAWN_WEIGHTS } from './config.js';
-import { powers, offensivePowers } from './powers.js';
+import { powers } from './powers.js';
 import { bossData } from './bosses.js';
 import { updateUI, showBossBanner, showUnlockNotification } from './ui.js';
 import * as utils from './utils.js';
@@ -31,7 +31,7 @@ export function handleThematicUnlock(level) {
     const unlock = THEMATIC_UNLOCKS[level];
     if (!unlock) return;
 
-    if (unlock.type === 'power') {
+    if (unlock.type === 'power' && !state.player.unlockedPowers.has(unlock.id)) {
         state.player.unlockedPowers.add(unlock.id);
         const powerName = powers[unlock.id]?.desc || unlock.id;
         showUnlockNotification(`Power Unlocked: ${powers[unlock.id].emoji} ${powerName}`);
