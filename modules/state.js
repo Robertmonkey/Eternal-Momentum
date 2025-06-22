@@ -1,5 +1,4 @@
 // modules/state.js
-import { TALENT_GRID_CONFIG } from './talents.js';
 
 export const state = {
   player:{
@@ -15,6 +14,7 @@ export const state = {
     unlockedPowers: new Set(['heal', 'missile']),
     purchasedTalents: new Map(),
     essenceGainModifier: 1.0,
+    highestStageBeaten: 0, 
     infected: false, infectionEnd: 0, lastSpore: 0,
   },
   enemies:[], pickups:[], effects: [], particles: [], decoy:null, 
@@ -35,13 +35,32 @@ export const state = {
   bossSpawnCooldownEnd: 0,
 };
 
-function findTalentById(talentId) {
-    for (const constellation in TALENT_GRID_CONFIG) {
-        if (TALENT_GRID_CONFIG[constellation][talentId]) {
-            return TALENT_GRID_CONFIG[constellation][talentId];
-        }
+export function savePlayerState() {
+    const persistentData = {
+        level: state.player.level,
+        essence: state.player.essence,
+        essenceToNextLevel: state.player.essenceToNextLevel,
+        ascensionPoints: state.player.ascensionPoints,
+        unlockedPowers: [...state.player.unlockedPowers],
+        purchasedTalents: [...state.player.purchasedTalents],
+        highestStageBeaten: state.player.highestStageBeaten,
+        maxHealth: state.player.maxHealth,
+        speed: state.player.speed,
+        essenceGainModifier: state.player.essenceGainModifier,
+    };
+    localStorage.setItem('eternalMomentumSave', JSON.stringify(persistentData));
+}
+
+export function loadPlayerState() {
+    const savedData = localStorage.getItem('eternalMomentumSave');
+    if (savedData) {
+        const parsedData = JSON.parse(savedData);
+        Object.assign(state.player, {
+            ...parsedData,
+            unlockedPowers: new Set(parsedData.unlockedPowers),
+            purchasedTalents: new Map(parsedData.purchasedTalents),
+        });
     }
-    return null;
 }
 
 export function resetGame(isArena = false) {
@@ -49,7 +68,7 @@ export function resetGame(isArena = false) {
     
     state.player.x = canvas.width / 2;
     state.player.y = canvas.height / 2;
-    state.player.speed = 1; 
+    state.player.health = state.player.maxHealth;
     state.player.statusEffects = [];
     state.player.shield = false;
     state.player.berserkUntil = 0;
@@ -61,29 +80,8 @@ export function resetGame(isArena = false) {
         currentBoss: null, bossActive: false, stacked: false, gameOver: false, 
         gravityActive: false, gravityEnd: 0, 
         isPaused: false, 
-        currentStage: 1,
+        currentStage: isArena ? 1 : state.player.highestStageBeaten + 1,
         arenaMode: isArena, wave: 0, lastArenaSpawn: Date.now(),
         bossSpawnCooldownEnd: Date.now() + 3000, 
     });
-
-    // Re-apply persistent talent effects
-    let baseMaxHealth = 100;
-    let baseSpeed = 1.0;
-    
-    state.player.purchasedTalents.forEach((rank, id) => {
-        const talent = findTalentById(id);
-        if (talent && talent.effects) {
-            // A simplified way to re-apply stat-based talents
-             if (id === 'core-health') {
-                baseMaxHealth += [10, 15, 25].slice(0, rank).reduce((a, b) => a + b, 0);
-            }
-             if (id === 'core-speed') {
-                for(let i = 0; i < rank; i++) baseSpeed *= [1.02, 1.03, 1.05][i];
-            }
-        }
-    });
-
-    state.player.maxHealth = baseMaxHealth;
-    state.player.health = state.player.maxHealth;
-    state.player.speed = baseSpeed;
 }
