@@ -306,7 +306,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
 .ascension-content {
     flex-grow: 1;
     position: relative;
-    overflow: visible;
+    overflow: visible; /* Prevents tooltips from being cut off */
 }
 .close-ascension-grid {
     margin-top: 15px;
@@ -340,6 +340,9 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     transition: all 0.2s ease-in-out;
     z-index: 2;
 }
+.talent-node:hover {
+    z-index: 3; /* Ensures the hovered node is on top of its neighbors */
+}
 .talent-icon {
     font-size: 24px;
 }
@@ -367,16 +370,22 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     border-radius: 6px;
     padding: 10px;
     position: absolute;
-    z-index: 110;
+    z-index: 100; /* High z-index to appear above everything */
     bottom: 125%;
     left: 50%;
-    margin-left: -120px;
+    transform: translateX(-50%);
     opacity: 0;
     transition: opacity 0.3s;
     border: 1px solid var(--border-color);
     font-size: 0.9rem;
     pointer-events: none;
 }
+.talent-node .talent-tooltip.show-left {
+    left: auto;
+    right: 110%;
+    transform: translateX(0);
+}
+
 .talent-node:hover .talent-tooltip {
     visibility: visible;
     opacity: 1;
