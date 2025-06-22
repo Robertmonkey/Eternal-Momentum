@@ -359,7 +359,23 @@ export function gameTick(mx, my) {
             ctx.strokeStyle = `rgba(155, 89, 182, ${0.6 * progress})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(effect.x, effect.y, currentPullRadius, 0, 2*Math.PI); ctx.stroke(); 
             state.enemies.forEach(e => { const dist = Math.hypot(e.x - effect.x, e.y - effect.y); if (dist < currentPullRadius) { const pullStrength = e.boss ? 0.03 : 0.1; e.x += (effect.x - e.x) * pullStrength; e.y += (effect.y - e.y) * pullStrength; if (dist < effect.radius + e.r && Date.now() - effect.lastDamage > effect.damageRate) { e.hp -= e.boss ? effect.damage : 15; if (state.player.purchasedTalents.has('unstable-singularity')) { e.hp -= 5 * state.player.talent_modifiers.damage_multiplier; } effect.lastDamage = Date.now(); } } });
         } else if (effect.type === 'seeking_shrapnel') {
-             // ... logic for seeking shrapnel ...
+            let closest = null;
+            let minDist = Infinity;
+            state.enemies.forEach(e => {
+                const dist = Math.hypot(e.x - effect.x, e.y - effect.y);
+                if (dist < minDist) {
+                    minDist = dist;
+                    closest = e;
+                }
+            });
+            if(closest){
+                const angle = Math.atan2(closest.y - effect.y, closest.x - effect.x);
+                effect.x += Math.cos(angle) * effect.speed;
+                effect.y += Math.sin(angle) * effect.speed;
+            }
+            utils.drawCircle(ctx, effect.x, effect.y, effect.r, '#ff9944');
+            state.enemies.forEach(e => { if(Math.hypot(e.x - effect.x, e.y - effect.y) < e.r + effect.r) { e.hp -= effect.damage; state.effects.splice(index, 1); }});
+            if(Date.now() > effect.startTime + effect.life) state.effects.splice(index, 1);
         } else if (effect.type === 'repulsion_field') {
             if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
             const alpha = (effect.endTime - Date.now()) / 100 * 0.4;
