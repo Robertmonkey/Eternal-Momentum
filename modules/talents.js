@@ -27,7 +27,7 @@ export const TALENT_GRID_CONFIG = {
         }
     },
 
-    // --- AEGIS CONSTALLATION (Defense & Survival - Left side of the diamond) ---
+    // --- AEGIS CONSTALLATION (Defense & Survival - Left side) ---
     aegis: {
         color: 'var(--primary-glow)',
         'exo-weave-plating': {
@@ -102,11 +102,11 @@ export const TALENT_GRID_CONFIG = {
             maxRanks: 1,
             costPerRank: [3],
             position: { x: 35, y: 80 },
-            prerequisites: ['reactive-plating', 'power-scavenger'], // Interwoven prerequisite
+            prerequisites: ['reactive-plating', 'power-scavenger'],
         }
     },
     
-    // --- HAVOC CONSTALLATION (Offense & Destruction - Right side of the diamond) ---
+    // --- HAVOC CONSTALLATION (Offense & Destruction - Right side) ---
     havoc: {
         color: '#ff8800',
         'high-frequency-emitters': {
@@ -176,11 +176,11 @@ export const TALENT_GRID_CONFIG = {
             maxRanks: 1,
             costPerRank: [3],
             position: { x: 65, y: 80 },
-            prerequisites: ['targeting-algorithm', 'temporal-collapse'], // Interwoven prerequisite
+            prerequisites: ['targeting-algorithm', 'temporal-collapse'],
         },
     },
 
-    // --- FLUX CONSTALLATION (Utility & Mastery - Center path of the diamond) ---
+    // --- FLUX CONSTALLATION (Utility & Mastery - Center) ---
     flux: {
         color: 'var(--secondary-glow)',
         'essence-conduit': {
