@@ -162,7 +162,7 @@ export const bossData = [{
         });
         b.lastSwap = Date.now();
     },
-    logic: (b, ctx) => {
+    logic: (b, ctx, state, utils) => {
         b.clones.forEach(c => utils.drawCircle(ctx, c.x, c.y, c.r, "rgba(255,0,255,0.5)"));
         if (Date.now() - b.lastSwap > 2000) {
             b.lastSwap = Date.now();
