@@ -14,12 +14,18 @@ function play(soundId) {
     const soundElement = document.getElementById(soundId + "Sound");
     if (soundElement) AudioManager.playSfx(soundElement);
 }
+
+function playLooping(soundId) {
+    const soundElement = document.getElementById(soundId + "Sound");
+    if (soundElement) AudioManager.playLoopingSfx(soundElement);
+}
+
 function stopLoopingSfx(soundId) {
     const soundElement = document.getElementById(soundId + "Sound");
     if (soundElement) AudioManager.stopLoopingSfx(soundElement);
 }
 
-const gameHelpers = { addStatusEffect, spawnEnemy, spawnPickup, play, stopLoopingSfx };
+const gameHelpers = { addStatusEffect, spawnEnemy, spawnPickup, play, stopLoopingSfx, playLooping };
 const spawnParticlesCallback = (x, y, c, n, spd, life, r) => utils.spawnParticles(state.particles, x, y, c, n, spd, life, r);
 
 export function addStatusEffect(name, emoji, duration) {
@@ -632,7 +638,7 @@ export function gameTick(mx, my) {
                 ctx.lineTo(effect.x, effect.y);
                 ctx.fill();
                 if (stunProgress >= 1) {
-                    play('stoneCrackingSound');
+                    play('stoneCracking');
                     addStatusEffect('Petrified', '🗿', 2000);
                     state.player.stunnedUntil = Date.now() + 2000;
                     state.effects.splice(index, 1);
