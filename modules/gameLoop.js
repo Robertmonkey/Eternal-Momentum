@@ -74,7 +74,7 @@ function levelUp() {
     state.player.level++;
     state.player.essence -= state.player.essenceToNextLevel;
     state.player.essenceToNextLevel = Math.floor(state.player.essenceToNextLevel * 1.5);
-    state.player.ascensionPoints += 1; // AP Gain Reduced
+    state.player.ascensionPoints += 1;
     utils.spawnParticles(state.particles, state.player.x, state.player.y, '#00ffff', 80, 6, 50, 5);
     savePlayerState();
 }
@@ -101,7 +101,7 @@ export function spawnEnemy(isBoss = false, bossId = null, location = null) {
         Object.assign(e, bd);
         
         const baseHp = bd.maxHP || 200;
-        const scalingFactor = 25; // Health bonus per stage level, squared
+        const scalingFactor = 15; // Health bonus per stage level, squared. Reduced from 25.
         const finalHp = baseHp + (bossIndex * bossIndex * scalingFactor);
         e.maxHP = finalHp;
         e.hp = e.maxHP;
@@ -275,7 +275,7 @@ export function gameTick(mx, my) {
                     
                     if (state.currentStage > state.player.highestStageBeaten) {
                         state.player.highestStageBeaten = state.currentStage;
-                        state.player.ascensionPoints += 1; // AP Gain Reduced
+                        state.player.ascensionPoints += 1;
                         showUnlockNotification("Stage Cleared! +1 AP", `Level ${state.currentStage + 1} Unlocked`);
                         handleThematicUnlock(state.currentStage);
                     }
