@@ -55,7 +55,6 @@ function drawConnectorLines() {
 
                     if (isPrereqPurchased) {
                         line.classList.add('unlocked');
-                        // MODIFIED: Only apply constellation color if NOT a nexus connection
                         if (!isNexusConnection) {
                             line.style.stroke = constellationColor;
                         }
@@ -128,8 +127,7 @@ function createTalentNode(talent, constellationColor) {
             const tooltipRect = tooltip.getBoundingClientRect();
             const containerRect = gridContainer.getBoundingClientRect();
 
-            // MODIFIED: Reset classes and check both left and right overflow
-            tooltip.classList.remove('show-left', 'show-right');
+            tooltip.classList.remove('show-left', 'show-right', 'show-bottom');
 
             if (tooltipRect.right > containerRect.right - 10) {
                 tooltip.classList.add('show-left');
@@ -139,8 +137,6 @@ function createTalentNode(talent, constellationColor) {
 
             if (tooltipRect.top < containerRect.top + 10) {
                 tooltip.classList.add('show-bottom');
-            } else {
-                tooltip.classList.remove('show-bottom');
             }
         });
     });
@@ -205,7 +201,7 @@ export function applyAllTalentEffects() {
             const values = [0.10, 0.15];
             for (let i = 0; i < rank; i++) baseEssenceGain += values[i];
         }
-        if (id === 'glass-cannon') {
+        if (id === 'overcharged-capacitors') {
             baseDamageMultiplier += 0.15;
             baseDamageTakenMultiplier += 0.15;
         }
