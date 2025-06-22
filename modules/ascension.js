@@ -21,10 +21,6 @@ function isTalentVisible(talent) {
     return powerUnlocked && (talent.prerequisites.length === 0 || prereqsMet);
 }
 
-function findTalentById(talentId) {
-    return allTalents[talentId] || null;
-}
-
 function drawConnectorLines() {
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.style.position = 'absolute';
@@ -49,14 +45,16 @@ function drawConnectorLines() {
                     line.setAttribute('y1', `${prereqTalent.position.y}%`);
                     line.setAttribute('x2', `${talent.position.x}%`);
                     line.setAttribute('y2', `${talent.position.y}%`);
-                    line.setAttribute('stroke', 'var(--border-color)');
-                    line.setAttribute('stroke-width', '2');
-                    line.style.opacity = '0.3';
+                    line.classList.add('connector-line');
                     
                     const isPrereqPurchased = state.player.purchasedTalents.has(prereqId);
                     if (isPrereqPurchased) {
-                        line.setAttribute('stroke', constellationColor);
-                        line.style.opacity = '1';
+                        line.classList.add('unlocked');
+                        line.style.stroke = constellationColor;
+                    }
+
+                    if (talent.id === 'overload-protocol') {
+                         line.classList.add('synergy');
                     }
 
                     svg.appendChild(line);
@@ -80,10 +78,16 @@ function createTalentNode(talent, constellationColor) {
     const prereqsMet = talent.prerequisites.every(p => state.player.purchasedTalents.has(p));
     const canPurchase = prereqsMet && state.player.ascensionPoints >= cost;
 
+    if (talent.id === 'core-nexus' || talent.id === 'overload-protocol') {
+        node.classList.add('nexus-node');
+    }
+    
     if (isMaxRank) {
         node.classList.add('maxed');
-        node.style.borderColor = constellationColor;
-        node.style.boxShadow = `0 0 15px ${constellationColor}`;
+        if (!node.classList.contains('nexus-node')) {
+            node.style.borderColor = constellationColor;
+            node.style.boxShadow = `0 0 15px ${constellationColor}`;
+        }
     } else if (canPurchase) {
         node.classList.add('can-purchase');
     }
@@ -114,6 +118,18 @@ function createTalentNode(talent, constellationColor) {
         node.onclick = () => purchaseTalent(talent.id);
     }
     
+    node.addEventListener('mouseenter', () => {
+        requestAnimationFrame(() => {
+            const rect = tooltip.getBoundingClientRect();
+            const containerRect = gridContainer.getBoundingClientRect();
+            if (rect.right > containerRect.right - 10) {
+                tooltip.classList.add('show-left');
+            } else {
+                tooltip.classList.remove('show-left');
+            }
+        });
+    });
+
     gridContainer.appendChild(node);
 }
 
