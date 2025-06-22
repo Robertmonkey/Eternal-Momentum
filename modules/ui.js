@@ -2,7 +2,6 @@
 import { state } from './state.js';
 import { powers } from './powers.js';
 
-// --- DOM Element References ---
 const ascensionFill = document.getElementById('ascension-bar-fill');
 const ascensionText = document.getElementById('ascension-bar-text');
 const apDisplay = document.getElementById('ascension-points-display');
@@ -16,9 +15,6 @@ const statusBar = document.getElementById('status-effects-bar');
 const bossBannerEl = document.getElementById("bossBanner");
 const levelSelectGrid = document.getElementById("levelSelectGrid");
 const notificationBanner = document.getElementById('unlock-notification');
-
-
-// --- UI Update Functions ---
 
 function updateStatusEffectsUI() {
     const now = Date.now();
@@ -49,12 +45,10 @@ export function updateUI() {
     const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
     document.querySelectorAll('.ability-key').forEach(el => { el.style.display = isTouchDevice ? 'none' : 'block'; });
 
-    // Update Ascension Bar
     ascensionFill.style.width = `${(state.player.essence / state.player.essenceToNextLevel) * 100}%`;
     ascensionText.innerText = `LVL ${state.player.level}`;
     apDisplay.innerText = `AP: ${state.player.ascensionPoints}`;
     
-    // Update Health Bar
     const healthPct = Math.max(0, state.player.health) / state.player.maxHealth;
     healthBarValue.style.width = `${healthPct * 100}%`;
     healthBarText.innerText = `${Math.max(0, Math.round(state.player.health))}/${Math.round(state.player.maxHealth)}`;
@@ -62,7 +56,6 @@ export function updateUI() {
     healthBarValue.classList.toggle('health-medium', healthPct <= 0.6 && healthPct > 0.3);
     healthBarValue.classList.toggle('health-low', healthPct <= 0.3);
     
-    // Update Shield Bar
     const shieldEffect = state.player.statusEffects.find(e => e.name === 'Shield');
     if (shieldEffect) {
         const now = Date.now();
@@ -73,7 +66,6 @@ export function updateUI() {
         shieldBar.style.width = '0%';
     }
     
-    // Update Ability Slots
     const offP = state.offensiveInventory[0];
     const defP = state.defensiveInventory[0];
     offSlot.innerHTML = offP ? powers[offP].emoji : '<span class="ability-key">L-Click</span>';
@@ -83,7 +75,6 @@ export function updateUI() {
     offSlot.setAttribute('data-tooltip-text', offP ? powers[offP].desc : 'Offensive Power');
     defSlot.setAttribute('data-tooltip-text', defP ? powers[defP].desc : 'Defensive Power');
 
-    // Update Queued Slots
     for (let i = 1; i <= 2; i++) {
         const offPower = state.offensiveInventory[i];
         const defPower = state.defensiveInventory[i];
@@ -97,7 +88,6 @@ export function updateUI() {
         qDefSlot.setAttribute('data-tooltip-text', defPower ? powers[defPower].desc : '');
     }
 
-    // Update Boss HP Bars
     bossContainer.innerHTML = '';
     state.enemies.filter(e => e.boss).forEach(boss => {
         const wrapper = document.createElement('div');
@@ -123,11 +113,6 @@ export function showBossBanner(boss){
     setTimeout(()=>bossBannerEl.style.opacity=0,2500); 
 }
 
-/**
- * Shows a notification banner for unlocks.
- * @param {string} text - The main text of the notification.
- * @param {string} [subtext] - Optional smaller text below the main text.
- */
 export function showUnlockNotification(text, subtext = '') {
     let content = `<span class="unlock-name">${text}</span>`;
     if (subtext) {
@@ -140,10 +125,6 @@ export function showUnlockNotification(text, subtext = '') {
     }, 3500);
 }
 
-
-/**
- * Populates the level select screen, locking levels the player hasn't reached.
- */
 export function populateLevelSelect(bossData, startSpecificLevel) {
     levelSelectGrid.innerHTML = '';
     bossData.forEach((boss, index) => {
@@ -152,7 +133,6 @@ export function populateLevelSelect(bossData, startSpecificLevel) {
         button.innerText = level;
         button.title = boss.name;
 
-        // Lock levels the player hasn't reached yet
         if (level > state.player.highestStageBeaten + 1) {
             button.disabled = true;
             button.classList.add('locked');
