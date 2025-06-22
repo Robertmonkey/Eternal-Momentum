@@ -14,6 +14,13 @@ Object.values(TALENT_GRID_CONFIG).forEach(constellation => {
     });
 });
 
+function isTalentVisible(talent) {
+    if (!talent) return false;
+    const powerUnlocked = !talent.powerPrerequisite || state.player.unlockedPowers.has(talent.powerPrerequisite);
+    const prereqsMet = talent.prerequisites.every(p => state.player.purchasedTalents.has(p));
+    return powerUnlocked && (talent.prerequisites.length === 0 || prereqsMet);
+}
+
 function findTalentById(talentId) {
     return allTalents[talentId] || null;
 }
@@ -29,10 +36,7 @@ function drawConnectorLines() {
 
             talent.prerequisites.forEach(prereqId => {
                 const prereqTalent = allTalents[prereqId];
-                if (prereqTalent) {
-                    const isVisible = (!talent.powerPrerequisite || state.player.unlockedPowers.has(talent.powerPrerequisite));
-                    if (!isVisible) return;
-
+                if (prereqTalent && isTalentVisible(talent) && isTalentVisible(prereqTalent)) {
                     const line = document.createElement('div');
                     line.className = 'connector-line';
                     
@@ -87,7 +91,6 @@ function createTalentNode(talent, constellationColor) {
     const rankText = talent.maxRanks > 1 ? `<span>Rank: ${purchasedRank}/${talent.maxRanks}</span>` : '<span>Mastery</span>';
     const costText = !isMaxRank ? `<span>Cost: ${cost} AP</span>` : '<span>MAXED</span>';
     
-    // Pass 'isMaxRank' to the description function
     const descriptionText = talent.description(purchasedRank + 1, isMaxRank);
 
     node.innerHTML = `
@@ -106,6 +109,18 @@ function createTalentNode(talent, constellationColor) {
     }
     
     gridContainer.appendChild(node);
+
+    // Reposition tooltip if it overflows
+    const tooltip = node.querySelector('.talent-tooltip');
+    node.addEventListener('mouseenter', () => {
+        const rect = tooltip.getBoundingClientRect();
+        const containerRect = gridContainer.getBoundingClientRect();
+        if (rect.right > containerRect.right - 10) {
+            tooltip.classList.add('show-left');
+        } else {
+            tooltip.classList.remove('show-left');
+        }
+    });
 }
 
 function purchaseTalent(talentId) {
@@ -135,7 +150,6 @@ function purchaseTalent(talentId) {
 }
 
 export function applyAllTalentEffects() {
-    // Reset stats to their absolute base values before recalculating
     let baseMaxHealth = 100;
     let baseSpeed = 1.0;
     let baseDamageMultiplier = 1.0;
@@ -164,7 +178,7 @@ export function applyAllTalentEffects() {
             for (let i = 0; i < rank; i++) baseEssenceGain += values[i];
         }
         if (id === 'gravitic-dampeners') {
-            const values = [0.25, 0.25]; // 25% + 25% = 50%
+            const values = [0.25, 0.25];
             for (let i = 0; i < rank; i++) basePullResistance += values[i];
         }
     });
@@ -190,13 +204,8 @@ export function renderAscensionGrid() {
         
         for (const talentId in constellation) {
             if (talentId === 'color') continue;
-
             const talent = constellation[talentId];
-            
-            const powerUnlocked = !talent.powerPrerequisite || state.player.unlockedPowers.has(talent.powerPrerequisite);
-            const prereqsMet = talent.prerequisites.every(p => state.player.purchasedTalents.has(p));
-
-            if (powerUnlocked && (talent.prerequisites.length === 0 || prereqsMet)) {
+            if (isTalentVisible(talent)) {
                 createTalentNode(talent, constellationColor);
             }
         }
