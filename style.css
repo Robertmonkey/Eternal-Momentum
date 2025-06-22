@@ -16,12 +16,60 @@
     0% { transform: translateX(-150%) skewX(-30deg); }
     100% { transform: translateX(350%) skewX(-30deg); }
 }
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
 html, body { 
   margin:0; padding:0; overflow:hidden; background:var(--dark-bg);
   font-family: 'Segoe UI', 'Roboto', sans-serif;
   -webkit-user-select: none; user-select: none;
 }
 canvas { display:block; width:100vw; height:100vh; }
+
+#loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--dark-bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    transition: opacity 0.5s ease-out;
+}
+.loading-logo {
+    width: 250px;
+    height: auto;
+    margin-bottom: 20px;
+}
+#loading-progress-container {
+    width: 300px;
+    height: 20px;
+    border: 2px solid var(--primary-glow);
+    border-radius: 10px;
+    background-color: rgba(0,0,0,0.3);
+    padding: 2px;
+}
+#loading-progress-fill {
+    width: 0%;
+    height: 100%;
+    background-color: var(--primary-glow);
+    border-radius: 6px;
+    box-shadow: 0 0 10px var(--primary-glow);
+    transition: width 0.2s ease-out;
+}
+#loading-status-text {
+    margin-top: 15px;
+    color: var(--font-color);
+    font-size: 1.1rem;
+    letter-spacing: 1px;
+    text-shadow: 0 0 5px var(--primary-glow);
+}
 
 #ui-container {
   position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
@@ -165,6 +213,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
 #vignette { top: 0; left: 0; width: 100%; height: 100%; box-shadow: inset 0 0 150px 50px rgba(0,0,0,0); pointer-events: none; transition: box-shadow 0.3s ease-out; }
 
 #levelSelectModal { top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; flex-direction: column; align-items: center; justify-content: center; color: white; font-family: sans-serif; pointer-events: all; }
+#levelSelectModal #modal-content { background: var(--ui-bg); padding: 30px; border: 2px solid var(--border-color); border-radius: 15px; }
 #levelSelectGrid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; padding: 20px; max-width: 500px; }
 #levelSelectGrid button { padding: 15px; font-size: 1.1rem; background: #2c3e50; width: auto; height: auto;}
 #levelSelectGrid button:hover { background: #34495e; }
