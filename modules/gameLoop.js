@@ -27,8 +27,9 @@ export function addStatusEffect(name, emoji, duration) {
     state.player.statusEffects.push({ name, emoji, startTime: now, endTime: now + duration });
 }
 
-export function handleThematicUnlock(level) {
-    const unlock = THEMATIC_UNLOCKS[level];
+export function handleThematicUnlock(stageJustCleared) {
+    const unlockLevel = stageJustCleared + 1; // Unlocks are for the *next* level
+    const unlock = THEMATIC_UNLOCKS[unlockLevel];
     if (!unlock) return;
 
     if (unlock.type === 'power' && !state.player.unlockedPowers.has(unlock.id)) {
@@ -47,8 +48,7 @@ function levelUp() {
     state.player.level++;
     state.player.essence -= state.player.essenceToNextLevel;
     state.player.essenceToNextLevel = Math.floor(state.player.essenceToNextLevel * 1.5);
-    state.player.ascensionPoints += 2;
-    handleThematicUnlock(state.player.level);
+    state.player.ascensionPoints += 2; // Player level only gives AP
     utils.spawnParticles(state.particles, state.player.x, state.player.y, '#00ffff', 80, 6, 50, 5);
     savePlayerState();
 }
@@ -157,13 +157,17 @@ export function gameTick(mx, my) {
                     state.player.highestStageBeaten = state.currentStage;
                     state.player.ascensionPoints += 3;
                     showUnlockNotification("Stage Cleared! +3 AP", `Level ${state.currentStage + 1} Unlocked`);
+                    handleThematicUnlock(state.currentStage); // Grant unlock for clearing the stage
                 }
+                
                 utils.triggerScreenShake(250, 5);
                 addEssence(300);
+                
                 state.currentStage++;
                 state.bossActive = false;
                 state.bossSpawnCooldownEnd = Date.now() + 5000;
                 savePlayerState();
+
                 if (e.onDeath) e.onDeath(e, state, spawnEnemy, (x, y, c, n, spd, life, r) => utils.spawnParticles(state.particles, x, y, c, n, spd, life, r), play, stopLoopingSfx);
                 state.enemies.splice(i, 1);
                 if (state.currentBoss === e) {
@@ -245,7 +249,26 @@ export function gameTick(mx, my) {
                 }
             });
             if (effect.radius >= effect.maxRadius) state.effects.splice(index, 1);
+        } else if (effect.type === 'chain_lightning') { // RESTORED
+            const linkIndex = Math.floor((Date.now() - effect.startTime) / effect.durationPerLink);
+            if (linkIndex >= effect.targets.length) {
+                state.effects.splice(index, 1);
+                return;
+            }
+            for (let i = 0; i <= linkIndex; i++) {
+                const from = i === 0 ? effect.caster : effect.targets[i - 1];
+                const to = effect.targets[i];
+                if (!from || !to) continue;
+                utils.drawLightning(ctx, from.x, from.y, to.x, to.y, '#00ffff', 4);
+                if (!effect.links.includes(to)) {
+                    utils.spawnParticles(state.particles, to.x, to.y, '#ffffff', 30, 5, 20);
+                    to.hp -= to.boss ? effect.damage : 50;
+                    if (to.onDamage) to.onDamage(to, effect.damage, effect.caster);
+                    effect.links.push(to);
+                }
+            }
         }
+        // ... other effects can be added here
     });
     
     utils.updateParticles(ctx, state.particles);
