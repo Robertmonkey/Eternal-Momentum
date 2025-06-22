@@ -1,4 +1,4 @@
-// main.js
+// modules/main.js
 import { state, resetGame, loadPlayerState } from './modules/state.js';
 import { bossData } from './modules/bosses.js';
 import { AudioManager } from './modules/audio.js';
@@ -21,6 +21,10 @@ window.addEventListener('DOMContentLoaded', (event) => {
     const ascensionGridModal = document.getElementById("ascensionGridModal");
     const closeAscensionBtn = document.getElementById("closeAscensionBtn");
     const apDisplayAscGrid = document.getElementById("ap-total-asc-grid");
+
+    const gameOverMenu = document.getElementById('gameOverMenu');
+    const restartStageBtn = document.getElementById('restartStageBtn');
+    const levelSelectMenuBtn = document.getElementById('levelSelectMenuBtn');
 
     let mx = 0, my = 0;
     const allAudioElements = Array.from(document.querySelectorAll('audio'));
@@ -88,6 +92,18 @@ window.addEventListener('DOMContentLoaded', (event) => {
         });
 
         arenaBtn.addEventListener("click", () => startNewGame(true));
+
+        restartStageBtn.addEventListener("click", () => {
+            gameOverMenu.style.display = 'none';
+            startSpecificLevel(state.currentStage);
+        });
+
+        levelSelectMenuBtn.addEventListener("click", () => {
+            gameOverMenu.style.display = 'none';
+            state.isPaused = true;
+            populateLevelSelect(bossData, startSpecificLevel);
+            levelSelectModal.style.display = 'flex';
+        });
     }
 
     function loop() {
