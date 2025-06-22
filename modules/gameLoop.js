@@ -92,7 +92,7 @@ export function spawnEnemy(isBoss = false, bossId = null, location = null) {
         e.maxHP = bd.maxHP || e.maxHP;
         e.hp = e.maxHP;
         state.enemies.push(e);
-        if (bd.init) bd.init(e, state, spawnEnemy, canvas); // Pass canvas to init
+        if (bd.init) bd.init(e, state, spawnEnemy, canvas);
         if (!state.currentBoss || state.currentBoss.hp <= 0) state.currentBoss = e;
         state.bossActive = true;
         if (!bossId || (bossId && !e.partner && !e.shadow)) showBossBanner(e);
@@ -252,24 +252,19 @@ export function gameTick(mx, my) {
         if (e.hp <= 0) {
             if (e.boss) {
                 if (e.onDeath) e.onDeath(e, state, spawnEnemy, spawnParticlesCallback, play, stopLoopingSfx);
-                
                 state.enemies.splice(i, 1);
-                
                 if (state.currentBoss === e) {
                     state.currentBoss = state.enemies.find(en => en.boss) || null;
                 }
-                
                 if (!state.enemies.some(en => en.boss)) {
                     state.bossActive = false;
                     state.bossSpawnCooldownEnd = Date.now() + 5000;
-                    
                     if (state.currentStage > state.player.highestStageBeaten) {
                         state.player.highestStageBeaten = state.currentStage;
                         state.player.ascensionPoints += 3;
                         showUnlockNotification("Stage Cleared! +3 AP", `Level ${state.currentStage + 1} Unlocked`);
                         handleThematicUnlock(state.currentStage);
                     }
-                    
                     addEssence(300);
                     savePlayerState();
                 }
@@ -279,7 +274,6 @@ export function gameTick(mx, my) {
                 if (scavengerRank && Math.random() < [0.01, 0.025][scavengerRank-1]) {
                     state.pickups.push({ x: e.x, y: e.y, r: 12, type: 'score', vx: 0, vy: 0, lifeEnd: Date.now() + 10000 });
                 }
-                
                 const cryoRank = state.player.purchasedTalents.get('aegis-freeze');
                 if (cryoRank && e.wasFrozen && Math.random() < [0.25, 0.5][cryoRank-1]) {
                     utils.spawnParticles(state.particles, e.x, e.y, '#ADD8E6', 40, 4, 30, 2);
@@ -300,7 +294,25 @@ export function gameTick(mx, my) {
             }
         }
         
-        if(!e.frozen && !e.hasCustomMovement){ 
+        if (e.eatenBy) {
+            const pullX = e.eatenBy.x - e.x;
+            const pullY = e.eatenBy.y - e.y;
+            const pullDist = Math.hypot(pullX, pullY) || 1;
+            e.dx = (pullX / pullDist) * 3;
+            e.dy = (pullY / pullDist) * 3;
+            e.x += e.dx;
+            e.y += e.dy;
+            e.r *= 0.95;
+            if (e.r < 2) {
+                const timeEater = state.enemies.find(b => b.id === 'time_eater');
+                if (timeEater) {
+                    timeEater.hp -= 5;
+                }
+                utils.spawnParticles(state.particles, e.x, e.y, "#d63031", 10, 2, 15);
+                state.enemies.splice(i, 1);
+                continue;
+            }
+        } else if(!e.frozen && !e.hasCustomMovement){ 
             let tgt = (state.decoy?.isTaunting && !e.boss) ? state.decoy : state.player;
             let enemySpeedMultiplier = 1;
             
@@ -391,18 +403,33 @@ export function gameTick(mx, my) {
             continue;
         }
 
-        const pickupRadius = 75 + state.player.talent_modifiers.pickup_radius_bonus;
-        const d = Math.hypot(state.player.x - p.x, state.player.y - p.y);
-        
-        if (d < pickupRadius) {
-            const angle = Math.atan2(state.player.y - p.y, state.player.x - p.x);
-            const acceleration = 0.5;
-            p.vx += Math.cos(angle) * acceleration;
-            p.vy += Math.sin(angle) * acceleration;
+        if (p.eatenBy) {
+            const pullX = p.eatenBy.x - p.x;
+            const pullY = p.eatenBy.y - p.y;
+            p.vx = (pullX / (Math.hypot(pullX, pullY) || 1)) * 3;
+            p.vy = (pullY / (Math.hypot(pullX, pullY) || 1)) * 3;
+            p.r *= 0.95;
+            if (p.r < 2) {
+                const timeEater = state.enemies.find(e => e.id === 'time_eater');
+                if (timeEater) timeEater.hp = Math.min(timeEater.maxHP, timeEater.hp + 10);
+                utils.spawnParticles(state.particles, p.x, p.y, "#fff", 10, 2, 15);
+                state.pickups.splice(i, 1);
+                continue;
+            }
+        } else {
+            const pickupRadius = 75 + state.player.talent_modifiers.pickup_radius_bonus;
+            const d = Math.hypot(state.player.x - p.x, state.player.y - p.y);
+            
+            if (d < pickupRadius) {
+                const angle = Math.atan2(state.player.y - p.y, state.player.x - p.x);
+                const acceleration = 0.5;
+                p.vx += Math.cos(angle) * acceleration;
+                p.vy += Math.sin(angle) * acceleration;
+            }
+            p.vx *= 0.95;
+            p.vy *= 0.95;
         }
         
-        p.vx *= 0.95;
-        p.vy *= 0.95;
         p.x += p.vx;
         p.y += p.vy;
 
@@ -411,7 +438,8 @@ export function gameTick(mx, my) {
         ctx.fillText(p.emoji || powers[p.type]?.emoji || '?', p.x, p.y+6);
         ctx.textAlign = "left";
 
-        if(d < state.player.r + p.r){
+        const collectDist = Math.hypot(state.player.x - p.x, state.player.y - p.y);
+        if(collectDist < state.player.r + p.r){
             if (p.customApply) {
                 p.customApply();
                 play('pickup');
@@ -598,11 +626,12 @@ export function gameTick(mx, my) {
             const p2x = source.x + maxDist * Math.cos(angle2);
             const p2y = source.y + maxDist * Math.sin(angle2);
             ctx.beginPath();
+            ctx.rect(-1000, -1000, canvas.width+2000, canvas.height+2000);
             ctx.moveTo(source.x, source.y);
             ctx.lineTo(p1x,p1y);
             ctx.lineTo(p2x,p2y);
             ctx.closePath();
-            ctx.fill();
+            ctx.fill('evenodd');
             const allTargets = state.arenaMode ? [state.player, ...state.enemies.filter(t => t !== source)] : [state.player];
             allTargets.forEach(target => {
                 const targetAngle = Math.atan2(target.y - source.y, target.x - source.x);
