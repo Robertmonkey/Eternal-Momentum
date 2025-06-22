@@ -359,7 +359,7 @@ export function gameTick(mx, my) {
             ctx.strokeStyle = `rgba(155, 89, 182, ${0.6 * progress})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(effect.x, effect.y, currentPullRadius, 0, 2*Math.PI); ctx.stroke(); 
             state.enemies.forEach(e => { const dist = Math.hypot(e.x - effect.x, e.y - effect.y); if (dist < currentPullRadius) { const pullStrength = e.boss ? 0.03 : 0.1; e.x += (effect.x - e.x) * pullStrength; e.y += (effect.y - e.y) * pullStrength; if (dist < effect.radius + e.r && Date.now() - effect.lastDamage > effect.damageRate) { e.hp -= e.boss ? effect.damage : 15; if (state.player.purchasedTalents.has('unstable-singularity')) { e.hp -= 5 * state.player.talent_modifiers.damage_multiplier; } effect.lastDamage = Date.now(); } } });
         } else if (effect.type === 'seeking_shrapnel') {
-            let closest = null;
+             let closest = null;
             let minDist = Infinity;
             state.enemies.forEach(e => {
                 const dist = Math.hypot(e.x - effect.x, e.y - effect.y);
