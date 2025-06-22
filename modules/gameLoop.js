@@ -79,7 +79,7 @@ export function addEssence(amount) {
 export function spawnEnemy(isBoss = false, bossId = null, location = null) {
     const e = { x: location ? location.x : Math.random() * canvas.width, y: location ? location.y : Math.random() * canvas.height, dx: (Math.random() - 0.5) * 0.75, dy: (Math.random() - 0.5) * 0.75, r: isBoss ? 50 : 15, hp: isBoss ? 200 : 1, maxHP: isBoss ? 200 : 1, boss: isBoss, frozen: false, targetBosses: false };
     if (isBoss) {
-        state.bossHasSpawnedThisRun = true; // BUG FIX: Set flag when boss spawns
+        state.bossHasSpawnedThisRun = true;
         const bossIndex = (state.currentStage - 1);
         if (bossIndex >= bossData.length) {
             state.gameOver = true;
@@ -92,7 +92,7 @@ export function spawnEnemy(isBoss = false, bossId = null, location = null) {
         e.maxHP = bd.maxHP || e.maxHP;
         e.hp = e.maxHP;
         state.enemies.push(e);
-        if (bd.init) bd.init(e, state, spawnEnemy);
+        if (bd.init) bd.init(e, state, spawnEnemy, canvas); // Pass canvas to init
         if (!state.currentBoss || state.currentBoss.hp <= 0) state.currentBoss = e;
         state.bossActive = true;
         if (!bossId || (bossId && !e.partner && !e.shadow)) showBossBanner(e);
