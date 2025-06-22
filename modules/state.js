@@ -1,9 +1,8 @@
 // modules/state.js
 
 // The single, central state object for the entire game.
-// We export it so any module can import it and access game data.
 export const state = {
-  // Player-specific data, including our new progression properties
+  // Player-specific data
   player:{
     x:0, y:0, r:20, speed:1,
     maxHealth:100, health:100,
@@ -14,11 +13,11 @@ export const state = {
     // Progression System
     level: 1,
     essence: 0,
-    essenceToNextLevel: 100, // Starting XP needed for Level 2
+    essenceToNextLevel: 100,
     ascensionPoints: 0,
-    unlockedPowers: new Set(['heal', 'missile']), // Player starts with these two
+    unlockedPowers: new Set(['heal', 'missile']),
     
-    // Infection mechanic from Parasite boss
+    // Infection mechanic
     infected: false, infectionEnd: 0, lastSpore: 0,
   },
   
@@ -26,7 +25,7 @@ export const state = {
   enemies:[], 
   pickups:[], 
   effects: [],
-  particles: [], // <-- ADDED
+  particles: [],
   decoy:null, 
   
   // Inventories and status
@@ -35,6 +34,7 @@ export const state = {
   stacked:false, 
   
   // Game flow properties
+  currentStage: 1, // <-- NEW: Tracks boss progression
   currentBoss:null, 
   bossActive:false,
   gameOver:false,
@@ -46,17 +46,16 @@ export const state = {
   wave: 0, 
   lastArenaSpawn: 0,
 
-  // Boss-specific states that need to be tracked globally
+  // Boss-specific states
   gravityActive:false, 
   gravityEnd:0,
   bossSpawnCooldownEnd: 0,
 };
 
-// This function resets the state to its default values for a new game.
+// This function resets the state for a new game.
 export function resetGame(isArena = false) {
     const canvas = document.getElementById("gameCanvas");
     
-    // Reset player object
     state.player.x = canvas.width / 2;
     state.player.y = canvas.height / 2;
     state.player.maxHealth = 100;
@@ -66,24 +65,23 @@ export function resetGame(isArena = false) {
     state.player.shield = false;
     state.player.berserkUntil = 0;
     
-    // Reset progression
     state.player.level = 1;
     state.player.essence = 0;
     state.player.essenceToNextLevel = 100;
     state.player.ascensionPoints = 0;
     state.player.unlockedPowers = new Set(['heal', 'missile']);
     
-    // Reset general game state
     Object.assign(state, {
-        enemies: [], pickups: [], effects: [], particles: [], // <-- ADDED
-        decoy: null,
+        enemies: [], pickups: [], effects: [], particles: [], decoy: null,
         offensiveInventory: [null, null, null], 
         defensiveInventory: [null, null, null], 
         currentBoss: null, bossActive: false, stacked: false, gameOver: false, 
         gravityActive: false, gravityEnd: 0, 
-        bossSpawnCooldownEnd: Date.now() + 2000,
         isPaused: false, 
+        currentStage: 1, // <-- NEW: Reset stage
         
-        arenaMode: isArena, wave: 0, lastArenaSpawn: Date.now()
+        arenaMode: isArena, wave: 0, lastArenaSpawn: Date.now(),
+        // Set a short cooldown at the start of a new game before the first boss spawns
+        bossSpawnCooldownEnd: Date.now() + 3000, 
     });
 }
