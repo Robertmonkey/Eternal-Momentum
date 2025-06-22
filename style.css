@@ -317,3 +317,90 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     background: #ff40ff;
     box-shadow: 0 0 15px #ff40ff;
 }
+
+.talent-node {
+    position: absolute;
+    width: 48px;
+    height: 48px;
+    border: 2px solid var(--border-color);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    background: #202038;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: not-allowed;
+    transition: all 0.2s ease-in-out;
+    z-index: 2;
+}
+.talent-icon {
+    font-size: 24px;
+}
+.talent-node.can-purchase {
+    cursor: pointer;
+    border-color: #00ff00;
+    box-shadow: 0 0 12px #00ff00;
+}
+.talent-node.can-purchase:hover {
+    transform: translate(-50%, -50%) scale(1.15);
+    background: #303050;
+}
+.talent-node.maxed {
+    border-color: var(--primary-glow);
+    background: var(--dark-bg);
+    box-shadow: 0 0 15px var(--primary-glow);
+    cursor: help;
+}
+.talent-node .talent-tooltip {
+    visibility: hidden;
+    width: 240px;
+    background-color: #101020;
+    color: #fff;
+    text-align: left;
+    border-radius: 6px;
+    padding: 10px;
+    position: absolute;
+    z-index: 10;
+    bottom: 125%;
+    left: 50%;
+    margin-left: -120px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    border: 1px solid var(--border-color);
+    font-size: 0.9rem;
+    pointer-events: none;
+}
+.talent-node:hover .talent-tooltip {
+    visibility: visible;
+    opacity: 1;
+}
+.tooltip-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
+.tooltip-icon { font-size: 1.5rem; margin-right: 10px; }
+.tooltip-name { font-weight: bold; font-size: 1rem; color: var(--primary-glow); }
+.tooltip-desc { margin-bottom: 8px; line-height: 1.4; opacity: 0.9; }
+.tooltip-footer {
+    display: flex;
+    justify-content: space-between;
+    border-top: 1px solid var(--border-color);
+    padding-top: 8px;
+    opacity: 0.8;
+}
+
+.connector-line {
+    position: absolute;
+    height: 2px;
+    background-color: var(--border-color);
+    opacity: 0.3;
+    transform-origin: 0 0;
+    z-index: 1;
+    transition: all 0.4s ease-in-out;
+}
+.connector-line.unlocked {
+    background-color: var(--primary-glow);
+    box-shadow: 0 0 5px var(--primary-glow);
+    opacity: 1;
+}
