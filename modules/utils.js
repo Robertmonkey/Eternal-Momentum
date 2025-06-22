@@ -1,8 +1,5 @@
 // modules/utils.js
 
-// This module contains helper functions for drawing and visual effects.
-// All functions are "pure" - they don't store their own state.
-
 let screenShakeEnd = 0;
 let screenShakeMagnitude = 0;
 
