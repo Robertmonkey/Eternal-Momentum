@@ -3,7 +3,7 @@ import { state, resetGame, loadPlayerState } from './modules/state.js';
 import { bossData } from './modules/bosses.js';
 import { AudioManager } from './modules/audio.js';
 import { updateUI, populateLevelSelect, showCustomConfirm } from './modules/ui.js';
-import { gameTick, spawnEnemy, spawnPickup, addStatusEffect, handleThematicUnlock } from './modules/gameLoop.js';
+import { gameTick, spawnEnemy, spawnPickup, addStatusEffect, handleThematicUnlock, addEssence } from './modules/gameLoop.js';
 import { usePower } from './modules/powers.js';
 import * as utils from './modules/utils.js';
 import { renderAscensionGrid, applyAllTalentEffects } from './modules/ascension.js';
@@ -62,7 +62,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
         canvas.addEventListener("touchmove", e => { e.preventDefault(); setPlayerTarget(e); }, { passive: false });
         canvas.addEventListener("touchstart", e => { e.preventDefault(); setPlayerTarget(e); }, { passive: false });
 
-        const gameHelpers = { addStatusEffect };
+        const gameHelpers = { addStatusEffect, addEssence };
 
         const useOffensivePower = () => { if (state.offensiveInventory[0]) usePower('offensive', utils, gameHelpers, mx, my); };
         const useDefensivePower = () => { if (state.defensiveInventory[0]) usePower('defensive', utils, gameHelpers, mx, my); };
@@ -76,6 +76,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
         document.body.addEventListener("click", () => AudioManager.unlockAudio(), { once: true });
         document.body.addEventListener("touchstart", () => AudioManager.unlockAudio(), { once: true });
 
+        // Modal Listeners
         levelSelectBtn.addEventListener("click", () => { 
             state.isPaused = true; 
             populateLevelSelect(bossData, startSpecificLevel);
@@ -110,6 +111,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
             );
         });
 
+        // Game Over Menu Listeners
         restartStageBtn.addEventListener("click", () => {
             startSpecificLevel(state.currentStage);
         });
