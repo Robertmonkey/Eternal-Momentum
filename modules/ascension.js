@@ -26,6 +26,13 @@ function findTalentById(talentId) {
 }
 
 function drawConnectorLines() {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.style.position = 'absolute';
+    svg.style.width = '100%';
+    svg.style.height = '100%';
+    svg.style.overflow = 'visible';
+    svg.style.zIndex = '1';
+
     for (const key in TALENT_GRID_CONFIG) {
         const constellation = TALENT_GRID_CONFIG[key];
         const constellationColor = constellation.color || 'var(--primary-glow)';
@@ -37,34 +44,27 @@ function drawConnectorLines() {
             talent.prerequisites.forEach(prereqId => {
                 const prereqTalent = allTalents[prereqId];
                 if (prereqTalent && isTalentVisible(talent) && isTalentVisible(prereqTalent)) {
-                    const line = document.createElement('div');
-                    line.className = 'connector-line';
-                    
-                    const x1 = prereqTalent.position.x;
-                    const y1 = prereqTalent.position.y;
-                    const x2 = talent.position.x;
-                    const y2 = talent.position.y;
-
-                    const length = Math.hypot(x2 - x1, y2 - y1);
-                    const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
-
-                    line.style.width = `${length}%`;
-                    line.style.left = `${x1}%`;
-                    line.style.top = `${y1}%`;
-                    line.style.transform = `rotate(${angle}deg)`;
+                    const line = document.createElementNS("http://www.w3.org/2000/svg", 'line');
+                    line.setAttribute('x1', `${prereqTalent.position.x}%`);
+                    line.setAttribute('y1', `${prereqTalent.position.y}%`);
+                    line.setAttribute('x2', `${talent.position.x}%`);
+                    line.setAttribute('y2', `${talent.position.y}%`);
+                    line.setAttribute('stroke', 'var(--border-color)');
+                    line.setAttribute('stroke-width', '2');
+                    line.style.opacity = '0.3';
                     
                     const isPrereqPurchased = state.player.purchasedTalents.has(prereqId);
                     if (isPrereqPurchased) {
-                        line.classList.add('unlocked');
-                        line.style.backgroundColor = constellationColor;
-                        line.style.boxShadow = `0 0 5px ${constellationColor}`;
+                        line.setAttribute('stroke', constellationColor);
+                        line.style.opacity = '1';
                     }
 
-                    gridContainer.appendChild(line);
+                    svg.appendChild(line);
                 }
             });
         }
     }
+    gridContainer.appendChild(svg);
 }
 
 function createTalentNode(talent, constellationColor) {
@@ -95,7 +95,10 @@ function createTalentNode(talent, constellationColor) {
     
     const tooltip = document.createElement('div');
     tooltip.className = 'talent-tooltip';
-    
+    if (talent.position.x > 75) {
+        tooltip.classList.add('show-left');
+    }
+
     tooltip.innerHTML = `
         <div class="tooltip-header">
             <span class="tooltip-icon">${talent.icon}</span>
@@ -111,18 +114,6 @@ function createTalentNode(talent, constellationColor) {
         node.onclick = () => purchaseTalent(talent.id);
     }
     
-    node.addEventListener('mouseenter', () => {
-        requestAnimationFrame(() => {
-            const rect = tooltip.getBoundingClientRect();
-            const containerRect = gridContainer.getBoundingClientRect();
-            if (rect.right > containerRect.right - 10) {
-                tooltip.classList.add('show-left');
-            } else {
-                tooltip.classList.remove('show-left');
-            }
-        });
-    });
-
     gridContainer.appendChild(node);
 }
 
