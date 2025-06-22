@@ -410,8 +410,8 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     z-index: 2;
 }
 .talent-node.nexus-node {
-    border-color: var(--nexus-glow);
-    box-shadow: 0 0 15px var(--nexus-glow);
+    border-color: var(--nexus-glow) !important;
+    box-shadow: 0 0 15px var(--nexus-glow) !important;
 }
 .talent-node:hover {
     z-index: 3;
@@ -493,9 +493,8 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
 .connector-line.unlocked {
     opacity: 1;
 }
-.connector-line.synergy {
-    stroke-width: 4px;
-    filter: drop-shadow(0 0 3px var(--nexus-glow));
+.connector-line.nexus-connector.unlocked {
+    filter: drop-shadow(0 0 4px var(--nexus-glow));
 }
 
 #gameOverMenu {
@@ -586,8 +585,4 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
 #confirm-no {
     background: #555;
     border-color: #888;
-}
-
-.capstone-connector {
-    filter: drop-shadow(0 0 5px var(--nexus-glow));
 }
