@@ -24,10 +24,6 @@ function isTalentVisible(talent) {
     return powerUnlocked && (talent.prerequisites.length === 0 || prereqsMet);
 }
 
-function findTalentById(talentId) {
-    return allTalents[talentId] || null;
-}
-
 function drawConnectorLines() {
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.style.position = 'absolute';
@@ -106,12 +102,6 @@ function createTalentNode(talent, constellationColor) {
     
     const tooltip = document.createElement('div');
     tooltip.className = 'talent-tooltip';
-    if (talent.position.x > 75) {
-        tooltip.classList.add('show-left');
-    }
-    if (talent.position.y < 15) {
-        tooltip.classList.add('show-bottom');
-    }
 
     tooltip.innerHTML = `
         <div class="tooltip-header">
@@ -128,6 +118,23 @@ function createTalentNode(talent, constellationColor) {
         node.onclick = () => purchaseTalent(talent.id);
     }
     
+    node.addEventListener('mouseenter', () => {
+        requestAnimationFrame(() => {
+            const rect = tooltip.getBoundingClientRect();
+            const containerRect = gridContainer.getBoundingClientRect();
+            if (rect.right > containerRect.right - 10) {
+                tooltip.classList.add('show-left');
+            } else {
+                tooltip.classList.remove('show-left');
+            }
+            if (rect.top < containerRect.top + 10) {
+                tooltip.classList.add('show-bottom');
+            } else {
+                tooltip.classList.remove('show-bottom');
+            }
+        });
+    });
+
     gridContainer.appendChild(node);
 }
 
