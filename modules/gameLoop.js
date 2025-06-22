@@ -131,20 +131,20 @@ export function gameTick(mx, my) {
     // Phase Momentum Talent Logic
     const phaseMomentumTalent = state.player.purchasedTalents.get('phase-momentum');
     if (phaseMomentumTalent) {
-        if (Date.now() - state.player.phaseMomentum.lastDamageTime > 8000) {
-            state.player.phaseMomentum.active = true;
+        if (Date.now() - state.player.talent_states.phaseMomentum.lastDamageTime > 8000) {
+            state.player.talent_states.phaseMomentum.active = true;
         }
     } else {
-        state.player.phaseMomentum.active = false;
+        state.player.talent_states.phaseMomentum.active = false;
     }
-    let playerSpeedMultiplier = state.player.phaseMomentum.active ? 1.10 : 1.0;
+    let playerSpeedMultiplier = state.player.talent_states.phaseMomentum.active ? 1.10 : 1.0;
 
     if (Date.now() > state.player.stunnedUntil) {
         state.player.x += (finalMx - state.player.x) * 0.015 * state.player.speed * playerSpeedMultiplier;
         state.player.y += (finalMy - state.player.y) * 0.015 * state.player.speed * playerSpeedMultiplier;
     }
 
-    if (state.player.phaseMomentum.active) {
+    if (state.player.talent_states.phaseMomentum.active) {
         ctx.globalAlpha = 0.7;
         utils.drawCircle(ctx, state.player.x, state.player.y, state.player.r + 5, 'rgba(0, 255, 255, 0.5)');
         ctx.globalAlpha = 1.0;
@@ -190,8 +190,15 @@ export function gameTick(mx, my) {
                 }
             } else {
                 addEssence(10);
-                if (state.player.purchasedTalents.get('power-scavenger') && Math.random() < (0.01 + state.player.purchasedTalents.get('power-scavenger') * 0.005) ) {
-                    spawnPickup();
+                // Power Scavenger Talent
+                const scavengerRank = state.player.purchasedTalents.get('power-scavenger');
+                if (scavengerRank && Math.random() < [0.01, 0.025][scavengerRank-1]) {
+                    state.pickups.push({ x: e.x, y: e.y, dx: 0, dy: 0, r: 12, type: 'score' });
+                }
+                // Cryo-Core Talent
+                const cryoRank = state.player.purchasedTalents.get('aegis-freeze');
+                if (cryoRank && e.wasFrozen && Math.random() < [0.25, 0.5][cryoRank-1]) {
+                    state.effects.push({ type: 'shockwave', caster: state.player, x: e.x, y: e.y, radius: 0, maxRadius: 100, speed: 500, startTime: Date.now(), hitEnemies: new Set(), damage: 5 * state.player.talent_modifiers.damage_multiplier });
                 }
                 state.enemies.splice(i, 1);
             }
@@ -199,7 +206,7 @@ export function gameTick(mx, my) {
         }
 
         if(!e.frozen && !e.hasCustomMovement){ 
-            let tgt = state.decoy || state.player;
+            let tgt = (e.isTaunted && state.decoy) ? state.decoy : state.player;
             let enemySpeedMultiplier = 1;
             state.effects.forEach(effect => { if(effect.type === 'slow_zone' && Math.hypot(e.x - effect.x, e.y - effect.y) < effect.r) { enemySpeedMultiplier = 0.5; } });
             if (tgt) {
@@ -222,16 +229,26 @@ export function gameTick(mx, my) {
         
         const pDist = Math.hypot(state.player.x-e.x,state.player.y-e.y);
         if(pDist < e.r+state.player.r){
-            if (state.player.phaseMomentum.active && !e.boss) {
+            if (state.player.talent_states.phaseMomentum.active && !e.boss) {
                 // Allows passing through
             } else {
-                state.player.phaseMomentum.lastDamageTime = Date.now();
-                state.player.phaseMomentum.active = false;
+                state.player.talent_states.phaseMomentum.lastDamageTime = Date.now();
+                state.player.talent_states.phaseMomentum.active = false;
+
                 if (e.onCollision) e.onCollision(e, state.player, addStatusEffect); 
                 if(!state.player.shield){ 
                     let damage = e.boss ? (e.enraged ? 20 : 10) : 1; 
                     if (state.player.berserkUntil > Date.now()) damage *= 2; 
-                    state.player.health -= damage; 
+
+                    const reactiveRank = state.player.purchasedTalents.get('reactive-plating');
+                    if(reactiveRank && damage >= 20 && Date.now() > state.player.talent_states.reactivePlating.cooldownUntil) {
+                        const shieldDuration = [1, 2, 3][reactiveRank-1] * 1000;
+                        addStatusEffect('Reactive Shield', '🛡️', shieldDuration);
+                        state.player.talent_states.reactivePlating.cooldownUntil = Date.now() + 30000;
+                    } else {
+                        state.player.health -= damage; 
+                    }
+                    
                     play('hit'); 
                     if(e.onDamage) e.onDamage(e, damage, state.player, state, spawnParticlesCallback); 
                     if(state.player.health<=0) state.gameOver=true; 
@@ -314,25 +331,6 @@ export function gameTick(mx, my) {
                     }
                 }
             }
-        } else if (effect.type === 'seeking_shrapnel') {
-            // ... logic for seeking shrapnel ...
-        } else if (effect.type === 'repulsion_field') {
-            if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
-            const alpha = (effect.endTime - Date.now()) / 100 * 0.4;
-            ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
-            ctx.lineWidth = 4;
-            ctx.beginPath();
-            ctx.arc(effect.x, effect.y, effect.radius, 0, 2*Math.PI);
-            ctx.stroke();
-            state.enemies.forEach(e => {
-                if (e.boss) return;
-                const dist = Math.hypot(e.x - effect.x, e.y - effect.y);
-                if (dist < effect.radius) {
-                    const angle = Math.atan2(e.y - effect.y, e.x - effect.x);
-                    e.x += Math.cos(angle) * 5;
-                    e.y += Math.sin(angle) * 5;
-                }
-            });
         }
     });
     
