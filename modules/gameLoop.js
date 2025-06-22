@@ -1,9 +1,9 @@
 // modules/gameLoop.js
-import { state } from './state.js';
+import { state, savePlayerState } from './state.js';
 import { THEMATIC_UNLOCKS, SPAWN_WEIGHTS } from './config.js';
 import { powers, offensivePowers } from './powers.js';
 import { bossData } from './bosses.js';
-import { updateUI, showBossBanner } from './ui.js';
+import { updateUI, showBossBanner, showUnlockNotification } from './ui.js';
 import * as utils from './utils.js';
 import { AudioManager } from './audio.js';
 
@@ -30,7 +30,17 @@ export function addStatusEffect(name, emoji, duration) {
 export function handleThematicUnlock(level) {
     const unlock = THEMATIC_UNLOCKS[level];
     if (!unlock) return;
-    if (unlock.type === 'power') state.player.unlockedPowers.add(unlock.id);
+
+    if (unlock.type === 'power') {
+        state.player.unlockedPowers.add(unlock.id);
+        const powerName = powers[unlock.id]?.desc || unlock.id;
+        showUnlockNotification(`Power Unlocked: ${powers[unlock.id].emoji} ${powerName}`);
+    } else if (unlock.type === 'slot') {
+        showUnlockNotification(`Inventory Slot Unlocked!`);
+    } else if (unlock.type === 'bonus') {
+        state.player.ascensionPoints += unlock.value;
+        showUnlockNotification(`Bonus: +${unlock.value} Ascension Points!`);
+    }
 }
 
 function levelUp() {
@@ -40,11 +50,12 @@ function levelUp() {
     state.player.ascensionPoints += 2;
     handleThematicUnlock(state.player.level);
     utils.spawnParticles(state.particles, state.player.x, state.player.y, '#00ffff', 80, 6, 50, 5);
+    savePlayerState();
 }
 
 export function addEssence(amount) {
     if (state.gameOver) return;
-    state.player.essence += amount * state.player.essenceGainModifier;
+    state.player.essence += Math.floor(amount * state.player.essenceGainModifier);
     while (state.player.essence >= state.player.essenceToNextLevel) {
         levelUp();
     }
@@ -55,7 +66,8 @@ export function spawnEnemy(isBoss = false, bossId = null, location = null) {
     if (isBoss) {
         const bossIndex = (state.currentStage - 1);
         if (bossIndex >= bossData.length) {
-            console.log("All bosses defeated! VICTORY!"); 
+            console.log("All bosses defeated! VICTORY!");
+            state.gameOver = true;
             return null;
         }
         const bd = bossId ? bossData.find(b => b.id === bossId) : bossData[state.arenaMode ? Math.floor(Math.random() * bossData.length) : bossIndex];
@@ -127,11 +139,20 @@ export function gameTick(mx, my) {
         const e = state.enemies[i];
         if (e.hp <= 0) {
             if (e.boss) {
+                if (state.currentStage > state.player.highestStageBeaten) {
+                    state.player.highestStageBeaten = state.currentStage;
+                    state.player.ascensionPoints += 3;
+                    showUnlockNotification("Stage Cleared! +3 AP", `Level ${state.currentStage + 1} Unlocked`);
+                }
+                
                 utils.triggerScreenShake(250, 5);
-                addEssence(300); 
+                addEssence(300);
+                
                 state.currentStage++;
                 state.bossActive = false;
                 state.bossSpawnCooldownEnd = Date.now() + 5000;
+                savePlayerState();
+
                 if (e.onDeath) e.onDeath(e, state, spawnEnemy, (x, y, c, n, spd, life, r) => utils.spawnParticles(state.particles, x, y, c, n, spd, life, r), play, stopLoopingSfx);
                 state.enemies.splice(i, 1);
                 if (state.currentBoss === e) {
