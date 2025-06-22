@@ -156,7 +156,7 @@ button {
 }
 button:hover { background: rgba(0, 255, 255, 0.4); }
 
-#bossBanner, #levelSelectModal, #bossHpContainer, #vignette, #ascensionGridModal, #unlock-notification { position:absolute; }
+#bossBanner, #levelSelectModal, #bossHpContainer, #vignette, #ascensionGridModal, #unlock-notification, #gameOverMenu { position:absolute; }
 #bossBanner { top:30%; width:100%; text-align:center; font-size:2rem; color:#f1c40f; text-shadow:2px 2px 4px black; opacity:0; transition:opacity 1s; pointer-events: none; }
 #bossHpContainer { top: 8px; left: 50%; transform: translateX(-50%); width: 80%; max-width: 400px; display: flex; flex-direction: column; gap: 5px; }
 .boss-hp-bar-wrapper { width: 100%; background: rgba(0,0,0,0.5); border: 1px solid #fff; border-radius: 6px; padding: 2px; box-sizing: border-box; }
@@ -164,7 +164,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
 .boss-hp-label { font-size: 0.8rem; color: white; text-shadow: 1px 1px 2px black; margin-bottom: 2px; text-align: center; }
 #vignette { top: 0; left: 0; width: 100%; height: 100%; box-shadow: inset 0 0 150px 50px rgba(0,0,0,0); pointer-events: none; transition: box-shadow 0.3s ease-out; }
 
-#levelSelectModal { top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; flex-direction: column; align-items: center; justify-content: center; color: white; font-family: sans-serif; pointer-events: all; }
+#levelSelectModal { top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; flex-direction: column; align-items: center; justify-content: center; color: white; font-family: sans-serif; pointer-events: all; z-index: 100; }
 #levelSelectGrid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; padding: 20px; max-width: 500px; }
 #levelSelectGrid button { padding: 15px; font-size: 1.1rem; background: #2c3e50; width: auto; height: auto;}
 #levelSelectGrid button:hover { background: #34495e; }
@@ -360,7 +360,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     border-radius: 6px;
     padding: 10px;
     position: absolute;
-    z-index: 10;
+    z-index: 110;
     bottom: 125%;
     left: 50%;
     margin-left: -120px;
@@ -403,4 +403,44 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     background-color: var(--primary-glow);
     box-shadow: 0 0 5px var(--primary-glow);
     opacity: 1;
+}
+
+#gameOverMenu {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.8);
+    color: white;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 99;
+}
+#gameOverMenu h1 {
+    font-size: 4rem;
+    color: var(--health-low);
+    text-shadow: 0 0 15px var(--health-low);
+    margin-bottom: 30px;
+}
+#gameOverActions {
+    display: flex;
+    gap: 20px;
+}
+#gameOverActions button {
+    font-size: 1.2rem;
+    padding: 12px 24px;
+    width: auto;
+    height: auto;
+    border-radius: 8px;
+}
+#restartStageBtn {
+    background-color: rgba(0, 255, 255, 0.2);
+    border: 1px solid var(--border-color);
+}
+#levelSelectMenuBtn {
+    background-color: rgba(155, 89, 182, 0.4);
+    border-color: rgba(155, 89, 182, 1);
 }
