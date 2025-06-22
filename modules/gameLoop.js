@@ -323,12 +323,7 @@ export function gameTick(mx, my) {
             }
         }
         
-        if (e.knockbackUntil && Date.now() < e.knockbackUntil) {
-            const angle = Math.atan2(e.y - state.player.y, e.x - state.player.x);
-            const knockbackForce = 10;
-            e.x += Math.cos(angle) * knockbackForce;
-            e.y += Math.sin(angle) * knockbackForce;
-        } else if (e.eatenBy) {
+        if (e.eatenBy) {
             const pullX = e.eatenBy.x - e.x;
             const pullY = e.eatenBy.y - e.y;
             const pullDist = Math.hypot(pullX, pullY) || 1;
@@ -660,6 +655,38 @@ export function gameTick(mx, my) {
             utils.drawCircle(ctx, effect.x, effect.y, effect.r, '#ff9944');
             state.enemies.forEach(e => { if(Math.hypot(e.x - effect.x, e.y - effect.y) < e.r + effect.r) { e.hp -= effect.damage; state.effects.splice(index, 1); }});
             if(Date.now() > effect.startTime + effect.life) state.effects.splice(index, 1);
+        } else if (effect.type === 'repulsion_field') {
+            if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
+            effect.x = state.player.x;
+            effect.y = state.player.y;
+            
+            let knockbackForce = 5;
+            const isOverloaded = effect.isOverloaded && Date.now() < effect.startTime + 2000;
+
+            if (isOverloaded) {
+                knockbackForce = 15;
+                const pulseAlpha = 0.8 * (1 - (Date.now() - effect.startTime) / 2000);
+                ctx.strokeStyle = `rgba(0, 255, 255, ${pulseAlpha})`;
+                ctx.lineWidth = 6;
+            } else {
+                const alpha = (effect.endTime - Date.now()) / 5000 * 0.4;
+                ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+                ctx.lineWidth = 4;
+            }
+            ctx.beginPath();
+            ctx.arc(effect.x, effect.y, effect.radius, 0, 2*Math.PI);
+            ctx.stroke();
+            
+            state.enemies.forEach(e => {
+                if (!e.boss) {
+                    const dist = Math.hypot(e.x - effect.x, e.y - effect.y);
+                    if (dist < effect.radius) {
+                        const angle = Math.atan2(e.y - effect.y, e.x - effect.x);
+                        e.x += Math.cos(angle) * knockbackForce;
+                        e.y += Math.sin(angle) * knockbackForce;
+                    }
+                }
+            });
         } else if (effect.type === 'glitch_zone') {
             if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
             const alpha = (effect.endTime - Date.now()) / 5000 * 0.3;
@@ -747,6 +774,37 @@ export function gameTick(mx, my) {
             ctx.beginPath();
             ctx.arc(effect.source.x, effect.source.y, effect.source.r + (100 * progress), 0, Math.PI*2);
             ctx.stroke();
+        } else if (effect.type === 'teleport_indicator') {
+            if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
+            const progress = 1 - ((effect.endTime - Date.now()) / 1000); // from 0 to 1
+            ctx.strokeStyle = `rgba(255, 0, 0, ${1 - progress})`;
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.arc(effect.x, effect.y, effect.r * (progress * 1.5), 0, 2 * Math.PI);
+            ctx.stroke();
+        } else if (effect.type === 'singularity_beam') {
+            if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
+            const { source, target } = effect;
+            if (!source || !target) { state.effects.splice(index, 1); return; }
+            
+            utils.drawLightning(ctx, source.x, source.y, target.x, target.y, '#fd79a8', 8);
+            
+            const p1 = source, p2 = target, p3 = state.player;
+            const L2 = Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2);
+            if (L2 !== 0) {
+                let t = ((p3.x - p1.x) * (p2.x - p1.x) + (p3.y - p1.y) * (p2.y - p1.y)) / L2;
+                t = Math.max(0, Math.min(1, t));
+                const closestX = p1.x + t * (p2.x - p1.x);
+                const closestY = p1.y + t * (p2.y - p1.y);
+                
+                if (Math.hypot(p3.x - closestX, p3.y - closestY) < p3.r + 5) {
+                    if (state.player.shield) {
+                        state.player.shield = false;
+                    } else {
+                        state.player.health -= 2; // Beam damage
+                    }
+                }
+            }
         }
     });
     
