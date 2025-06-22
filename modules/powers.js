@@ -53,7 +53,7 @@ export const powers={
   missile:{
     emoji:"🎯",
     desc:"AoE explosion damages nearby.",
-    apply:(utils, game)=>{ 
+    apply:(utils, game, mx, my)=>{ 
       play('shockwave'); 
       let damage = ((state.player.berserkUntil > Date.now()) ? 20 : 10) * state.player.talent_modifiers.damage_multiplier;
       let radius = 250;
@@ -61,22 +61,26 @@ export const powers={
       const radiusTalentRank = state.player.purchasedTalents.get('havoc-missile');
       if(radiusTalentRank) radius *= (1 + (radiusTalentRank * 0.15));
       
-      state.effects.push({ type: 'shockwave', caster: state.player, x: state.player.x, y: state.player.y, radius: 0, maxRadius: radius, speed: 1200, startTime: Date.now(), hitEnemies: new Set(), damage: damage, color: 'rgba(255, 153, 68, 0.7)' });
+      state.effects.push({ type: 'shockwave', caster: state.player, x: mx, y: my, radius: 0, maxRadius: radius, speed: 1200, startTime: Date.now(), hitEnemies: new Set(), damage: damage, color: 'rgba(255, 153, 68, 0.7)' });
       utils.triggerScreenShake(200, 8); 
       
       if(state.player.purchasedTalents.has('seeking-shrapnel')){
+          const initialAngle = Math.atan2(my - state.player.y, mx - state.player.x);
           for(let i = 0; i < 3; i++) {
-              const angleOffset = (i - 1) * 0.4; // spread them out
+              const angleOffset = (i - 1) * 0.5; // spread them out
+              const finalAngle = initialAngle + angleOffset;
               state.effects.push({ 
                   type: 'seeking_shrapnel', 
-                  x: state.player.x + Math.cos(angleOffset) * 20, 
-                  y: state.player.y + Math.sin(angleOffset) * 20, 
+                  x: mx, 
+                  y: my, 
+                  dx: Math.cos(finalAngle) * 4,
+                  dy: Math.sin(finalAngle) * 4,
                   r: 6, 
                   speed: 4, 
                   damage: 5 * state.player.talent_modifiers.damage_multiplier, 
                   life: 3000, 
                   startTime: Date.now(),
-                  targetIndex: i // 0, 1, 2 for seeking different targets
+                  targetIndex: i
                 });
           }
       }
