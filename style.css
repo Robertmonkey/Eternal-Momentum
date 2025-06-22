@@ -226,7 +226,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
 #modal-actions button { width: auto; height: auto; padding: 10px 20px; font-size: 1rem; }
 #arenaBtn { background: rgba(155, 89, 182, 0.4); border-color: rgba(155, 89, 182, 1); }
 #arenaBtn:hover { background: rgba(155, 89, 182, 0.6); }
-#closeLevelSelectBtn { background: #555; }
+
 #jumpToFrontierBtn {
     background: var(--primary-glow);
     color: var(--dark-bg);
@@ -367,7 +367,8 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     border-top: 1px solid var(--border-color);
     flex-shrink: 0;
 }
-.close-ascension-grid {
+/* MODIFIED: Renamed class for reusability */
+.btn-modal-close {
     background: var(--secondary-glow);
     border-color: var(--secondary-glow);
     font-size: 1rem;
@@ -376,7 +377,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     width: auto;
     padding: 10px 30px;
 }
-.close-ascension-grid:hover {
+.btn-modal-close:hover {
     background: #ff40ff;
     box-shadow: 0 0 15px #ff40ff;
 }
@@ -409,6 +410,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     transition: all 0.2s ease-in-out;
     z-index: 2;
 }
+/* MODIFIED: Added !important to prevent overrides */
 .talent-node.nexus-node {
     border-color: var(--nexus-glow) !important;
     box-shadow: 0 0 15px var(--nexus-glow) !important;
@@ -459,6 +461,12 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     right: 110%;
     transform: translateX(0);
 }
+/* NEW: Class to handle left-side overflow */
+.talent-node .talent-tooltip.show-right {
+    left: 110%;
+    transform: translateX(0);
+}
+
 .talent-node .talent-tooltip.show-bottom {
     bottom: auto;
     top: 125%;
@@ -493,7 +501,14 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
 .connector-line.unlocked {
     opacity: 1;
 }
+/* MODIFIED: Enhanced nexus connector style */
+.connector-line.nexus-connector {
+    stroke: var(--nexus-glow);
+    stroke-width: 3px;
+    opacity: 0.7;
+}
 .connector-line.nexus-connector.unlocked {
+    opacity: 1;
     filter: drop-shadow(0 0 4px var(--nexus-glow));
 }
 
