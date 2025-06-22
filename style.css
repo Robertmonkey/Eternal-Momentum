@@ -461,6 +461,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
 }
 .talent-node .talent-tooltip.show-right {
     left: 110%;
+    right: auto;
     transform: translateX(0);
 }
 
