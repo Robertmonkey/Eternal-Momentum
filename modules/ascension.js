@@ -59,6 +59,11 @@ function drawConnectorLines() {
                     if (talent.id === 'overload-protocol') {
                          line.classList.add('synergy');
                     }
+                    
+                    // --- NEW: Add class for capstone glow effect ---
+                    if (talent.id === 'overload-protocol' && ['phase-momentum', 'unstable-singularity', 'energetic-recycling'].includes(prereqId)) {
+                        line.classList.add('capstone-connector');
+                    }
 
                     svg.appendChild(line);
                 }
