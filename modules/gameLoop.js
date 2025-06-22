@@ -456,19 +456,21 @@ export function gameTick(mx, my) {
             const isOffensive = offensivePowers.includes(p.type);
             const targetInventory = isOffensive ? state.offensiveInventory : state.defensiveInventory;
             const maxSlots = isOffensive ? state.player.unlockedOffensiveSlots : state.player.unlockedDefensiveSlots;
-            const idx=targetInventory.indexOf(null);
+            const idx = targetInventory.indexOf(null);
             
             if(idx !== -1 && idx < maxSlots){
                 targetInventory[idx]=p.type; 
                 play('pickup'); 
                 state.pickups.splice(i,1);
             } else {
-                const power = powers[p.type];
-                if (power && power.apply) {
-                    addStatusEffect('Auto-Used', p.emoji || powers[p.type]?.emoji || '?', 2000);
-                    power.apply(utils, gameHelpers, mx, my);
-                    play('pickup');
-                    state.pickups.splice(i, 1);
+                if(state.player.purchasedTalents.has('overload-protocol')) {
+                    const power = powers[p.type];
+                    if (power && power.apply) {
+                        addStatusEffect('Auto-Used', p.emoji || powers[p.type]?.emoji || '?', 2000);
+                        power.apply(utils, gameHelpers, mx, my);
+                        play('pickup');
+                        state.pickups.splice(i, 1);
+                    }
                 } else {
                     utils.spawnParticles(state.particles, p.x, p.y, "#f00", 15, 2, 20); 
                     state.pickups.splice(i,1);
