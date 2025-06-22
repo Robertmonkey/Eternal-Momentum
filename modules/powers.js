@@ -7,21 +7,108 @@ function play(soundId) {
     if (soundElement) AudioManager.playSfx(soundElement);
 }
 
+// All power-up definitions
 export const powers={
-  shield:{emoji:"🛡️",desc:"Blocks damage for 6s",apply:(utils, game)=>{ state.player.shield=true; game.addStatusEffect('Shield', '🛡️', 6000); utils.spawnParticles(state.particles, state.player.x,state.player.y,"#f1c40f",30,4,30); setTimeout(()=>state.player.shield=false,6000); }},
+  shield:{
+    emoji:"🛡️",
+    desc:"Blocks damage for a duration.",
+    apply:(utils, game)=>{
+      let duration = 6000;
+      const talentRank = state.player.purchasedTalents.get('aegis-shield');
+      if (talentRank) {
+          duration += talentRank * 1500; // +1.5s per rank
+      }
+
+      const shieldEndTime = Date.now() + duration;
+      state.player.shield = true;
+      state.player.shield_end_time = shieldEndTime;
+      game.addStatusEffect('Shield', '🛡️', duration); 
+      utils.spawnParticles(state.particles, state.player.x,state.player.y,"#f1c40f",30,4,30); 
+      
+      setTimeout(()=> {
+          // Only trigger mastery if this specific shield instance is expiring
+          if(state.player.shield_end_time <= shieldEndTime){
+              state.player.shield=false;
+              if(state.player.purchasedTalents.has('aegis-retaliation')){
+                  // Mastery: Release repulsion wave
+                  state.effects.push({ type: 'repulsion_field', x: state.player.x, y: state.player.y, radius: 250, endTime: Date.now() + 100 });
+                  play('shockwave');
+              }
+          }
+      }, duration); 
+    }
+  },
   heal:{emoji:"❤️",desc:"+30 HP",apply:()=>{ state.player.health=Math.min(state.player.maxHealth,state.player.health+30); }},
-  shockwave:{emoji:"💥",desc:"Expanding wave damages enemies",apply:(utils, game)=>{ let damage = (state.player.berserkUntil > Date.now()) ? 30 : 15; state.effects.push({ type: 'shockwave', caster: state.player, x: state.player.x, y: state.player.y, radius: 0, maxRadius: Math.max(innerWidth, innerHeight), speed: 800, startTime: Date.now(), hitEnemies: new Set(), damage: damage }); play('shockwave'); }},
-  missile:{emoji:"🎯",desc:"AoE explosion damages nearby",apply:(utils, game)=>{ play('shockwave'); let damage = (state.player.berserkUntil > Date.now()) ? 20 : 10; const explosionRadius = 250; utils.triggerScreenShake(200, 8); utils.spawnParticles(state.particles, state.player.x, state.player.y, "#ff9944", 150, 8, 40, 5); state.enemies.forEach(e => { if (Math.hypot(e.x - state.player.x, e.y - state.player.y) < explosionRadius) { e.hp -= e.boss ? damage : 1000; if(e.onDamage) e.onDamage(e, damage, state.player, state, (x,y,c,n,spd,life,r)=>utils.spawnParticles(state.particles,x,y,c,n,spd,life,r)); } }); }},
+  shockwave:{emoji:"💥",desc:"Expanding wave damages enemies.",apply:(utils, game)=>{ 
+      let damage = (state.player.berserkUntil > Date.now()) ? 30 : 15;
+      damage *= state.player.talent_modifiers.damage_multiplier;
+      state.effects.push({ type: 'shockwave', caster: state.player, x: state.player.x, y: state.player.y, radius: 0, maxRadius: Math.max(innerWidth, innerHeight), speed: 800, startTime: Date.now(), hitEnemies: new Set(), damage: damage }); 
+      play('shockwave'); 
+  }},
+  missile:{
+    emoji:"🎯",
+    desc:"AoE explosion damages nearby.",
+    apply:(utils, game)=>{ 
+      play('shockwave'); 
+      let damage = ((state.player.berserkUntil > Date.now()) ? 20 : 10) * state.player.talent_modifiers.damage_multiplier;
+      let radius = 250;
+
+      const radiusTalentRank = state.player.purchasedTalents.get('havoc-missile');
+      if(radiusTalentRank) radius *= (1 + (radiusTalentRank * 0.15));
+      
+      utils.triggerScreenShake(200, 8); 
+      utils.spawnParticles(state.particles, state.player.x, state.player.y, "#ff9944", 150, 8, 40, 5); 
+      state.enemies.forEach(e => { if (Math.hypot(e.x - state.player.x, e.y - state.player.y) < radius) { e.hp -= e.boss ? damage : 1000; } }); 
+      
+      // Mastery: Seeking Shrapnel
+      if(state.player.purchasedTalents.has('seeking-shrapnel')){
+          for(let i = 0; i < 3; i++) {
+              state.effects.push({ type: 'seeking_shrapnel', x: state.player.x, y: state.player.y, r: 6, speed: 4, damage: 5 * state.player.talent_modifiers.damage_multiplier, life: 3000, startTime: Date.now() });
+          }
+      }
+    }
+  },
+  chain:{
+    emoji:"⚡",
+    desc:"Chain lightning hits multiple targets.",
+    apply:(utils, game)=>{ 
+      play('chain'); 
+      let chainCount = 6;
+      const chainTalentRank = state.player.purchasedTalents.get('havoc-chain');
+      if(chainTalentRank) chainCount += chainTalentRank * 1;
+
+      const targets = []; 
+      let currentTarget = state.player; 
+      for (let i = 0; i < chainCount; i++) { 
+          let closest = null; 
+          let minDist = Infinity; 
+          state.enemies.forEach(e => { 
+              if (!targets.includes(e)) { 
+                  const dist = Math.hypot(e.x - currentTarget.x, e.y - currentTarget.y); 
+                  if (dist < minDist) { 
+                      minDist = dist; 
+                      closest = e; 
+                  } 
+              } 
+          }); 
+          if (closest) { 
+              targets.push(closest); 
+              currentTarget = closest; 
+          } else { break; } 
+      } 
+      let damage = ((state.player.berserkUntil > Date.now()) ? 30 : 15) * state.player.talent_modifiers.damage_multiplier;
+      state.effects.push({ type: 'chain_lightning', targets: targets, links: [], startTime: Date.now(), durationPerLink: 80, damage: damage, caster: state.player, hasMastery: state.player.purchasedTalents.has('volatile-finish') }); 
+    }
+  },
   gravity:{emoji:"🌀",desc:"Pulls enemies for 1s",apply:(utils, game)=>{ play('gravity'); state.gravityActive=true; state.gravityEnd=Date.now()+1000; utils.spawnParticles(state.particles, innerWidth/2, innerHeight/2,"#9b59b6",100,4,40); }},
   speed:{emoji:"🚀",desc:"Speed Boost for 5s",apply:(utils, game)=>{ state.player.speed*=1.5; game.addStatusEffect('Speed Boost', '🚀', 5000); utils.spawnParticles(state.particles, state.player.x,state.player.y,"#00f5ff",40,3,30); setTimeout(()=>state.player.speed/=1.5,5000); }},
   freeze:{emoji:"🧊",desc:"Freeze enemies for 4s",apply:(utils, game)=>{ state.enemies.forEach(e=>{ if (e.frozen) return; e.frozen=true; e._dx=e.dx; e._dy=e.dy; e.dx=e.dy=0; }); utils.spawnParticles(state.particles, state.player.x,state.player.y,"#0ff",60,3,30); setTimeout(()=>{ state.enemies.forEach(e=>{ if (!e.frozen) return; e.frozen=false; e.dx=e._dx; e.dy=e._dy; }); },4000); }},
   decoy:{emoji:"🔮",desc:"Decoy lasts 5s",apply:(utils, game)=>{ state.decoy={x:state.player.x,y:state.player.y,r:20,expires:Date.now()+5000}; utils.spawnParticles(state.particles, state.player.x,state.player.y,"#8e44ad",50,3,30); }},
   stack:{emoji:"🧠",desc:"Double next power-up",apply:(utils, game)=>{ state.stacked=true; game.addStatusEffect('Stacked', '🧠', 60000); utils.spawnParticles(state.particles, state.player.x,state.player.y,"#aaa",40,4,30); }},
-  score: {emoji: "💠", desc: "Permanently +5 Max Health", apply: (utils) => { const healthGain = 5; state.player.maxHealth += healthGain; state.player.health += healthGain; utils.spawnParticles(state.particles, state.player.x, state.player.y, "#f1c40f", 20, 4, 30); }},
-  chain:{emoji:"⚡",desc:"Chain lightning hits 6 targets",apply:(utils, game)=>{ play('chain'); const targets = []; let currentTarget = state.player; for (let i = 0; i < 6; i++) { let closest = null; let minDist = Infinity; state.enemies.forEach(e => { if (!targets.includes(e)) { const dist = Math.hypot(e.x - currentTarget.x, e.y - currentTarget.y); if (dist < minDist) { minDist = dist; closest = e; } } }); if (closest) { targets.push(closest); currentTarget = closest; } else { break; } } let damage = (state.player.berserkUntil > Date.now()) ? 30 : 15; state.effects.push({ type: 'chain_lightning', targets: targets, links: [], startTime: Date.now(), durationPerLink: 80, damage: damage, caster: state.player }); }},
-  repulsion: {emoji: "🖐️", desc: "Pushes enemies away for 5s", apply: () => { state.effects.push({ type: 'repulsion_field', x: state.player.x, y: state.player.y, radius: 250, endTime: Date.now() + 5000 }); play('shockwave'); }},
+  score: {emoji: "💎", desc: "Gain a large amount of Essence.", apply: (utils, game) => { game.addEssence(200 + state.player.level * 10); utils.spawnParticles(state.particles, state.player.x, state.player.y, "#f1c40f", 40, 4, 30); }},
+  repulsion: {emoji: "🖐️", desc: "Pushes enemies away.", apply: () => { state.effects.push({ type: 'repulsion_field', x: state.player.x, y: state.player.y, radius: 250, endTime: Date.now() + 100 }); play('shockwave'); }},
   orbitalStrike: {emoji: "☄️", desc: "Calls 3 meteors on random enemies", apply: () => { const availableTargets = state.enemies.filter(e => !e.boss); for (let i = 0; i < 3; i++) { if (availableTargets.length > 0) { const targetIndex = Math.floor(Math.random() * availableTargets.length); const target = availableTargets.splice(targetIndex, 1)[0]; state.effects.push({type: 'orbital_target', x: target.x, y: target.y, startTime: Date.now(), caster: state.player}); } } }},
-  black_hole: {emoji: "⚫", desc: "Pulls and damages enemies for 4s", apply: () => { let damage = (state.player.berserkUntil > Date.now()) ? 6 : 3; state.effects.push({ type: 'black_hole', x: state.player.x, y: state.player.y, radius: 20, maxRadius: 350, damageRate: 200, lastDamage: 0, endTime: Date.now() + 4000, damage: damage, caster: state.player }); play('gravity'); }},
+  black_hole: {emoji: "⚫", desc: "Pulls and damages enemies for 4s", apply: () => { let damage = ((state.player.berserkUntil > Date.now()) ? 6 : 3) * state.player.talent_modifiers.damage_multiplier; state.effects.push({ type: 'black_hole', x: state.player.x, y: state.player.y, radius: 20, maxRadius: 350, damageRate: 200, lastDamage: 0, endTime: Date.now() + 4000, damage: damage, caster: state.player }); play('gravity'); }},
   berserk: {emoji: "💢", desc: "8s: Deal 2x damage, take 2x damage", apply:(utils, game)=>{ state.player.berserkUntil = Date.now() + 8000; game.addStatusEffect('Berserk', '💢', 8000); utils.spawnParticles(state.particles, state.player.x, state.player.y, "#e74c3c", 40, 3, 30); }},
   ricochetShot: {emoji: "🔄", desc: "Fires a shot that bounces 6 times", apply:(utils, game, mx, my) => { const angle = Math.atan2(my - state.player.y, mx - state.player.x); const speed = 10; state.effects.push({ type: 'ricochet_projectile', x: state.player.x, y: state.player.y, dx: Math.cos(angle) * speed, dy: Math.sin(angle) * speed, r: 8, bounces: 6, hitEnemies: new Set(), caster: state.player }); }},
   bulletNova: {emoji: "💫", desc: "Unleashes a spiral of bullets", apply:()=>{ state.effects.push({ type: 'nova_controller', startTime: Date.now(), duration: 2000, lastShot: 0, angle: Math.random() * Math.PI * 2 }); }},
@@ -39,7 +126,19 @@ export function usePower(queueType, utils, game, mx, my){
 
   powerType = inventory[0];
   if (!powerType) return;
-
+  
+  // Energetic Recycling Capstone Talent
+  const recycleTalent = state.player.purchasedTalents.get('energetic-recycling');
+  if (recycleTalent && inventory !== state.offensiveInventory && inventory !== state.defensiveInventory) { // Only for queued slots
+      if (Math.random() < 0.20) {
+          // Don't consume the power-up, just apply it
+      } else {
+          inventory.shift();
+      }
+  } else {
+      inventory.shift();
+  }
+  
   slotEl.classList.add('activated');
   setTimeout(()=> slotEl.classList.remove('activated'), 200);
 
@@ -53,6 +152,5 @@ export function usePower(queueType, utils, game, mx, my){
 
   utils.spawnParticles(state.particles, state.player.x, state.player.y, "#fff", 20, 3, 25);
   powers[powerType].apply(...applyArgs);
-  inventory.shift();
   inventory.push(null);
 }
