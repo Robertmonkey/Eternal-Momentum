@@ -6,7 +6,7 @@ export const TALENT_GRID_CONFIG = {
         'core-nexus': {
             id: 'core-nexus',
             name: 'Core Nexus',
-            description: (rank, maxed) => 'The heart of the Stellar Weave. Unlocks the primary constellations.',
+            description: (rank, maxed) => 'The heart of the Ascension Conduit. Unlocks the primary constellations.',
             icon: '💠',
             maxRanks: 1,
             costPerRank: [1],
@@ -83,7 +83,7 @@ export const TALENT_GRID_CONFIG = {
             position: { x: 30, y: 60 },
             prerequisites: ['fleet-footed'],
         },
-        'contingency-protocol': { // RENAMED
+        'contingency-protocol': {
             id: 'contingency-protocol',
             name: 'Contingency Protocol',
             description: () => 'Once per stage, taking fatal damage instead sets your Health to 1 and grants 3s of invulnerability.',
@@ -151,7 +151,7 @@ export const TALENT_GRID_CONFIG = {
             position: { x: 55, y: 58 },
             prerequisites: ['targeting-algorithm'],
         },
-        'volatile-finish': { // RESTORED
+        'volatile-finish': {
             id: 'volatile-finish',
             name: 'Mastery: Volatile Finish',
             powerPrerequisite: 'chain',
@@ -173,7 +173,7 @@ export const TALENT_GRID_CONFIG = {
             position: { x: 90, y: 60 },
             prerequisites: ['unstable-payload'],
         },
-        'overcharged-capacitors': { // RENAMED
+        'overcharged-capacitors': {
             id: 'overcharged-capacitors',
             name: 'Overcharged Capacitors',
             description: () => 'Increases all damage dealt by 15%, but also increases all damage received by 15%.',
@@ -229,7 +229,7 @@ export const TALENT_GRID_CONFIG = {
             position: { x: 40, y: 55 },
             prerequisites: ['resonance-magnet'],
         },
-        'quantum-duplicate': { // RENAMED AND REDESIGNED
+        'quantum-duplicate': {
             id: 'quantum-duplicate',
             name: 'Quantum Duplicate',
             powerPrerequisite: 'decoy',
@@ -240,7 +240,7 @@ export const TALENT_GRID_CONFIG = {
             position: { x: 60, y: 55 },
             prerequisites: ['resonance-magnet'],
         },
-        'temporal-collapse': { // REDESIGNED
+        'temporal-collapse': {
             id: 'temporal-collapse',
             name: 'Mastery: Temporal Collapse',
             powerPrerequisite: 'gravity',
