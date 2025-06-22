@@ -83,11 +83,8 @@ window.addEventListener('DOMContentLoaded', (event) => {
             levelSelectModal.style.display = 'flex'; 
         });
         closeLevelSelectBtn.addEventListener("click", () => { 
-            state.isPaused = false;
-            levelSelectModal.style.display = 'none'; 
-            if (state.stageCleared) { // If we closed the menu after clearing a stage, start the next one
-                startSpecificLevel(state.player.highestStageBeaten + 1);
-            }
+            state.isPaused = false; 
+            levelSelectModal.style.display = 'none';
         });
         
         ascensionBtn.addEventListener("click", () => {
@@ -116,7 +113,6 @@ window.addEventListener('DOMContentLoaded', (event) => {
 
         // Game Over Menu Listeners
         restartStageBtn.addEventListener("click", () => {
-            gameOverMenu.style.display = 'none';
             startSpecificLevel(state.currentStage);
         });
 
@@ -130,20 +126,13 @@ window.addEventListener('DOMContentLoaded', (event) => {
 
     // --- Game Flow ---
     function loop() {
-        if (state.stageCleared) {
-            state.isPaused = true;
-            populateLevelSelect(bossData, startSpecificLevel);
-            levelSelectModal.style.display = 'flex';
-            if (state.gameLoopId) cancelAnimationFrame(state.gameLoopId);
-            return;
-        }
-
         if (!gameTick(mx, my)) {
             if (state.gameLoopId) cancelAnimationFrame(state.gameLoopId);
             return;
         }
         if (!state.isPaused) {
-            if (!state.bossActive && !state.bossHasSpawnedThisRun && !state.arenaMode && Date.now() > state.bossSpawnCooldownEnd) {
+            // This logic now correctly spawns the next boss after a delay
+            if (!state.bossActive && !state.arenaMode && Date.now() > state.bossSpawnCooldownEnd) {
                 spawnEnemy(true);
             }
             if (state.bossActive && Math.random() < (0.007 + state.player.level * 0.001)) {
@@ -175,27 +164,22 @@ window.addEventListener('DOMContentLoaded', (event) => {
         applyAllTalentEffects();
         resetGame(isArena);
         state.isPaused = false;
+        gameOverMenu.style.display = 'none';
         levelSelectModal.style.display = 'none';
         if (isArena) { arenaLoop(); } else { loop(); }
     };
 
     const startSpecificLevel = (levelNum) => {
-        if (state.gameLoopId) cancelAnimationFrame(state.gameLoopId);
-        applyAllTalentEffects();
-        resetGame(false);
+        startNewGame(false);
         state.currentStage = levelNum;
-        state.isPaused = false;
-        levelSelectModal.style.display = 'none';
-
+        
         state.enemies = [];
         spawnEnemy(true);
         updateUI();
-        loop();
     };
 
     // --- START THE GAME ---
     initialize();
-    populateLevelSelect(bossData, startSpecificLevel);
     startSpecificLevel(1); 
     updateUI();
 });
