@@ -237,7 +237,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
 }
 #level-select-list-container {
     flex-grow: 1;
-    overflow-y: scroll;
+    overflow-y: auto;
     border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 10px;
@@ -273,6 +273,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     color: var(--font-color);
     opacity: 0.8;
     text-align: right;
+    margin-left: 15px;
 }
 /* Custom Scrollbar for Stage Select */
 #level-select-list-container::-webkit-scrollbar {
