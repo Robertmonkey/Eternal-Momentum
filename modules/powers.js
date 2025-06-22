@@ -58,5 +58,6 @@ export function usePower(queueType, utils, game, mx, my){
   // CORRECTED: Added state.particles as the first argument
   utils.spawnParticles(state.particles, state.player.x, state.player.y, "#fff", 20, 3, 25);
   powers[powerType].apply(...applyArgs);
-  inventory.shift(); inventory.push(null);
+  inventory.shift();
+  inventory.push(null);
 }
