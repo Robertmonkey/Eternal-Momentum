@@ -72,19 +72,24 @@ function createTalentNode(talent, constellationColor) {
     const purchasedRank = state.player.purchasedTalents.get(talent.id) || 0;
     const isMaxRank = purchasedRank >= talent.maxRanks;
     const cost = isMaxRank ? Infinity : (talent.costPerRank[purchasedRank] || Infinity);
-    const canAfford = state.player.ascensionPoints >= cost;
+    
+    const prereqsMet = talent.prerequisites.every(p => state.player.purchasedTalents.has(p));
+    const canPurchase = prereqsMet && state.player.ascensionPoints >= cost;
 
     if (isMaxRank) {
         node.classList.add('maxed');
         node.style.borderColor = constellationColor;
         node.style.boxShadow = `0 0 15px ${constellationColor}`;
-    } else if (canAfford) {
+    } else if (canPurchase) {
         node.classList.add('can-purchase');
     }
 
     const rankText = talent.maxRanks > 1 ? `<span>Rank: ${purchasedRank}/${talent.maxRanks}</span>` : '<span>Mastery</span>';
     const costText = !isMaxRank ? `<span>Cost: ${cost} AP</span>` : '<span>MAXED</span>';
     
+    // Pass 'isMaxRank' to the description function
+    const descriptionText = talent.description(purchasedRank + 1, isMaxRank);
+
     node.innerHTML = `
         <span class="talent-icon">${talent.icon}</span>
         <div class="talent-tooltip">
@@ -92,11 +97,11 @@ function createTalentNode(talent, constellationColor) {
                 <span class="tooltip-icon">${talent.icon}</span>
                 <span class="tooltip-name">${talent.name}</span>
             </div>
-            <div class="tooltip-desc">${talent.description(purchasedRank + 1)}</div>
+            <div class="tooltip-desc">${descriptionText}</div>
             <div class="tooltip-footer">${rankText}${costText}</div>
         </div>`;
     
-    if (!isMaxRank && canAfford) {
+    if (!isMaxRank && canPurchase) {
         node.onclick = () => purchaseTalent(talent.id);
     }
     
@@ -111,7 +116,9 @@ function purchaseTalent(talentId) {
     if (currentRank >= talent.maxRanks) return;
 
     const cost = talent.costPerRank[currentRank];
-    if (state.player.ascensionPoints >= cost) {
+    const prereqsMet = talent.prerequisites.every(p => state.player.purchasedTalents.has(p));
+
+    if (prereqsMet && state.player.ascensionPoints >= cost) {
         state.player.ascensionPoints -= cost;
         state.player.purchasedTalents.set(talent.id, currentRank + 1);
         
@@ -120,12 +127,10 @@ function purchaseTalent(talentId) {
 
         renderAscensionGrid();
         document.getElementById("ap-total-asc-grid").innerText = state.player.ascensionPoints;
-        document.getElementById("ascension-points-display").innerText = `AP: ${state.player.ascensionPoints}`;
         updateUI();
 
     } else {
-        // This could be replaced with a visual shake or sound effect later
-        console.log("Not enough AP!");
+        console.log("Cannot purchase talent!");
     }
 }
 
@@ -136,30 +141,31 @@ export function applyAllTalentEffects() {
     let baseDamageMultiplier = 1.0;
     let basePickupRadius = 0;
     let baseEssenceGain = 1.0;
+    let basePullResistance = 0;
 
     state.player.purchasedTalents.forEach((rank, id) => {
-        const talent = findTalentById(id);
-        if (talent) {
-            for (let i = 1; i <= rank; i++) {
-                // Apply effects for each purchased rank of the talent
-                switch (id) {
-                    case 'exo-weave-plating':
-                        baseMaxHealth += [15, 15, 20][i-1];
-                        break;
-                    case 'fleet-footed':
-                        baseSpeed *= (1 + [0.05, 0.07][i-1]);
-                        break;
-                    case 'high-frequency-emitters':
-                        baseDamageMultiplier += [0.05, 0.07][i-1];
-                        break;
-                    case 'resonance-magnet':
-                        basePickupRadius += 75;
-                        break;
-                    case 'essence-conduit':
-                        baseEssenceGain += [0.10, 0.15][i-1];
-                        break;
-                }
-            }
+        if (id === 'exo-weave-plating') {
+            const values = [15, 15, 20];
+            for (let i = 0; i < rank; i++) baseMaxHealth += values[i];
+        }
+        if (id === 'fleet-footed') {
+            const values = [0.05, 0.07];
+            for (let i = 0; i < rank; i++) baseSpeed *= (1 + values[i]);
+        }
+        if (id === 'high-frequency-emitters') {
+            const values = [0.05, 0.07];
+            for (let i = 0; i < rank; i++) baseDamageMultiplier += values[i];
+        }
+        if (id === 'resonance-magnet') {
+            basePickupRadius += rank * 75;
+        }
+        if (id === 'essence-conduit') {
+            const values = [0.10, 0.15];
+            for (let i = 0; i < rank; i++) baseEssenceGain += values[i];
+        }
+        if (id === 'gravitic-dampeners') {
+            const values = [0.25, 0.25]; // 25% + 25% = 50%
+            for (let i = 0; i < rank; i++) basePullResistance += values[i];
         }
     });
 
@@ -168,7 +174,9 @@ export function applyAllTalentEffects() {
     state.player.talent_modifiers.damage_multiplier = baseDamageMultiplier;
     state.player.talent_modifiers.pickup_radius_bonus = basePickupRadius;
     state.player.talent_modifiers.essence_gain_modifier = baseEssenceGain;
+    state.player.talent_modifiers.pull_resistance_modifier = basePullResistance;
 }
+
 
 export function renderAscensionGrid() {
     if (!gridContainer) return;
