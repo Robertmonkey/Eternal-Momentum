@@ -45,6 +45,7 @@ export function addStatusEffect(name, emoji, duration) {
 
 export function handleThematicUnlock(stageJustCleared) {
     const unlockLevel = stageJustCleared + 1;
+    // MODIFIED: Check if an unlock exists for this level before proceeding
     const unlock = THEMATIC_UNLOCKS[unlockLevel];
     if (!unlock) return;
 
@@ -87,30 +88,66 @@ export function addEssence(amount) {
     }
 }
 
+// NEW: Function to handle all boss spawning logic
+export function spawnBossesForStage(stageNum) {
+    if (stageNum <= 20) {
+        // Normal progression
+        const bossIndex = stageNum - 1;
+        if (bossIndex < bossData.length) {
+            spawnEnemy(true, bossData[bossIndex].id);
+        }
+    } else {
+        // Infinite loop logic
+        const bossNum1 = ((stageNum - 1) % 10) + 1;
+        const bossNum2 = bossNum1 + 10;
+
+        const count1 = 1 + Math.floor((stageNum - 11) / 20);
+        const count2 = 1 + Math.floor((stageNum - 21) / 20);
+
+        const bossId1 = bossData[bossNum1 - 1]?.id;
+        const bossId2 = bossData[bossNum2 - 1]?.id;
+        
+        if (bossId1) {
+            for (let i = 0; i < count1; i++) {
+                // Spawn slightly offset
+                const location = { x: canvas.width/2 + (Math.random()-0.5)*100, y: canvas.height/2 + (Math.random()-0.5)*100 };
+                spawnEnemy(true, bossId1, location);
+            }
+        }
+        if (bossId2 && count2 > 0) {
+            for (let i = 0; i < count2; i++) {
+                const location = { x: canvas.width/2 + (Math.random()-0.5)*100, y: canvas.height/2 + (Math.random()-0.5)*100 };
+                spawnEnemy(true, bossId2, location);
+            }
+        }
+    }
+}
+
 export function spawnEnemy(isBoss = false, bossId = null, location = null) {
     const e = { x: location ? location.x : Math.random() * canvas.width, y: location ? location.y : Math.random() * canvas.height, dx: (Math.random() - 0.5) * 0.75, dy: (Math.random() - 0.5) * 0.75, r: isBoss ? 50 : 15, hp: isBoss ? 200 : 1, maxHP: isBoss ? 200 : 1, boss: isBoss, frozen: false, targetBosses: false };
     if (isBoss) {
-        const bossIndex = (state.currentStage - 1);
-        if (bossIndex >= bossData.length) {
-            console.log("All stages cleared!");
-            return null;
-        }
-        const bd = bossId ? bossData.find(b => b.id === bossId) : bossData[state.arenaMode ? Math.floor(Math.random() * bossData.length) : bossIndex];
+        const bd = bossData.find(b => b.id === bossId);
+        if (!bd) { console.error("Boss data not found for id", bossId); return null; }
         
-        if (!bd) { console.error("Boss data not found for stage", state.currentStage); return null; }
         Object.assign(e, bd);
         
         const baseHp = bd.maxHP || 200;
         const scalingFactor = 15;
+        // Boss HP scales with the true stage number
+        const bossIndex = (state.currentStage - 1);
         const finalHp = baseHp + (bossIndex * bossIndex * scalingFactor);
         e.maxHP = finalHp;
         e.hp = e.maxHP;
 
         state.enemies.push(e);
         if (bd.init) bd.init(e, state, spawnEnemy, canvas);
-        if (!state.currentBoss || state.currentBoss.hp <= 0) state.currentBoss = e;
+        
+        // Ensure only one banner shows for multi-boss fights
+        if (!state.bossActive) {
+            showBossBanner(e);
+        }
         state.bossActive = true;
-        if (!bossId || (bossId && !e.partner && !e.shadow)) showBossBanner(e);
+
     } else {
         state.enemies.push(e);
     }
@@ -278,10 +315,6 @@ export function gameTick(mx, my) {
                 
                 state.enemies.splice(i, 1);
                 
-                if (state.currentBoss === e) {
-                    state.currentBoss = state.enemies.find(en => en.boss) || null;
-                }
-                
                 if (!state.enemies.some(en => en.boss)) {
                     state.bossActive = false;
                     state.bossSpawnCooldownEnd = Date.now() + 4000;
@@ -290,6 +323,9 @@ export function gameTick(mx, my) {
                         state.player.highestStageBeaten = state.currentStage;
                         state.player.ascensionPoints += 1;
                         showUnlockNotification("Stage Cleared! +1 AP", `Level ${state.currentStage + 1} Unlocked`);
+                    }
+                    // Only call thematic unlock for defined progression stages
+                    if (THEMATIC_UNLOCKS[state.currentStage + 1]) {
                         handleThematicUnlock(state.currentStage);
                     }
                     
@@ -323,7 +359,12 @@ export function gameTick(mx, my) {
             }
         }
         
-        if (e.eatenBy) {
+        if (e.knockbackUntil && Date.now() < e.knockbackUntil) {
+            const angle = Math.atan2(e.y - state.player.y, e.x - state.player.x);
+            const knockbackForce = 10;
+            e.x += Math.cos(angle) * knockbackForce;
+            e.y += Math.sin(angle) * knockbackForce;
+        } else if (e.eatenBy) {
             const pullX = e.eatenBy.x - e.x;
             const pullY = e.eatenBy.y - e.y;
             const pullDist = Math.hypot(pullX, pullY) || 1;
@@ -778,9 +819,9 @@ export function gameTick(mx, my) {
             if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
             const progress = 1 - ((effect.endTime - Date.now()) / 1000); // from 0 to 1
             ctx.strokeStyle = `rgba(255, 0, 0, ${1 - progress})`;
-            ctx.lineWidth = 5;
+            ctx.lineWidth = 5 + (10 * progress);
             ctx.beginPath();
-            ctx.arc(effect.x, effect.y, effect.r * (progress * 1.5), 0, 2 * Math.PI);
+            ctx.arc(effect.x, effect.y, effect.r * (1.5 - progress), 0, 2 * Math.PI);
             ctx.stroke();
         } else if (effect.type === 'singularity_beam') {
             if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
