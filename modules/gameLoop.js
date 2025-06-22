@@ -31,7 +31,7 @@ const spawnParticlesCallback = (x, y, c, n, spd, life, r) => utils.spawnParticle
 export function addStatusEffect(name, emoji, duration) {
     const now = Date.now();
     
-    if (name === 'Stunned' || name === 'Petrified') {
+    if (name === 'Stunned' || name === 'Petrified' || name === 'Slowed') {
         const isBerserk = state.player.berserkUntil > now;
         const hasTalent = state.player.purchasedTalents.has('havoc-berserk');
         if (isBerserk && hasTalent) {
@@ -150,10 +150,9 @@ export function spawnEnemy(isBoss = false, bossId = null, location = null) {
         const baseHp = bd.maxHP || 200;
         const bossIndex = (state.currentStage - 1);
         
-        // MODIFIED: Boss health scaling is now less aggressive
-        const scalingFactor = 25; 
+        const scalingFactor = 12; 
         const finalHp = baseHp + (Math.pow(bossIndex, 1.5) * scalingFactor);
-        e.maxHP = finalHp;
+        e.maxHP = Math.round(finalHp);
         e.hp = e.maxHP;
 
         state.enemies.push(e);
@@ -254,6 +253,11 @@ export function gameTick(mx, my) {
     let playerSpeedMultiplier = state.player.talent_states.phaseMomentum.active ? 1.10 : 1.0;
     
     const isBerserkImmune = state.player.berserkUntil > Date.now() && state.player.purchasedTalents.has('havoc-berserk');
+    
+    if (state.player.statusEffects.some(e => e.name === 'Slowed') && !isBerserkImmune) {
+        playerSpeedMultiplier *= 0.5;
+    }
+    
     state.effects.forEach(effect => { 
         if(effect.type === 'slow_zone' && Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < effect.r && !isBerserkImmune) {
             playerSpeedMultiplier *= 0.5;
@@ -728,38 +732,6 @@ export function gameTick(mx, my) {
             utils.drawCircle(ctx, effect.x, effect.y, effect.r, '#ff9944');
             state.enemies.forEach(e => { if(Math.hypot(e.x - effect.x, e.y - effect.y) < e.r + effect.r) { e.hp -= effect.damage; state.effects.splice(index, 1); }});
             if(Date.now() > effect.startTime + effect.life) state.effects.splice(index, 1);
-        } else if (effect.type === 'repulsion_field') {
-            if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
-            effect.x = state.player.x;
-            effect.y = state.player.y;
-            
-            let knockbackForce = 5;
-            const isOverloaded = effect.isOverloaded && Date.now() < effect.startTime + 2000;
-
-            if (isOverloaded) {
-                knockbackForce = 15;
-                const pulseAlpha = 0.8 * (1 - (Date.now() - effect.startTime) / 2000);
-                ctx.strokeStyle = `rgba(0, 255, 255, ${pulseAlpha})`;
-                ctx.lineWidth = 6;
-            } else {
-                const alpha = (effect.endTime - Date.now()) / 5000 * 0.4;
-                ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
-                ctx.lineWidth = 4;
-            }
-            ctx.beginPath();
-            ctx.arc(effect.x, effect.y, effect.radius, 0, 2*Math.PI);
-            ctx.stroke();
-            
-            state.enemies.forEach(e => {
-                if (!e.boss) {
-                    const dist = Math.hypot(e.x - effect.x, e.y - effect.y);
-                    if (dist < effect.radius) {
-                        const angle = Math.atan2(e.y - effect.y, e.x - effect.x);
-                        e.x += Math.cos(angle) * knockbackForce;
-                        e.y += Math.sin(angle) * knockbackForce;
-                    }
-                }
-            });
         } else if (effect.type === 'glitch_zone') {
             if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
             const alpha = (effect.endTime - Date.now()) / 5000 * 0.3;
@@ -829,6 +801,16 @@ export function gameTick(mx, my) {
                     if (target.health <= 0) state.gameOver = true;
                 }
             });
+        } else if (effect.type === 'slow_zone') {
+            if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
+            const alpha = 0.15 + ((effect.endTime - Date.now()) / 6000 * 0.2);
+            for(let i=0; i<3; i++) {
+                ctx.strokeStyle = `rgba(0, 150, 255, ${alpha * (0.6 + Math.sin(Date.now()/200 + i*2)*0.4)})`;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(effect.x, effect.y, effect.r * (0.6 + i*0.2), 0, Math.PI*2);
+                ctx.stroke();
+            }
         } else if (effect.type === 'juggernaut_charge_ring') {
             const progress = (Date.now() - effect.startTime) / effect.duration;
             if (progress >= 1) { state.effects.splice(index, 1); return; }
