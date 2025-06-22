@@ -6,7 +6,9 @@ export const TALENT_GRID_CONFIG = {
         'core-nexus': {
             id: 'core-nexus',
             name: 'Core Nexus',
-            description: () => 'Unlock the primary constellations, allowing for further specialization.',
+            description: (rank, maxed) => maxed 
+                ? 'Unlocks the primary constellations.'
+                : 'Unlock the primary constellations, allowing for further specialization.',
             icon: '💠',
             maxRanks: 1,
             costPerRank: [1],
@@ -21,7 +23,13 @@ export const TALENT_GRID_CONFIG = {
         'exo-weave-plating': {
             id: 'exo-weave-plating',
             name: 'Exo-Weave Plating',
-            description: (rank) => `Increases Max Health by ${[15, 15, 20][rank-1] || 0}.`,
+            description: (rank, maxed) => {
+                const values = [15, 15, 20];
+                const total = values.reduce((a, b) => a + b, 0);
+                return maxed
+                    ? `Increases Max Health by a total of ${total}.`
+                    : `Increases Max Health by ${values[rank-1] || 0}.`;
+            },
             icon: '❤️',
             maxRanks: 3,
             costPerRank: [1, 1, 2],
@@ -31,7 +39,9 @@ export const TALENT_GRID_CONFIG = {
         'fleet-footed': {
             id: 'fleet-footed',
             name: 'Fleet Footed',
-            description: (rank) => `Increases base movement speed by ${[5, 7][rank-1] || 0}%.`,
+            description: (rank, maxed) => maxed
+                ? 'Increases base movement speed by a total of 12%.'
+                : `Increases base movement speed by ${[5, 7][rank-1] || 0}%.`,
             icon: '🏃',
             maxRanks: 2,
             costPerRank: [1, 2],
@@ -42,7 +52,9 @@ export const TALENT_GRID_CONFIG = {
             id: 'aegis-shield',
             name: 'Extended Capacitor',
             powerPrerequisite: 'shield',
-            description: () => `Shield power-up duration +1.5s per rank.`,
+            description: (rank, maxed) => maxed
+                ? 'Shield power-up duration +3s total.'
+                : `Shield power-up duration +1.5s per rank.`,
             icon: '⏱️',
             maxRanks: 2,
             costPerRank: [1, 1],
@@ -64,7 +76,9 @@ export const TALENT_GRID_CONFIG = {
             id: 'aegis-freeze',
             name: 'Cryo-Core',
             powerPrerequisite: 'freeze',
-            description: (rank) => `Frozen enemies have a ${[25, 50][rank-1] || 0}% chance to shatter on death, damaging nearby enemies.`,
+            description: (rank, maxed) => maxed
+                ? 'Frozen enemies have a 50% chance to shatter on death, damaging nearby enemies.'
+                : `Frozen enemies have a ${[25, 50][rank-1] || 0}% chance to shatter on death, damaging nearby enemies.`,
             icon: '🧊',
             maxRanks: 2,
             costPerRank: [2, 2],
@@ -74,7 +88,9 @@ export const TALENT_GRID_CONFIG = {
         'reactive-plating': {
             id: 'reactive-plating',
             name: 'Reactive Plating',
-            description: (rank) => `After taking a single hit of 20+ damage, gain a temporary shield for ${[1, 2, 3][rank-1] || 0}s. (30s Cooldown)`,
+            description: (rank, maxed) => maxed
+                ? 'After taking a single hit of 20+ damage, gain a temporary shield for 3s. (30s Cooldown)'
+                : `After taking a single hit of 20+ damage, gain a temporary shield for ${[1, 2, 3][rank-1] || 0}s. (30s Cooldown)`,
             icon: '🛡️',
             maxRanks: 3,
             costPerRank: [2, 2, 3],
@@ -84,7 +100,9 @@ export const TALENT_GRID_CONFIG = {
         'gravitic-dampeners': {
             id: 'gravitic-dampeners',
             name: 'Gravitic Dampeners',
-            description: (rank) => `Reduces the intensity of enemy pull effects by ${[25, 50][rank-1] || 0}%.`,
+            description: (rank, maxed) => maxed
+                ? 'Reduces the intensity of enemy pull effects by 50%.'
+                : `Reduces the intensity of enemy pull effects by ${[25, 50][rank-1] || 0}%.`,
             icon: '⚖️',
             maxRanks: 2,
             costPerRank: [1, 2],
@@ -109,7 +127,9 @@ export const TALENT_GRID_CONFIG = {
         'high-frequency-emitters': {
             id: 'high-frequency-emitters',
             name: 'High-Frequency Emitters',
-            description: (rank) => `All damage increased by ${[5, 7][rank-1] || 0}%.`,
+            description: (rank, maxed) => maxed
+                ? 'All damage increased by a total of 12%.'
+                : `All damage increased by ${[5, 7][rank-1] || 0}%.`,
             icon: '💥',
             maxRanks: 2,
             costPerRank: [1, 2],
@@ -120,7 +140,9 @@ export const TALENT_GRID_CONFIG = {
             id: 'havoc-chain',
             name: 'High Voltage',
             powerPrerequisite: 'chain',
-            description: () => `Chain Lightning jumps to +1 additional target per rank.`,
+            description: (rank, maxed) => maxed
+                ? 'Chain Lightning jumps to +2 additional targets.'
+                : `Chain Lightning jumps to +1 additional target per rank.`,
             icon: '⚡',
             maxRanks: 2,
             costPerRank: [1, 1],
@@ -142,7 +164,9 @@ export const TALENT_GRID_CONFIG = {
             id: 'havoc-missile',
             name: 'Bigger Boom',
             powerPrerequisite: 'missile',
-            description: () => `Missile explosion radius +15% per rank.`,
+            description: (rank, maxed) => maxed
+                ? 'Missile explosion radius +30% total.'
+                : `Missile explosion radius +15% per rank.`,
             icon: '🎯',
             maxRanks: 2,
             costPerRank: [1, 1],
@@ -186,7 +210,9 @@ export const TALENT_GRID_CONFIG = {
             id: 'havoc-shockwave',
             name: 'Destructive Harmonics',
             powerPrerequisite: 'shockwave',
-            description: () => `Shockwave travels ${[15, 30][rank-1] || 0}% further and faster.`,
+            description: (rank, maxed) => maxed
+                ? 'Shockwave travels 30% further and faster.'
+                : `Shockwave travels ${[15, 30][rank-1] || 0}% further and faster.`,
             icon: '🌊',
             maxRanks: 2,
             costPerRank: [1, 2],
@@ -212,7 +238,9 @@ export const TALENT_GRID_CONFIG = {
         'resonance-magnet': {
             id: 'resonance-magnet',
             name: 'Resonance Magnet',
-            description: () => `Increases pickup radius by 75px per rank.`,
+            description: (rank, maxed) => maxed
+                ? 'Increases pickup radius by a total of 150px.'
+                : `Increases pickup radius by 75px per rank.`,
             icon: '🧲',
             maxRanks: 2,
             costPerRank: [1, 1],
@@ -222,7 +250,9 @@ export const TALENT_GRID_CONFIG = {
         'essence-conduit': {
             id: 'essence-conduit',
             name: 'Essence Conduit',
-            description: (rank) => `Gain ${[10, 15][rank-1] || 0}% more Essence (XP).`,
+            description: (rank, maxed) => maxed
+                ? 'Gain 25% more Essence (XP).'
+                : `Gain ${[10, 15][rank-1] || 0}% more Essence (XP).`,
             icon: '💰',
             maxRanks: 2,
             costPerRank: [1, 2],
@@ -232,7 +262,9 @@ export const TALENT_GRID_CONFIG = {
         'power-scavenger': {
             id: 'power-scavenger',
             name: 'Power Scavenger',
-            description: (rank) => `Non-boss enemies have a ${[1, 1.5][rank-1] || 0}% chance to drop power-ups.`,
+            description: (rank, maxed) => maxed
+                ? 'Non-boss enemies have a 2.5% chance to drop Score power-ups.'
+                : `Non-boss enemies have a ${[1, 1.5][rank-1] || 0}% chance to drop Score power-ups.`,
             icon: '💎',
             maxRanks: 2,
             costPerRank: [2, 2],
@@ -253,7 +285,9 @@ export const TALENT_GRID_CONFIG = {
         'temporal-anomaly': {
             id: 'temporal-anomaly',
             name: 'Temporal Anomaly',
-            description: (rank) => `Power-ups on the ground last ${[25, 50][rank-1] || 0}% longer.`,
+            description: (rank, maxed) => maxed
+                ? 'Power-ups on the ground last 50% longer.'
+                : `Power-ups on the ground last ${[25, 50][rank-1] || 0}% longer.`,
             icon: '⏳',
             maxRanks: 2,
             costPerRank: [1, 1],
