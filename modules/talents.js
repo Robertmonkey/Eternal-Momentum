@@ -21,7 +21,7 @@ export const TALENT_GRID_CONFIG = {
             description: () => 'When your inventory is full, picking up a power-up instantly uses it instead of discarding it.',
             icon: '⚛️',
             maxRanks: 1,
-            costPerRank: [5],
+            costPerRank: [50],
             position: { x: 50, y: 95 }, // Bottom center
             prerequisites: ['phase-momentum', 'unstable-singularity', 'energetic-recycling'],
         }
