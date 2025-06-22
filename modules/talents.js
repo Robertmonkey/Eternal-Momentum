@@ -33,7 +33,9 @@ export const TALENT_GRID_CONFIG = {
         'exo-weave-plating': {
             id: 'exo-weave-plating',
             name: 'Exo-Weave Plating',
-            description: (rank, maxed) => `Increases Max Health by ${[15, 20, 25][rank-1] || 0}. Total: +60.`,
+            description: (rank, maxed) => maxed
+                ? 'Increases Max Health by a total of 60.'
+                : `Increases Max Health by ${[15, 20, 25][rank-1] || 0}.`,
             icon: '❤️',
             maxRanks: 3,
             costPerRank: [1, 2, 2],
@@ -44,7 +46,9 @@ export const TALENT_GRID_CONFIG = {
             id: 'aegis-shield',
             name: 'Extended Capacitor',
             powerPrerequisite: 'shield',
-            description: (rank, maxed) => `Shield power-up duration +${[1.5, 1.5][rank-1] || 0}s. Total: +3s.`,
+            description: (rank, maxed) => maxed
+                ? 'Shield power-up duration is increased by a total of 3 seconds.'
+                : `Increases Shield power-up duration by 1.5s.`,
             icon: '⏱️',
             maxRanks: 2,
             costPerRank: [1, 1],
@@ -54,7 +58,9 @@ export const TALENT_GRID_CONFIG = {
         'fleet-footed': {
             id: 'fleet-footed',
             name: 'Fleet Footed',
-            description: (rank, maxed) => `Increases base movement speed by ${[6, 6][rank-1] || 0}%. Total: +12%.`,
+            description: (rank, maxed) => maxed
+                ? 'Base movement speed is increased by a total of 12%.'
+                : `Increases base movement speed by 6%.`,
             icon: '🏃',
             maxRanks: 2,
             costPerRank: [1, 2],
@@ -76,7 +82,7 @@ export const TALENT_GRID_CONFIG = {
             id: 'kinetic-overload',
             name: 'Kinetic Overload',
             powerPrerequisite: 'repulsion',
-            description: () => 'Your Repulsion power continuously knocks enemies back for the first 2 seconds of its duration.',
+            description: () => 'Enemies hit by your Repulsion power are knocked back for 2 seconds.',
             icon: '✋',
             maxRanks: 1,
             costPerRank: [2],
@@ -111,7 +117,9 @@ export const TALENT_GRID_CONFIG = {
         'high-frequency-emitters': {
             id: 'high-frequency-emitters',
             name: 'High-Frequency Emitters',
-            description: (rank, maxed) => `All damage increased by ${[5, 7][rank-1] || 0}%. Total: +12%.`,
+            description: (rank, maxed) => maxed
+                ? 'All damage is increased by a total of 12%.'
+                : `Increases all damage by ${[5, 7][rank-1] || 0}%.`,
             icon: '📈',
             maxRanks: 2,
             costPerRank: [1, 2],
@@ -144,7 +152,9 @@ export const TALENT_GRID_CONFIG = {
             id: 'havoc-chain',
             name: 'High Voltage',
             powerPrerequisite: 'chain',
-            description: (rank, maxed) => `Chain Lightning jumps to +${[1,1][rank-1] || 0} additional target. Total: +2.`,
+            description: (rank, maxed) => maxed
+                ? 'Chain Lightning jumps to 2 additional targets.'
+                : `Chain Lightning jumps to 1 additional target.`,
             icon: '⚡',
             maxRanks: 2,
             costPerRank: [1, 1],
@@ -159,7 +169,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '💣',
             maxRanks: 1,
             costPerRank: [2],
-            position: { x: 50, y: 75 },
+            position: { x: 55, y: 75 }, // New Position for a clear branch
             prerequisites: ['havoc-chain'],
         },
         'nova-pulsar': {
@@ -202,7 +212,9 @@ export const TALENT_GRID_CONFIG = {
         'essence-conduit': {
             id: 'essence-conduit',
             name: 'Essence Conduit',
-            description: (rank, maxed) => `Gain ${[10, 15][rank-1] || 0}% more Essence (XP). Total: +25%.`,
+            description: (rank, maxed) => maxed
+                ? 'Gain 25% more Essence from all sources.'
+                : `Gain ${[10, 15][rank-1] || 0}% more Essence (XP).`,
             icon: '💰',
             maxRanks: 2,
             costPerRank: [1, 2],
@@ -212,7 +224,9 @@ export const TALENT_GRID_CONFIG = {
         'resonance-magnet': {
             id: 'resonance-magnet',
             name: 'Resonance Magnet',
-            description: (rank, maxed) => `Increases pickup radius by ${[75,75][rank-1] || 0}px. Total: +150px.`,
+            description: (rank, maxed) => maxed
+                ? 'Increases pickup radius by a total of 150px.'
+                : `Increases pickup radius by 75px.`,
             icon: '🧲',
             maxRanks: 2,
             costPerRank: [1, 1],
@@ -222,7 +236,9 @@ export const TALENT_GRID_CONFIG = {
         'power-scavenger': {
             id: 'power-scavenger',
             name: 'Power Scavenger',
-            description: (rank, maxed) => `Non-boss enemies have a ${[1, 1.5][rank-1] || 0}% chance to drop an Essence Crystal. Total: 2.5%.`,
+            description: (rank, maxed) => maxed
+                ? 'Non-boss enemies have a 2.5% chance to drop an Essence Crystal.'
+                : `Non-boss enemies have a ${[1, 1.5][rank-1] || 0}% chance to drop an Essence Crystal.`,
             icon: '💎',
             maxRanks: 2,
             costPerRank: [2, 2],
