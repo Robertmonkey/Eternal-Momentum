@@ -73,8 +73,8 @@
         </div>
 
         <div class="ui-pod right-pod">
-            <button id="ascensionBtn" data-tooltip-text="Ascension Grid">💠</button>
-            <button id="levelSelectBtn" data-tooltip-text="Stage Select">🗺️</button>
+            <button id="ascensionBtn" title="Ascension Conduit">💠</button>
+            <button id="levelSelectBtn" title="Stage Select">🗺️</button>
             <button id="soundToggle">🔊</button>
         </div>
     </div>
@@ -84,31 +84,32 @@
   <div id="bossHpContainer"></div>
 
   <div id="levelSelectModal">
-    <div id="modal-content">
-        <h2>Select a Stage</h2>
-        <div id="levelSelectGrid"></div>
-        <div id="modal-actions">
-            <button id="arenaBtn">Arena Mode</button>
-            <button id="clearSaveBtn">ERASE TIMELINE</button>
-            <button id="closeLevelSelectBtn">Close</button>
-        </div>
-    </div>
+      <div id="modal-content">
+          <h2>Select a Stage</h2>
+          <div id="levelSelectGrid"></div>
+          <div id="modal-actions">
+              <button id="arenaBtn">Arena Mode</button>
+              <button id="clearSaveBtn">ERASE TIMELINE</button>
+              <button id="closeLevelSelectBtn">Close</button>
+          </div>
+      </div>
   </div>
   
   <div id="ascensionGridModal">
-      <div id="ascension-grid-container">
-          <div class="ascension-header">
-              <h1>Ascension Grid</h1>
-              <div class="ap-display-header">
-                  <span>Available Points:</span>
-                  <span id="ap-total-asc-grid">0</span>
-              </div>
-          </div>
-          <div class="ascension-content"></div>
-          <button id="closeAscensionBtn" class="close-ascension-grid">Close</button>
-      </div>
+    <div id="ascension-grid-container">
+        <div class="ascension-header">
+            <h1>ASCENSION CONDUIT</h1>
+            <div class="ap-display-header">
+                <span>ASCENSION POINTS</span>
+                <span id="ap-total-asc-grid">0</span>
+            </div>
+        </div>
+        <div class="ascension-content">
+             </div>
+        <button id="closeAscensionBtn" class="close-ascension-grid">CLOSE</button>
+    </div>
   </div>
-
+  
   <audio id="pickupSound" src="./assets/pickup.mp3" preload="auto"></audio>
   <audio id="hitSound" src="./assets/hit.mp3" preload="auto"></audio>
   <audio id="shockwaveSound" src="./assets/shockwave.mp3" preload="auto"></audio>
@@ -126,7 +127,7 @@
   <audio id="annihilatorBeamSound" src="./assets/annihilatorBeam.mp3" preload="auto"></audio>
   <audio id="phaseShiftSound" src="./assets/phaseShift.mp3" preload="auto"></audio>
   <audio id="finalBossPhaseSound" src="./assets/finalBossPhase.mp3" preload="auto"></audio>
-  
+
   <script type="module" src="./main.js"></script>
 </body>
 </html>
