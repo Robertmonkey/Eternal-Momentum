@@ -555,7 +555,19 @@ export function gameTick(mx, my) {
             if (effect.bounces <= 0) state.effects.splice(index, 1);
         } else if (effect.type === 'nova_controller') { 
             if (Date.now() > effect.startTime + effect.duration) { state.effects.splice(index, 1); return; } 
-            if(Date.now() - effect.lastShot > 50) { effect.lastShot = Date.now(); const speed = 5; state.effects.push({ type: 'nova_bullet', x: state.player.x, y: state.player.y, r: 4, dx: Math.cos(effect.angle) * speed, dy: Math.sin(effect.angle) * speed }); effect.angle += 0.5; }
+            if(Date.now() - effect.lastShot > 50) { 
+                effect.lastShot = Date.now(); 
+                const speed = 5; 
+                if (state.player.purchasedTalents.has('nova-pulsar')) {
+                    const angles = [effect.angle, effect.angle + (2 * Math.PI / 3), effect.angle - (2 * Math.PI / 3)];
+                    angles.forEach(angle => {
+                        state.effects.push({ type: 'nova_bullet', x: state.player.x, y: state.player.y, r: 4, dx: Math.cos(angle) * speed, dy: Math.sin(angle) * speed });
+                    });
+                } else {
+                    state.effects.push({ type: 'nova_bullet', x: state.player.x, y: state.player.y, r: 4, dx: Math.cos(effect.angle) * speed, dy: Math.sin(effect.angle) * speed }); 
+                }
+                effect.angle += 0.5; 
+            }
         } else if (effect.type === 'nova_bullet') { 
             effect.x += effect.dx; effect.y += effect.dy; utils.drawCircle(ctx, effect.x, effect.y, effect.r, '#fff'); 
             if(effect.x < 0 || effect.x > canvas.width || effect.y < 0 || effect.y > canvas.height) state.effects.splice(index, 1); 
@@ -605,18 +617,32 @@ export function gameTick(mx, my) {
             if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
             effect.x = state.player.x;
             effect.y = state.player.y;
-            const alpha = (effect.endTime - Date.now()) / 5000 * 0.4;
-            ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
-            ctx.lineWidth = 4;
-            ctx.beginPath();
-            ctx.arc(effect.x, effect.y, effect.radius, 0, 2*Math.PI);
-            ctx.stroke();
+            
+            let knockbackForce = 5; // Standard force
+            const isOverloaded = effect.isOverloaded && Date.now() < effect.startTime + 2000;
+
+            if (isOverloaded) {
+                knockbackForce = 15; // Enhanced force for the first 2 seconds
+                const pulseAlpha = (effect.endTime - Date.now()) / 5000 * 0.8;
+                ctx.strokeStyle = `rgba(0, 255, 255, ${pulseAlpha})`;
+                ctx.lineWidth = 6;
+                ctx.beginPath();
+                ctx.arc(effect.x, effect.y, effect.radius, 0, 2*Math.PI);
+                ctx.stroke();
+            } else {
+                const alpha = (effect.endTime - Date.now()) / 5000 * 0.4;
+                ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.arc(effect.x, effect.y, effect.radius, 0, 2*Math.PI);
+                ctx.stroke();
+            }
+            
             state.enemies.forEach(e => {
                 if (e.boss) return;
                 const dist = Math.hypot(e.x - effect.x, e.y - effect.y);
                 if (dist < effect.radius) {
                     const angle = Math.atan2(e.y - effect.y, e.x - effect.x);
-                    const knockbackForce = effect.knockback ? 15 : 5;
                     e.x += Math.cos(angle) * knockbackForce;
                     e.y += Math.sin(angle) * knockbackForce;
                 }
