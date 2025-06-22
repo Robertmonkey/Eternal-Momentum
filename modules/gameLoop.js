@@ -190,12 +190,10 @@ export function gameTick(mx, my) {
                 }
             } else {
                 addEssence(10);
-                // Power Scavenger Talent
                 const scavengerRank = state.player.purchasedTalents.get('power-scavenger');
                 if (scavengerRank && Math.random() < [0.01, 0.025][scavengerRank-1]) {
                     state.pickups.push({ x: e.x, y: e.y, dx: 0, dy: 0, r: 12, type: 'score' });
                 }
-                // Cryo-Core Talent
                 const cryoRank = state.player.purchasedTalents.get('aegis-freeze');
                 if (cryoRank && e.wasFrozen && Math.random() < [0.25, 0.5][cryoRank-1]) {
                     state.effects.push({ type: 'shockwave', caster: state.player, x: e.x, y: e.y, radius: 0, maxRadius: 100, speed: 500, startTime: Date.now(), hitEnemies: new Set(), damage: 5 * state.player.talent_modifiers.damage_multiplier });
@@ -206,7 +204,7 @@ export function gameTick(mx, my) {
         }
 
         if(!e.frozen && !e.hasCustomMovement){ 
-            let tgt = (e.isTaunted && state.decoy) ? state.decoy : state.player;
+            let tgt = (state.decoy?.isTaunting && !e.boss) ? state.decoy : state.player;
             let enemySpeedMultiplier = 1;
             state.effects.forEach(effect => { if(effect.type === 'slow_zone' && Math.hypot(e.x - effect.x, e.y - effect.y) < effect.r) { enemySpeedMultiplier = 0.5; } });
             if (tgt) {
@@ -331,6 +329,54 @@ export function gameTick(mx, my) {
                     }
                 }
             }
+        } else if (effect.type === 'ricochet_projectile') { 
+            effect.x += effect.dx; effect.y += effect.dy; 
+            utils.drawCircle(ctx, effect.x, effect.y, effect.r, '#f1c40f'); 
+            if(effect.x < effect.r || effect.x > canvas.width - effect.r) { effect.dx *= -1; effect.bounces--; } 
+            if(effect.y < effect.r || effect.y > canvas.height - effect.r) { effect.dy *= -1; effect.bounces--; } 
+            state.enemies.forEach(e => { if (!effect.hitEnemies.has(e) && Math.hypot(e.x - effect.x, e.y - effect.y) < e.r + effect.r) { let damage = (state.player.berserkUntil > Date.now()) ? 20 : 10; e.hp -= damage; effect.bounces--; const angle = Math.atan2(e.y - effect.y, e.x - effect.x); effect.dx = -Math.cos(angle) * 10; effect.dy = -Math.sin(angle) * 10; effect.hitEnemies.add(e); setTimeout(()=>effect.hitEnemies.delete(e), 200); } }); 
+            if (effect.bounces <= 0) state.effects.splice(index, 1);
+        } else if (effect.type === 'nova_controller') { 
+            if (Date.now() > effect.startTime + effect.duration) { state.effects.splice(index, 1); return; } 
+            if(Date.now() - effect.lastShot > 50) { effect.lastShot = Date.now(); const speed = 5; state.effects.push({ type: 'nova_bullet', x: state.player.x, y: state.player.y, r: 4, dx: Math.cos(effect.angle) * speed, dy: Math.sin(effect.angle) * speed }); effect.angle += 0.5; }
+        } else if (effect.type === 'nova_bullet') { 
+            effect.x += effect.dx; effect.y += effect.dy; utils.drawCircle(ctx, effect.x, effect.y, effect.r, '#fff'); 
+            if(effect.x < 0 || effect.x > canvas.width || effect.y < 0 || effect.y > canvas.height) state.effects.splice(index, 1); 
+            state.enemies.forEach(e => { if (Math.hypot(e.x-effect.x, e.y-effect.y) < e.r + effect.r) { let damage = ((state.player.berserkUntil > Date.now()) ? 6 : 3) * state.player.talent_modifiers.damage_multiplier; e.hp -= damage; state.effects.splice(index, 1); } }); 
+        } else if (effect.type === 'orbital_target') { 
+            const duration = 1500; const progress = (Date.now() - effect.startTime) / duration; 
+            if (progress >= 1) { spawnParticlesCallback(effect.x, effect.y, '#e67e22', 100, 8, 40); const explosionRadius = 150; state.enemies.forEach(e => { if (Math.hypot(e.x-effect.x, e.y-effect.y) < explosionRadius) { let damage = ((state.player.berserkUntil > Date.now()) ? 50 : 25)  * state.player.talent_modifiers.damage_multiplier; e.hp -= e.boss ? damage : 1000; if(e.onDamage) e.onDamage(e, damage, effect.caster, state, spawnParticlesCallback); } }); state.effects.splice(index, 1); return; } 
+            ctx.strokeStyle = 'rgba(230, 126, 34, 0.8)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(effect.x, effect.y, 50 * (1-progress), 0, Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(effect.x-10, effect.y); ctx.lineTo(effect.x+10, effect.y); ctx.moveTo(effect.x, effect.y-10); ctx.lineTo(effect.x, effect.y+10); ctx.stroke(); 
+        } else if (effect.type === 'black_hole') { 
+            if (Date.now() > effect.endTime) { 
+                if (state.player.purchasedTalents.has('unstable-singularity')) {
+                    state.effects.push({ type: 'shockwave', caster: state.player, x: effect.x, y: effect.y, radius: 0, maxRadius: effect.maxRadius, speed: 800, startTime: Date.now(), hitEnemies: new Set(), damage: 25 * state.player.talent_modifiers.damage_multiplier });
+                }
+                state.effects.splice(index, 1); return; 
+            } 
+            const progress = 1 - (effect.endTime - Date.now()) / 4000; const currentPullRadius = effect.maxRadius * progress; 
+            utils.drawCircle(ctx, effect.x, effect.y, effect.radius, "#000"); 
+            ctx.strokeStyle = `rgba(155, 89, 182, ${0.6 * progress})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(effect.x, effect.y, currentPullRadius, 0, 2*Math.PI); ctx.stroke(); 
+            state.enemies.forEach(e => { const dist = Math.hypot(e.x - effect.x, e.y - effect.y); if (dist < currentPullRadius) { const pullStrength = e.boss ? 0.03 : 0.1; e.x += (effect.x - e.x) * pullStrength; e.y += (effect.y - e.y) * pullStrength; if (dist < effect.radius + e.r && Date.now() - effect.lastDamage > effect.damageRate) { e.hp -= e.boss ? effect.damage : 15; if (state.player.purchasedTalents.has('unstable-singularity')) { e.hp -= 5 * state.player.talent_modifiers.damage_multiplier; } effect.lastDamage = Date.now(); } } });
+        } else if (effect.type === 'seeking_shrapnel') {
+             // ... logic for seeking shrapnel ...
+        } else if (effect.type === 'repulsion_field') {
+            if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
+            const alpha = (effect.endTime - Date.now()) / 100 * 0.4;
+            ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(effect.x, effect.y, effect.radius, 0, 2*Math.PI);
+            ctx.stroke();
+            state.enemies.forEach(e => {
+                if (e.boss) return;
+                const dist = Math.hypot(e.x - effect.x, e.y - effect.y);
+                if (dist < effect.radius) {
+                    const angle = Math.atan2(e.y - effect.y, e.x - effect.x);
+                    e.x += Math.cos(angle) * 5;
+                    e.y += Math.sin(angle) * 5;
+                }
+            });
         }
     });
     
