@@ -20,8 +20,6 @@ function stopLoopingSfx(soundId) {
 }
 
 const gameHelpers = { addStatusEffect, spawnEnemy, spawnPickup, play, stopLoopingSfx };
-
-// This is the function that gets passed to onDamage handlers
 const spawnParticlesCallback = (x, y, c, n, spd, life, r) => utils.spawnParticles(state.particles, x, y, c, n, spd, life, r);
 
 export function addStatusEffect(name, emoji, duration) {
@@ -63,7 +61,7 @@ function levelUp() {
 
 export function addEssence(amount) {
     if (state.gameOver) return;
-    state.player.essence += Math.floor(amount * state.player.essenceGainModifier);
+    state.player.essence += Math.floor(amount * state.player.talent_modifiers.essence_gain_modifier);
     while (state.player.essence >= state.player.essenceToNextLevel) {
         levelUp();
     }
@@ -129,11 +127,29 @@ export function gameTick(mx, my) {
         finalMx = state.player.x - (mx - state.player.x);
         finalMy = state.player.y - (my - state.player.y);
     }
-    let playerSpeedMultiplier = 1;
+    
+    // Phase Momentum Talent Logic
+    const phaseMomentumTalent = state.player.purchasedTalents.get('phase-momentum');
+    if (phaseMomentumTalent) {
+        if (Date.now() - state.player.phaseMomentum.lastDamageTime > 8000) {
+            state.player.phaseMomentum.active = true;
+        }
+    } else {
+        state.player.phaseMomentum.active = false;
+    }
+    let playerSpeedMultiplier = state.player.phaseMomentum.active ? 1.10 : 1.0;
+
     if (Date.now() > state.player.stunnedUntil) {
         state.player.x += (finalMx - state.player.x) * 0.015 * state.player.speed * playerSpeedMultiplier;
         state.player.y += (finalMy - state.player.y) * 0.015 * state.player.speed * playerSpeedMultiplier;
     }
+
+    if (state.player.phaseMomentum.active) {
+        ctx.globalAlpha = 0.7;
+        utils.drawCircle(ctx, state.player.x, state.player.y, state.player.r + 5, 'rgba(0, 255, 255, 0.5)');
+        ctx.globalAlpha = 1.0;
+    }
+
     if (state.player.shield) {
         ctx.strokeStyle = "rgba(241,196,15,0.7)";
         ctx.lineWidth = 4;
@@ -174,6 +190,9 @@ export function gameTick(mx, my) {
                 }
             } else {
                 addEssence(10);
+                if (state.player.purchasedTalents.get('power-scavenger') && Math.random() < (0.01 + state.player.purchasedTalents.get('power-scavenger') * 0.005) ) {
+                    spawnPickup();
+                }
                 state.enemies.splice(i, 1);
             }
             continue;
@@ -202,21 +221,27 @@ export function gameTick(mx, my) {
         if(e.enraged) { ctx.strokeStyle = "yellow"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(e.x,e.y,e.r+5,0,2*Math.PI); ctx.stroke(); }
         
         const pDist = Math.hypot(state.player.x-e.x,state.player.y-e.y);
-        if(pDist < e.r+state.player.r){ 
-            if (e.onCollision) e.onCollision(e, state.player, addStatusEffect); 
-            if(!state.player.shield){ 
-                let damage = e.boss ? (e.enraged ? 20 : 10) : 1; 
-                if (state.player.berserkUntil > Date.now()) damage *= 2; 
-                state.player.health -= damage; 
-                play('hit'); 
-                if(e.onDamage) e.onDamage(e, damage, state.player, state, spawnParticlesCallback); 
-                if(state.player.health<=0) state.gameOver=true; 
-            } else { 
-                state.player.shield=false; 
-            } 
-            const ang=Math.atan2(state.player.y-e.y,state.player.x-e.x); 
-            state.player.x=e.x+Math.cos(ang)*(e.r+state.player.r); 
-            state.player.y=e.y+Math.sin(ang)*(e.r+state.player.r); 
+        if(pDist < e.r+state.player.r){
+            if (state.player.phaseMomentum.active && !e.boss) {
+                // Allows passing through
+            } else {
+                state.player.phaseMomentum.lastDamageTime = Date.now();
+                state.player.phaseMomentum.active = false;
+                if (e.onCollision) e.onCollision(e, state.player, addStatusEffect); 
+                if(!state.player.shield){ 
+                    let damage = e.boss ? (e.enraged ? 20 : 10) : 1; 
+                    if (state.player.berserkUntil > Date.now()) damage *= 2; 
+                    state.player.health -= damage; 
+                    play('hit'); 
+                    if(e.onDamage) e.onDamage(e, damage, state.player, state, spawnParticlesCallback); 
+                    if(state.player.health<=0) state.gameOver=true; 
+                } else { 
+                    state.player.shield=false; 
+                } 
+                const ang=Math.atan2(state.player.y-e.y,state.player.x-e.x); 
+                state.player.x=e.x+Math.cos(ang)*(e.r+state.player.r); 
+                state.player.y=e.y+Math.sin(ang)*(e.r+state.player.r);
+            }
         }
     }
 
@@ -230,8 +255,9 @@ export function gameTick(mx, my) {
         ctx.fillText(powers[p.type]?.emoji || '?', p.x, p.y+6);
         ctx.textAlign = "left";
 
+        const pickupRadius = 75 + state.player.talent_modifiers.pickup_radius_bonus;
         const d=Math.hypot(state.player.x-p.x,state.player.y-p.y);
-        if(d < state.player.r + p.r){
+        if(d < pickupRadius + p.r){
             const isOffensive = offensivePowers.includes(p.type);
             const targetInventory = isOffensive ? state.offensiveInventory : state.defensiveInventory;
             const maxSlots = isOffensive ? state.player.unlockedOffensiveSlots : state.player.unlockedDefensiveSlots;
@@ -260,7 +286,7 @@ export function gameTick(mx, my) {
                 if (!effect.hitEnemies.has(target) && Math.abs(Math.hypot(target.x - effect.x, target.y - effect.y) - effect.radius) < target.r + 5) {
                     let dmg = (target.boss || target === state.player) ? effect.damage : 1000;
                     if(target.health) target.health -= dmg; else target.hp -= dmg;
-                    if (target.onDamage) target.onDamage(target, dmg, effect.caster, state, spawnParticlesCallback); // CORRECTED
+                    if (target.onDamage) target.onDamage(target, dmg, effect.caster, state, spawnParticlesCallback);
                     effect.hitEnemies.add(target);
                 }
             });
@@ -278,12 +304,35 @@ export function gameTick(mx, my) {
                 utils.drawLightning(ctx, from.x, from.y, to.x, to.y, '#00ffff', 4);
                 if (!effect.links.includes(to)) {
                     utils.spawnParticles(state.particles, to.x, to.y, '#ffffff', 30, 5, 20);
-                    let dmg = to.boss ? effect.damage : 50;
+                    let dmg = (to.boss ? effect.damage : 50) * state.player.talent_modifiers.damage_multiplier;
                     to.hp -= dmg;
-                    if (to.onDamage) to.onDamage(to, dmg, effect.caster, state, spawnParticlesCallback); // CORRECTED
+                    if (to.onDamage) to.onDamage(to, dmg, effect.caster, state, spawnParticlesCallback);
                     effect.links.push(to);
+
+                    if (effect.hasMastery && i === effect.targets.length - 1) {
+                         state.effects.push({ type: 'shockwave', caster: state.player, x: to.x, y: to.y, radius: 0, maxRadius: 150, speed: 600, startTime: Date.now(), hitEnemies: new Set(), damage: 10 * state.player.talent_modifiers.damage_multiplier });
+                    }
                 }
             }
+        } else if (effect.type === 'seeking_shrapnel') {
+            // ... logic for seeking shrapnel ...
+        } else if (effect.type === 'repulsion_field') {
+            if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
+            const alpha = (effect.endTime - Date.now()) / 100 * 0.4;
+            ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(effect.x, effect.y, effect.radius, 0, 2*Math.PI);
+            ctx.stroke();
+            state.enemies.forEach(e => {
+                if (e.boss) return;
+                const dist = Math.hypot(e.x - effect.x, e.y - effect.y);
+                if (dist < effect.radius) {
+                    const angle = Math.atan2(e.y - effect.y, e.x - effect.x);
+                    e.x += Math.cos(angle) * 5;
+                    e.y += Math.sin(angle) * 5;
+                }
+            });
         }
     });
     
