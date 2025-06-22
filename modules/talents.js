@@ -102,7 +102,7 @@ export const TALENT_GRID_CONFIG = {
             maxRanks: 1,
             costPerRank: [3],
             position: { x: 35, y: 80 },
-            prerequisites: ['reactive-plating'],
+            prerequisites: ['reactive-plating', 'power-scavenger'], // Interwoven prerequisite
         }
     },
     
@@ -121,29 +121,29 @@ export const TALENT_GRID_CONFIG = {
             position: { x: 65, y: 20 },
             prerequisites: ['core-nexus'],
         },
-        'havoc-missile': {
-            id: 'havoc-missile',
-            name: 'Bigger Boom',
-            powerPrerequisite: 'missile',
+        'havoc-chain': {
+            id: 'havoc-chain',
+            name: 'High Voltage',
+            powerPrerequisite: 'chain',
             description: (rank, maxed) => maxed
-                ? 'Missile explosion radius +30% total.'
-                : `Missile explosion radius +15% per rank.`,
-            icon: '🎯',
+                ? 'Chain Lightning jumps to +2 additional targets.'
+                : `Chain Lightning jumps to +1 additional target per rank.`,
+            icon: '⚡',
             maxRanks: 2,
             costPerRank: [1, 1],
             position: { x: 75, y: 35 },
             prerequisites: ['high-frequency-emitters'],
         },
-        'seeking-shrapnel': {
-            id: 'seeking-shrapnel',
-            name: 'Mastery: Seeking Shrapnel',
-            powerPrerequisite: 'missile',
-            description: () => 'Missile impact releases 3 small, homing projectiles that seek different targets.',
-            icon: '🌀',
+        'volatile-finish': {
+            id: 'volatile-finish',
+            name: 'Mastery: Volatile Finish',
+            powerPrerequisite: 'chain',
+            description: () => 'The final target of Chain Lightning explodes.',
+            icon: '💣',
             maxRanks: 1,
             costPerRank: [2],
             position: { x: 85, y: 50 },
-            prerequisites: ['havoc-missile'],
+            prerequisites: ['havoc-chain'],
         },
         'havoc-berserk': {
             id: 'havoc-berserk',
@@ -154,18 +154,7 @@ export const TALENT_GRID_CONFIG = {
             maxRanks: 1,
             costPerRank: [3],
             position: { x: 65, y: 50 },
-            prerequisites: ['havoc-missile'],
-        },
-        'unstable-singularity': {
-            id: 'unstable-singularity',
-            name: 'Capstone: Unstable Singularity',
-            powerPrerequisite: 'black_hole',
-            description: () => 'Enemies are damaged when pulled into the Black Hole. Explodes on expiry.',
-            icon: '⚫',
-            maxRanks: 1,
-            costPerRank: [3],
-            position: { x: 65, y: 80 },
-            prerequisites: ['targeting-algorithm'],
+            prerequisites: ['havoc-chain'],
         },
         'targeting-algorithm': {
             id: 'targeting-algorithm',
@@ -176,7 +165,18 @@ export const TALENT_GRID_CONFIG = {
             maxRanks: 1,
             costPerRank: [3],
             position: { x: 75, y: 65 },
-            prerequisites: ['seeking-shrapnel', 'havoc-berserk'],
+            prerequisites: ['volatile-finish', 'havoc-berserk'],
+        },
+        'unstable-singularity': {
+            id: 'unstable-singularity',
+            name: 'Capstone: Unstable Singularity',
+            powerPrerequisite: 'black_hole',
+            description: () => 'Enemies are damaged when pulled into the Black Hole. Explodes on expiry.',
+            icon: '⚫',
+            maxRanks: 1,
+            costPerRank: [3],
+            position: { x: 65, y: 80 },
+            prerequisites: ['targeting-algorithm', 'temporal-collapse'], // Interwoven prerequisite
         },
     },
 
