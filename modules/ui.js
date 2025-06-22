@@ -80,11 +80,13 @@ export function updateUI() {
         const defPower = state.defensiveInventory[i];
         const qOffSlot = document.getElementById(`q-off-${i}`);
         const qDefSlot = document.getElementById(`q-def-${i}`);
+        
+        qOffSlot.classList.toggle('visible', !!offPower && i < state.player.unlockedOffensiveSlots);
+        qDefSlot.classList.toggle('visible', !!defPower && i < state.player.unlockedDefensiveSlots);
+
         qOffSlot.innerHTML = offPower ? powers[offPower].emoji : '';
-        qOffSlot.className = `queue-slot ${offPower ? 'visible' : ''}`;
         qOffSlot.setAttribute('data-tooltip-text', offPower ? powers[offPower].desc : '');
         qDefSlot.innerHTML = defPower ? powers[defPower].emoji : '';
-        qDefSlot.className = `queue-slot ${defPower ? 'visible' : ''}`;
         qDefSlot.setAttribute('data-tooltip-text', defPower ? powers[defPower].desc : '');
     }
 
