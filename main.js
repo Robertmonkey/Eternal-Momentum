@@ -99,9 +99,13 @@ window.addEventListener('DOMContentLoaded', (event) => {
             return;
         }
         if (!state.isPaused) {
+            // Logic for spawning enemies and bosses
             if (!state.bossActive && !state.arenaMode && Date.now() > state.bossSpawnCooldownEnd) {
-                spawnEnemy(true);
-                state.bossSpawnCooldownEnd = Date.now() + 5000;
+                 const bossIndex = (state.player.level - 1) % bossData.length;
+                 if (state.player.level > bossData.length || state.player.level > 1) { // Logic to prevent immediate boss spawn on first level
+                    spawnEnemy(true);
+                    state.bossSpawnCooldownEnd = Date.now() + 15000; // Cooldown for next boss
+                 }
             }
             if (Math.random() < (0.007 + state.player.level * 0.001)) spawnEnemy(false);
             if (Math.random() < (0.02 + state.player.level * 0.0002)) spawnPickup();
