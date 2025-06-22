@@ -18,14 +18,13 @@ export const state = {
     unlockedDefensiveSlots: 1,
     infected: false, infectionEnd: 0, lastSpore: 0,
     
-    // This sub-object will hold multipliers and bonuses from talents
     talent_modifiers: {
         damage_multiplier: 1.0,
         pickup_radius_bonus: 0,
         essence_gain_modifier: 1.0,
+        pull_resistance_modifier: 0,
     },
 
-    // This sub-object holds states for specific, complex talents
     talent_states: {
         phaseMomentum: {
             active: false,
@@ -40,6 +39,7 @@ export const state = {
   currentStage: 1,
   currentBoss:null, 
   bossActive:false,
+  bossHasSpawnedThisRun: false, // BUG FIX: New flag to prevent boss respawns
   gameOver:false,
   isPaused: false,
   gameLoopId: null,
@@ -73,7 +73,6 @@ export function loadPlayerState() {
     const savedData = localStorage.getItem('eternalMomentumSave');
     if (savedData) {
         const parsedData = JSON.parse(savedData);
-        // Ensure defaults are set for properties that might not be in old save files
         const playerData = {
             unlockedOffensiveSlots: 1,
             unlockedDefensiveSlots: 1,
@@ -88,10 +87,9 @@ export function loadPlayerState() {
 export function resetGame(isArena = false) {
     const canvas = document.getElementById("gameCanvas");
     
-    // Reset only the run-specific stats
     state.player.x = canvas.width / 2;
     state.player.y = canvas.height / 2;
-    state.player.health = state.player.maxHealth; // Health resets to the new max
+    state.player.health = state.player.maxHealth;
     state.player.statusEffects = [];
     state.player.shield = false;
     state.player.berserkUntil = 0;
@@ -103,6 +101,7 @@ export function resetGame(isArena = false) {
         offensiveInventory: [null, null, null], 
         defensiveInventory: [null, null, null], 
         currentBoss: null, bossActive: false, stacked: false, gameOver: false, 
+        bossHasSpawnedThisRun: false, // BUG FIX: Reset flag on new run
         gravityActive: false, gravityEnd: 0, 
         isPaused: false, 
         currentStage: isArena ? 1 : state.player.highestStageBeaten + 1,
