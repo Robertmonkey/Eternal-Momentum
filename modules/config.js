@@ -9,7 +9,7 @@ export const THEMATIC_UNLOCKS = {
   7: { type: 'power', id: 'orbitalStrike' },
   8: { type: 'power', id: 'stack' },
   9: { type: 'power', id: 'ricochetShot' },
-  10: { type: 'slot', id: 'offensiveQueue1' },
+  10: { type: 'slot', id: 'queueSlot1' }, // Unlocks the first Offensive and Defensive queue slots
   11: { type: 'power', id: 'repulsion' },
   12: { type: 'power', id: 'freeze' },
   13: { type: 'power', id: 'berserk' },
@@ -18,7 +18,7 @@ export const THEMATIC_UNLOCKS = {
   16: { type: 'power', id: 'score' }, 
   17: { type: 'power', id: 'shockwave' },
   18: { type: 'bonus', value: 5 },
-  19: { type: 'slot', id: 'defensiveQueue1' },
+  19: { type: 'bonus', value: 5 }, // Changed from a slot unlock to a bonus AP unlock
   20: { type: 'victory' },
 };
 
