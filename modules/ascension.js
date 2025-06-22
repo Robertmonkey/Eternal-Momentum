@@ -17,8 +17,15 @@ Object.values(TALENT_GRID_CONFIG).forEach(constellation => {
 function isTalentVisible(talent) {
     if (!talent) return false;
     const powerUnlocked = !talent.powerPrerequisite || state.player.unlockedPowers.has(talent.powerPrerequisite);
-    const prereqsMet = talent.prerequisites.every(p => state.player.purchasedTalents.has(p));
+    const prereqsMet = talent.prerequisites.every(p => {
+        const prereq = allTalents[p];
+        return isTalentVisible(prereq) && state.player.purchasedTalents.has(p);
+    });
     return powerUnlocked && (talent.prerequisites.length === 0 || prereqsMet);
+}
+
+function findTalentById(talentId) {
+    return allTalents[talentId] || null;
 }
 
 function drawConnectorLines() {
@@ -102,6 +109,9 @@ function createTalentNode(talent, constellationColor) {
     if (talent.position.x > 75) {
         tooltip.classList.add('show-left');
     }
+    if (talent.position.y < 15) {
+        tooltip.classList.add('show-bottom');
+    }
 
     tooltip.innerHTML = `
         <div class="tooltip-header">
@@ -118,18 +128,6 @@ function createTalentNode(talent, constellationColor) {
         node.onclick = () => purchaseTalent(talent.id);
     }
     
-    node.addEventListener('mouseenter', () => {
-        requestAnimationFrame(() => {
-            const rect = tooltip.getBoundingClientRect();
-            const containerRect = gridContainer.getBoundingClientRect();
-            if (rect.right > containerRect.right - 10) {
-                tooltip.classList.add('show-left');
-            } else {
-                tooltip.classList.remove('show-left');
-            }
-        });
-    });
-
     gridContainer.appendChild(node);
 }
 
