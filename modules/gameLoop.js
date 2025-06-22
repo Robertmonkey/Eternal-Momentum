@@ -28,11 +28,15 @@ export function addStatusEffect(name, emoji, duration) {
 }
 
 export function handleThematicUnlock(stageJustCleared) {
-    const unlockLevel = stageJustCleared + 1; // Unlocks are for the *next* level
+    const unlockLevel = stageJustCleared + 1; // Unlocks are for starting the *next* level/stage
     const unlock = THEMATIC_UNLOCKS[unlockLevel];
     if (!unlock) return;
 
-    if (unlock.type === 'power' && !state.player.unlockedPowers.has(unlock.id)) {
+    // Prevent re-notifying for already unlocked powers
+    const isAlreadyUnlocked = unlock.type === 'power' && state.player.unlockedPowers.has(unlock.id);
+    if (isAlreadyUnlocked) return;
+    
+    if (unlock.type === 'power') {
         state.player.unlockedPowers.add(unlock.id);
         const powerName = powers[unlock.id]?.desc || unlock.id;
         showUnlockNotification(`Power Unlocked: ${powers[unlock.id].emoji} ${powerName}`);
@@ -48,7 +52,7 @@ function levelUp() {
     state.player.level++;
     state.player.essence -= state.player.essenceToNextLevel;
     state.player.essenceToNextLevel = Math.floor(state.player.essenceToNextLevel * 1.5);
-    state.player.ascensionPoints += 2; // Player level only gives AP
+    state.player.ascensionPoints += 2; // Player level-up only grants AP now
     utils.spawnParticles(state.particles, state.player.x, state.player.y, '#00ffff', 80, 6, 50, 5);
     savePlayerState();
 }
@@ -126,11 +130,6 @@ export function gameTick(mx, my) {
         finalMy = state.player.y - (my - state.player.y);
     }
     let playerSpeedMultiplier = 1;
-    state.effects.forEach(effect => {
-        if (effect.type === 'slow_zone' && Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < effect.r) {
-            playerSpeedMultiplier = 0.5;
-        }
-    });
     if (Date.now() > state.player.stunnedUntil) {
         state.player.x += (finalMx - state.player.x) * 0.015 * state.player.speed * playerSpeedMultiplier;
         state.player.y += (finalMy - state.player.y) * 0.015 * state.player.speed * playerSpeedMultiplier;
@@ -157,7 +156,7 @@ export function gameTick(mx, my) {
                     state.player.highestStageBeaten = state.currentStage;
                     state.player.ascensionPoints += 3;
                     showUnlockNotification("Stage Cleared! +3 AP", `Level ${state.currentStage + 1} Unlocked`);
-                    handleThematicUnlock(state.currentStage); // Grant unlock for clearing the stage
+                    handleThematicUnlock(state.currentStage);
                 }
                 
                 utils.triggerScreenShake(250, 5);
@@ -249,7 +248,7 @@ export function gameTick(mx, my) {
                 }
             });
             if (effect.radius >= effect.maxRadius) state.effects.splice(index, 1);
-        } else if (effect.type === 'chain_lightning') { // RESTORED
+        } else if (effect.type === 'chain_lightning') {
             const linkIndex = Math.floor((Date.now() - effect.startTime) / effect.durationPerLink);
             if (linkIndex >= effect.targets.length) {
                 state.effects.splice(index, 1);
@@ -268,7 +267,6 @@ export function gameTick(mx, my) {
                 }
             }
         }
-        // ... other effects can be added here
     });
     
     utils.updateParticles(ctx, state.particles);
