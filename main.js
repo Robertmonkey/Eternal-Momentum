@@ -1,8 +1,8 @@
 // modules/main.js
-import { state, resetGame } from './state.js';
-import { bossData } from './bosses.js';
-import { AudioManager } from './audio.js';
-import { updateUI, populateLevelSelect } from './ui.js';
+import { state, resetGame, loadPlayerState } from './modules/state.js';
+import { bossData } from './modules/bosses.js';
+import { AudioManager } from './modules/audio.js';
+import { updateUI, populateLevelSelect } from './modules/ui.js';
 import { gameTick, spawnEnemy, spawnPickup, addStatusEffect, handleThematicUnlock } from './gameLoop.js';
 import { usePower } from './powers.js';
 import * as utils from './utils.js';
@@ -10,11 +10,13 @@ import { renderAscensionGrid } from './ascension.js';
 
 window.addEventListener('DOMContentLoaded', (event) => {
     
+    // --- DOM & Canvas Setup ---
     const canvas = document.getElementById("gameCanvas");
     const soundBtn = document.getElementById("soundToggle");
     const ascensionBtn = document.getElementById("ascensionBtn");
     const levelSelectBtn = document.getElementById("levelSelectBtn");
     
+    // Modals and their controls
     const levelSelectModal = document.getElementById("levelSelectModal");
     const closeLevelSelectBtn = document.getElementById("closeLevelSelectBtn");
     const arenaBtn = document.getElementById("arenaBtn");
@@ -26,16 +28,21 @@ window.addEventListener('DOMContentLoaded', (event) => {
     const allAudioElements = Array.from(document.querySelectorAll('audio'));
     const music = document.getElementById("bgMusic");
 
+    // --- INITIALIZATION ---
     function initialize() {
+        loadPlayerState(); // Load saved data first
+
         mx = canvas.width / 2;
         my = canvas.height / 2;
         function resize() { canvas.width = innerWidth; canvas.height = innerHeight; }
         window.addEventListener("resize", resize);
         resize();
+
         AudioManager.setup(allAudioElements, music, soundBtn);
         setupEventListeners();
     }
 
+    // --- Event Listeners ---
     function setupEventListeners() {
         function setPlayerTarget(e) {
             const rect = canvas.getBoundingClientRect();
@@ -63,8 +70,10 @@ window.addEventListener('DOMContentLoaded', (event) => {
         document.body.addEventListener("click", () => AudioManager.unlockAudio(), { once: true });
         document.body.addEventListener("touchstart", () => AudioManager.unlockAudio(), { once: true });
 
+        // Modal Listeners
         levelSelectBtn.addEventListener("click", () => { 
             state.isPaused = true; 
+            populateLevelSelect(bossData, startSpecificLevel); // Repopulate to show latest progress
             levelSelectModal.style.display = 'flex'; 
         });
         closeLevelSelectBtn.addEventListener("click", () => { 
@@ -86,6 +95,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
         arenaBtn.addEventListener("click", () => startNewGame(true));
     }
 
+    // --- Game Flow ---
     function loop() {
         if (!gameTick(mx, my)) {
             if (state.gameLoopId) cancelAnimationFrame(state.gameLoopId);
@@ -140,7 +150,9 @@ window.addEventListener('DOMContentLoaded', (event) => {
         updateUI();
     };
 
+    // --- START THE GAME ---
     initialize();
     populateLevelSelect(bossData, startSpecificLevel);
     startNewGame(false);
+    updateUI(); // Initial UI render with loaded data
 });
