@@ -15,6 +15,16 @@ export const TALENT_GRID_CONFIG = {
             position: { x: 50, y: 10 },
             prerequisites: [],
         },
+        'overload-protocol': {
+            id: 'overload-protocol',
+            name: 'Capstone: Overload Protocol',
+            description: () => 'When your inventory is full, picking up a power-up instantly uses it instead of discarding it.',
+            icon: '⚛️',
+            maxRanks: 1,
+            costPerRank: [5],
+            position: { x: 50, y: 100 },
+            prerequisites: ['phase-momentum', 'unstable-singularity', 'energetic-recycling'],
+        }
     },
 
     // --- AEGIS CONSTALLATION (Defense & Survival - Cyan) ---
@@ -77,7 +87,7 @@ export const TALENT_GRID_CONFIG = {
             name: 'Kinetic Overload',
             powerPrerequisite: 'repulsion',
             description: () => 'Repulsion wave violently knocks enemies back.',
-            icon: '💨',
+            icon: '👊',
             maxRanks: 1,
             costPerRank: [2],
             position: { x: 45, y: 25 },
@@ -241,14 +251,14 @@ export const TALENT_GRID_CONFIG = {
         },
         'unstable-singularity': {
             id: 'unstable-singularity',
-            name: 'Mastery: Unstable Singularity',
+            name: 'Capstone: Unstable Singularity',
             powerPrerequisite: 'black_hole',
             description: () => 'Enemies are damaged when pulled into the Black Hole. Explodes on expiry.',
             icon: '⚫',
             maxRanks: 1,
             costPerRank: [3],
-            position: { x: 70, y: 85 },
-            prerequisites: ['targeting-algorithm'],
+            position: { x: 85, y: 80 },
+            prerequisites: ['targeting-algorithm', 'seeking-shrapnel'],
         },
     },
 
