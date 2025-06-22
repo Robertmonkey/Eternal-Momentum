@@ -82,6 +82,17 @@ export const TALENT_GRID_CONFIG = {
             position: { x: 35, y: 50 },
             prerequisites: ['aegis-shield'],
         },
+        'kinetic-overload': {
+            id: 'kinetic-overload',
+            name: 'Kinetic Overload',
+            powerPrerequisite: 'repulsion',
+            description: () => 'Your Repulsion power continuously knocks enemies back for the first 2 seconds of its duration.',
+            icon: '✋',
+            maxRanks: 1,
+            costPerRank: [2],
+            position: { x: 25, y: 65 },
+            prerequisites: ['aegis-retaliation', 'fleet-footed'],
+        },
         'reactive-plating': {
             id: 'reactive-plating',
             name: 'Reactive Plating',
@@ -91,8 +102,8 @@ export const TALENT_GRID_CONFIG = {
             icon: '🛡️',
             maxRanks: 3,
             costPerRank: [2, 2, 3],
-            position: { x: 25, y: 65 },
-            prerequisites: ['aegis-retaliation', 'fleet-footed'],
+            position: { x: 45, y: 65 },
+            prerequisites: ['fleet-footed'],
         },
         'phase-momentum': {
             id: 'phase-momentum',
@@ -102,7 +113,7 @@ export const TALENT_GRID_CONFIG = {
             maxRanks: 1,
             costPerRank: [3],
             position: { x: 35, y: 80 },
-            prerequisites: ['reactive-plating', 'power-scavenger'],
+            prerequisites: ['kinetic-overload', 'reactive-plating'],
         }
     },
     
@@ -112,38 +123,23 @@ export const TALENT_GRID_CONFIG = {
         'high-frequency-emitters': {
             id: 'high-frequency-emitters',
             name: 'High-Frequency Emitters',
-            description: (rank, maxed) => maxed
-                ? 'All damage increased by a total of 12%.'
-                : `All damage increased by ${[5, 7][rank-1] || 0}%.`,
+            description: (rank, maxed) => maxed ? 'All damage increased by a total of 12%.' : `All damage increased by ${[5, 7][rank-1] || 0}%.`,
             icon: '💥',
             maxRanks: 2,
             costPerRank: [1, 2],
             position: { x: 65, y: 20 },
             prerequisites: ['core-nexus'],
         },
-        'havoc-chain': {
-            id: 'havoc-chain',
-            name: 'High Voltage',
-            powerPrerequisite: 'chain',
-            description: (rank, maxed) => maxed
-                ? 'Chain Lightning jumps to +2 additional targets.'
-                : `Chain Lightning jumps to +1 additional target per rank.`,
-            icon: '⚡',
-            maxRanks: 2,
-            costPerRank: [1, 1],
+        'targeting-algorithm': {
+            id: 'targeting-algorithm',
+            name: 'Targeting Algorithm',
+            powerPrerequisite: 'orbitalStrike',
+            description: () => `Orbital Strike targeting indicators will now follow their targets.`,
+            icon: '☄️',
+            maxRanks: 1,
+            costPerRank: [3],
             position: { x: 75, y: 35 },
             prerequisites: ['high-frequency-emitters'],
-        },
-        'volatile-finish': {
-            id: 'volatile-finish',
-            name: 'Mastery: Volatile Finish',
-            powerPrerequisite: 'chain',
-            description: () => 'The final target of Chain Lightning explodes.',
-            icon: '💣',
-            maxRanks: 1,
-            costPerRank: [2],
-            position: { x: 85, y: 50 },
-            prerequisites: ['havoc-chain'],
         },
         'havoc-berserk': {
             id: 'havoc-berserk',
@@ -154,18 +150,40 @@ export const TALENT_GRID_CONFIG = {
             maxRanks: 1,
             costPerRank: [3],
             position: { x: 65, y: 50 },
-            prerequisites: ['havoc-chain'],
+            prerequisites: ['targeting-algorithm'],
         },
-        'targeting-algorithm': {
-            id: 'targeting-algorithm',
-            name: 'Targeting Algorithm',
-            powerPrerequisite: 'orbitalStrike',
-            description: () => `Orbital Strike targeting indicators will now follow their targets.`,
-            icon: '☄️',
+        'unstable-payload': {
+            id: 'unstable-payload',
+            name: 'Unstable Payload',
+            powerPrerequisite: 'ricochetShot',
+            description: () => 'Your Ricochet Shot becomes increasingly unstable with each bounce, growing in size and power.',
+            icon: '🔄',
             maxRanks: 1,
-            costPerRank: [3],
-            position: { x: 75, y: 65 },
-            prerequisites: ['volatile-finish', 'havoc-berserk'],
+            costPerRank: [2],
+            position: { x: 85, y: 50 },
+            prerequisites: ['targeting-algorithm'],
+        },
+        'havoc-chain': {
+            id: 'havoc-chain',
+            name: 'High Voltage',
+            powerPrerequisite: 'chain',
+            description: (rank, maxed) => maxed ? 'Chain Lightning jumps to +2 additional targets.' : `Chain Lightning jumps to +1 additional target per rank.`,
+            icon: '⚡',
+            maxRanks: 2,
+            costPerRank: [1, 1],
+            position: { x: 65, y: 65 },
+            prerequisites: ['havoc-berserk'],
+        },
+        'nova-pulsar': {
+            id: 'nova-pulsar',
+            name: 'Nova Pulsar',
+            powerPrerequisite: 'bulletNova',
+            description: () => 'Your Bullet Nova power now fires three simultaneous spirals of projectiles, tripling its density and area coverage.',
+            icon: '💫',
+            maxRanks: 1,
+            costPerRank: [2],
+            position: { x: 85, y: 65 },
+            prerequisites: ['unstable-payload'],
         },
         'unstable-singularity': {
             id: 'unstable-singularity',
@@ -175,8 +193,8 @@ export const TALENT_GRID_CONFIG = {
             icon: '⚫',
             maxRanks: 1,
             costPerRank: [3],
-            position: { x: 65, y: 80 },
-            prerequisites: ['targeting-algorithm', 'temporal-collapse'],
+            position: { x: 75, y: 80 },
+            prerequisites: ['havoc-chain', 'nova-pulsar'],
         },
     },
 
@@ -186,9 +204,7 @@ export const TALENT_GRID_CONFIG = {
         'essence-conduit': {
             id: 'essence-conduit',
             name: 'Essence Conduit',
-            description: (rank, maxed) => maxed
-                ? 'Gain 25% more Essence (XP).'
-                : `Gain ${[10, 15][rank-1] || 0}% more Essence (XP).`,
+            description: (rank, maxed) => maxed ? 'Gain 25% more Essence (XP).' : `Gain ${[10, 15][rank-1] || 0}% more Essence (XP).`,
             icon: '💰',
             maxRanks: 2,
             costPerRank: [1, 2],
@@ -198,9 +214,7 @@ export const TALENT_GRID_CONFIG = {
         'resonance-magnet': {
             id: 'resonance-magnet',
             name: 'Resonance Magnet',
-            description: (rank, maxed) => maxed
-                ? 'Increases pickup radius by a total of 150px.'
-                : `Increases pickup radius by 75px per rank.`,
+            description: (rank, maxed) => maxed ? 'Increases pickup radius by a total of 150px.' : `Increases pickup radius by 75px per rank.`,
             icon: '🧲',
             maxRanks: 2,
             costPerRank: [1, 1],
@@ -211,8 +225,8 @@ export const TALENT_GRID_CONFIG = {
             id: 'power-scavenger',
             name: 'Power Scavenger',
             description: (rank, maxed) => maxed
-                ? 'Non-boss enemies have a 2.5% chance to drop Score power-ups.'
-                : `Non-boss enemies have a ${[1, 1.5][rank-1] || 0}% chance to drop Score power-ups.`,
+                ? 'Non-boss enemies have a 2.5% chance to drop an Essence Crystal, granting a burst of experience points when collected.'
+                : `Non-boss enemies have a ${[1, 1.5][rank-1] || 0}% chance to drop an Essence Crystal, granting a burst of experience points when collected.`,
             icon: '💎',
             maxRanks: 2,
             costPerRank: [2, 2],
@@ -230,17 +244,25 @@ export const TALENT_GRID_CONFIG = {
             position: { x: 60, y: 55 },
             prerequisites: ['resonance-magnet'],
         },
+        'temporal-echo': {
+            id: 'temporal-echo',
+            name: 'Temporal Echo',
+            description: () => 'Begin each new run with a single, random power-up in your inventory.',
+            icon: '❓',
+            maxRanks: 1,
+            costPerRank: [3],
+            position: { x: 50, y: 65 },
+            prerequisites: ['power-scavenger', 'temporal-collapse'],
+        },
         'temporal-anomaly': {
             id: 'temporal-anomaly',
             name: 'Temporal Anomaly',
-            description: (rank, maxed) => maxed
-                ? 'Power-ups on the ground last 50% longer.'
-                : `Power-ups on the ground last ${[25, 50][rank-1] || 0}% longer.`,
+            description: (rank, maxed) => maxed ? 'Power-ups on the ground last 50% longer.' : `Power-ups on the ground last ${[25, 50][rank-1] || 0}% longer.`,
             icon: '⏳',
             maxRanks: 2,
             costPerRank: [1, 1],
-            position: { x: 50, y: 70 },
-            prerequisites: ['power-scavenger', 'temporal-collapse'],
+            position: { x: 50, y: 80 },
+            prerequisites: ['temporal-echo'],
         },
          'energetic-recycling': {
             id: 'energetic-recycling',
