@@ -25,7 +25,8 @@ function stopLoopingSfx(soundId) {
     if (soundElement) AudioManager.stopLoopingSfx(soundElement);
 }
 
-const gameHelpers = { addStatusEffect, spawnEnemy, spawnPickup, play, stopLoopingSfx, playLooping };
+// BUG FIX: Added addEssence to the gameHelpers object
+const gameHelpers = { addStatusEffect, spawnEnemy, spawnPickup, play, stopLoopingSfx, playLooping, addEssence };
 const spawnParticlesCallback = (x, y, c, n, spd, life, r) => utils.spawnParticles(state.particles, x, y, c, n, spd, life, r);
 
 export function addStatusEffect(name, emoji, duration) {
