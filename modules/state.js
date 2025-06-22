@@ -74,11 +74,15 @@ export function loadPlayerState() {
     const savedData = localStorage.getItem('eternalMomentumSave');
     if (savedData) {
         const parsedData = JSON.parse(savedData);
-        Object.assign(state.player, {
+        // Ensure defaults are set for properties that might not be in old save files
+        const playerData = {
+            unlockedOffensiveSlots: 1,
+            unlockedDefensiveSlots: 1,
             ...parsedData,
             unlockedPowers: new Set(parsedData.unlockedPowers),
             purchasedTalents: new Map(parsedData.purchasedTalents),
-        });
+        };
+        Object.assign(state.player, playerData);
     }
 }
 
