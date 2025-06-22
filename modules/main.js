@@ -1,16 +1,15 @@
-// main.js
-import { state, resetGame } from './modules/state.js';
-import { bossData } from './modules/bosses.js';
-import { AudioManager } from './modules/audio.js';
-import { updateUI, populateLevelSelect } from './modules/ui.js';
-import { gameTick, spawnEnemy, spawnPickup, addStatusEffect, handleThematicUnlock } from './modules/gameLoop.js';
-import { usePower } from './modules/powers.js';
-import * as utils from './modules/utils.js';
-import { renderAscensionGrid } from './modules/ascension.js'; // <-- NEW IMPORT
+// modules/main.js
+import { state, resetGame } from './state.js';
+import { bossData } from './bosses.js';
+import { AudioManager } from './audio.js';
+import { updateUI, populateLevelSelect } from './ui.js';
+import { gameTick, spawnEnemy, spawnPickup, addStatusEffect, handleThematicUnlock } from './gameLoop.js';
+import { usePower } from './powers.js';
+import * as utils from './utils.js';
+import { renderAscensionGrid } from './ascension.js';
 
 window.addEventListener('DOMContentLoaded', (event) => {
     
-    // --- DOM & Canvas Setup ---
     const canvas = document.getElementById("gameCanvas");
     const soundBtn = document.getElementById("soundToggle");
     const ascensionBtn = document.getElementById("ascensionBtn");
@@ -27,19 +26,16 @@ window.addEventListener('DOMContentLoaded', (event) => {
     const allAudioElements = Array.from(document.querySelectorAll('audio'));
     const music = document.getElementById("bgMusic");
 
-    // --- INITIALIZATION ---
     function initialize() {
         mx = canvas.width / 2;
         my = canvas.height / 2;
         function resize() { canvas.width = innerWidth; canvas.height = innerHeight; }
         window.addEventListener("resize", resize);
         resize();
-
         AudioManager.setup(allAudioElements, music, soundBtn);
         setupEventListeners();
     }
 
-    // --- Event Listeners ---
     function setupEventListeners() {
         function setPlayerTarget(e) {
             const rect = canvas.getBoundingClientRect();
@@ -67,7 +63,6 @@ window.addEventListener('DOMContentLoaded', (event) => {
         document.body.addEventListener("click", () => AudioManager.unlockAudio(), { once: true });
         document.body.addEventListener("touchstart", () => AudioManager.unlockAudio(), { once: true });
 
-        // Modal Listeners
         levelSelectBtn.addEventListener("click", () => { 
             state.isPaused = true; 
             levelSelectModal.style.display = 'flex'; 
@@ -80,7 +75,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
         ascensionBtn.addEventListener("click", () => {
             state.isPaused = true;
             apDisplayAscGrid.innerText = state.player.ascensionPoints;
-            renderAscensionGrid(); // <-- RENDER THE GRID
+            renderAscensionGrid(); 
             ascensionGridModal.style.display = 'flex';
         });
         closeAscensionBtn.addEventListener("click", () => {
@@ -91,7 +86,6 @@ window.addEventListener('DOMContentLoaded', (event) => {
         arenaBtn.addEventListener("click", () => startNewGame(true));
     }
 
-    // --- Game Flow ---
     function loop() {
         if (!gameTick(mx, my)) {
             if (state.gameLoopId) cancelAnimationFrame(state.gameLoopId);
@@ -102,8 +96,12 @@ window.addEventListener('DOMContentLoaded', (event) => {
                 spawnEnemy(true);
                 state.bossSpawnCooldownEnd = Infinity; 
             }
-            if (state.bossActive && Math.random() < (0.007 + state.player.level * 0.001)) spawnEnemy(false);
-            if (Math.random() < (0.02 + state.player.level * 0.0002)) spawnPickup();
+            if (state.bossActive && Math.random() < (0.007 + state.player.level * 0.001)) {
+                 spawnEnemy(false);
+            }
+            if (Math.random() < (0.02 + state.player.level * 0.0002)) {
+                 spawnPickup();
+            }
         }
         state.gameLoopId = requestAnimationFrame(loop);
     }
@@ -142,9 +140,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
         updateUI();
     };
 
-    // --- START THE GAME ---
     initialize();
     populateLevelSelect(bossData, startSpecificLevel);
     startNewGame(false);
-
 });
