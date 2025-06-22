@@ -7,7 +7,11 @@ const gridContainer = document.querySelector("#ascensionGridModal .ascension-con
 
 const allTalents = {};
 Object.values(TALENT_GRID_CONFIG).forEach(constellation => {
-    Object.assign(allTalents, constellation);
+    Object.keys(constellation).forEach(key => {
+        if (key !== 'color') {
+            allTalents[key] = constellation[key];
+        }
+    });
 });
 
 function findTalentById(talentId) {
@@ -15,42 +19,51 @@ function findTalentById(talentId) {
 }
 
 function drawConnectorLines() {
-    for (const talentId in allTalents) {
-        const talent = allTalents[talentId];
-        talent.prerequisites.forEach(prereqId => {
-            const prereqTalent = allTalents[prereqId];
-            if (prereqTalent) {
-                const isVisible = (!talent.powerPrerequisite || state.player.unlockedPowers.has(talent.powerPrerequisite));
-                if (!isVisible) return;
+    for (const key in TALENT_GRID_CONFIG) {
+        const constellation = TALENT_GRID_CONFIG[key];
+        const constellationColor = constellation.color || 'var(--primary-glow)';
+        
+        for (const talentId in constellation) {
+            if (talentId === 'color') continue;
+            const talent = constellation[talentId];
 
-                const line = document.createElement('div');
-                line.className = 'connector-line';
-                
-                const x1 = prereqTalent.position.x;
-                const y1 = prereqTalent.position.y;
-                const x2 = talent.position.x;
-                const y2 = talent.position.y;
+            talent.prerequisites.forEach(prereqId => {
+                const prereqTalent = allTalents[prereqId];
+                if (prereqTalent) {
+                    const isVisible = (!talent.powerPrerequisite || state.player.unlockedPowers.has(talent.powerPrerequisite));
+                    if (!isVisible) return;
 
-                const length = Math.hypot(x2 - x1, y2 - y1);
-                const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+                    const line = document.createElement('div');
+                    line.className = 'connector-line';
+                    
+                    const x1 = prereqTalent.position.x;
+                    const y1 = prereqTalent.position.y;
+                    const x2 = talent.position.x;
+                    const y2 = talent.position.y;
 
-                line.style.width = `${length}%`;
-                line.style.left = `${x1}%`;
-                line.style.top = `${y1}%`;
-                line.style.transform = `rotate(${angle}deg)`;
-                
-                const isPrereqPurchased = state.player.purchasedTalents.has(prereqId);
-                if (isPrereqPurchased) {
-                    line.classList.add('unlocked');
+                    const length = Math.hypot(x2 - x1, y2 - y1);
+                    const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+
+                    line.style.width = `${length}%`;
+                    line.style.left = `${x1}%`;
+                    line.style.top = `${y1}%`;
+                    line.style.transform = `rotate(${angle}deg)`;
+                    
+                    const isPrereqPurchased = state.player.purchasedTalents.has(prereqId);
+                    if (isPrereqPurchased) {
+                        line.classList.add('unlocked');
+                        line.style.backgroundColor = constellationColor;
+                        line.style.boxShadow = `0 0 5px ${constellationColor}`;
+                    }
+
+                    gridContainer.appendChild(line);
                 }
-
-                gridContainer.appendChild(line);
-            }
-        });
+            });
+        }
     }
 }
 
-function createTalentNode(talent) {
+function createTalentNode(talent, constellationColor) {
     const node = document.createElement('div');
     node.className = 'talent-node';
     node.style.left = `${talent.position.x}%`;
@@ -63,6 +76,8 @@ function createTalentNode(talent) {
 
     if (isMaxRank) {
         node.classList.add('maxed');
+        node.style.borderColor = constellationColor;
+        node.style.boxShadow = `0 0 15px ${constellationColor}`;
     } else if (canAfford) {
         node.classList.add('can-purchase');
     }
@@ -109,7 +124,6 @@ function purchaseTalent(talentId) {
         updateUI();
 
     } else {
-        // This could be replaced with a visual shake or sound effect later
         console.log("Not enough AP!");
     }
 }
@@ -152,7 +166,7 @@ export function applyAllTalentEffects() {
     state.player.speed = baseSpeed;
     state.player.talent_modifiers.damage_multiplier = baseDamageMultiplier;
     state.player.talent_modifiers.pickup_radius_bonus = basePickupRadius;
-    state.player.essenceGainModifier = baseEssenceGain;
+    state.player.talent_modifiers.essence_gain_modifier = baseEssenceGain;
 }
 
 export function renderAscensionGrid() {
@@ -161,15 +175,21 @@ export function renderAscensionGrid() {
 
     drawConnectorLines();
 
-    for (const talentId in allTalents) {
-        const talent = allTalents[talentId];
+    for (const key in TALENT_GRID_CONFIG) {
+        const constellation = TALENT_GRID_CONFIG[key];
+        const constellationColor = constellation.color || 'var(--primary-glow)';
         
-        // Visibility Rules
-        const powerUnlocked = !talent.powerPrerequisite || state.player.unlockedPowers.has(talent.powerPrerequisite);
-        const prereqsMet = talent.prerequisites.every(p => state.player.purchasedTalents.has(p));
+        for (const talentId in constellation) {
+            if (talentId === 'color') continue;
 
-        if (powerUnlocked && (talent.prerequisites.length === 0 || prereqsMet)) {
-            createTalentNode(talent);
+            const talent = constellation[talentId];
+            
+            const powerUnlocked = !talent.powerPrerequisite || state.player.unlockedPowers.has(talent.powerPrerequisite);
+            const prereqsMet = talent.prerequisites.every(p => state.player.purchasedTalents.has(p));
+
+            if (powerUnlocked && (talent.prerequisites.length === 0 || prereqsMet)) {
+                createTalentNode(talent, constellationColor);
+            }
         }
     }
 }
