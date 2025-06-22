@@ -74,7 +74,7 @@ function levelUp() {
     state.player.level++;
     state.player.essence -= state.player.essenceToNextLevel;
     state.player.essenceToNextLevel = Math.floor(state.player.essenceToNextLevel * 1.5);
-    state.player.ascensionPoints += 1;
+    state.player.ascensionPoints += 1; // AP Gain Reduced
     utils.spawnParticles(state.particles, state.player.x, state.player.y, '#00ffff', 80, 6, 50, 5);
     savePlayerState();
 }
@@ -580,15 +580,16 @@ export function gameTick(mx, my) {
             utils.drawCircle(ctx, effect.x, effect.y, effect.radius, "#000"); 
             ctx.strokeStyle = `rgba(155, 89, 182, ${0.6 * progress})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(effect.x, effect.y, currentPullRadius, 0, 2*Math.PI); ctx.stroke();
         } else if (effect.type === 'seeking_shrapnel') {
-             let closest = null;
+            let closest = null;
             let minDist = Infinity;
-            state.enemies.forEach(e => {
-                const dist = Math.hypot(e.x - effect.x, e.y - effect.y);
-                if (dist < minDist) {
-                    minDist = dist;
-                    closest = e;
-                }
-            });
+            
+            const sortedEnemies = [...state.enemies].sort((a,b) => Math.hypot(a.x-effect.x, a.y-effect.y) - Math.hypot(b.x-effect.x, b.y-effect.y));
+            if(sortedEnemies[effect.targetIndex]) {
+                closest = sortedEnemies[effect.targetIndex];
+            } else if (sortedEnemies.length > 0) {
+                closest = sortedEnemies[0];
+            }
+
             if(closest){
                 const angle = Math.atan2(closest.y - effect.y, closest.x - effect.x);
                 effect.x += Math.cos(angle) * effect.speed;
