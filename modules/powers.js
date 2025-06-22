@@ -66,7 +66,18 @@ export const powers={
       
       if(state.player.purchasedTalents.has('seeking-shrapnel')){
           for(let i = 0; i < 3; i++) {
-              state.effects.push({ type: 'seeking_shrapnel', x: state.player.x, y: state.player.y, r: 6, speed: 4, damage: 5 * state.player.talent_modifiers.damage_multiplier, life: 3000, startTime: Date.now() });
+              const angleOffset = (i - 1) * 0.4; // spread them out
+              state.effects.push({ 
+                  type: 'seeking_shrapnel', 
+                  x: state.player.x + Math.cos(angleOffset) * 20, 
+                  y: state.player.y + Math.sin(angleOffset) * 20, 
+                  r: 6, 
+                  speed: 4, 
+                  damage: 5 * state.player.talent_modifiers.damage_multiplier, 
+                  life: 3000, 
+                  startTime: Date.now(),
+                  targetIndex: i // 0, 1, 2 for seeking different targets
+                });
           }
       }
     }
