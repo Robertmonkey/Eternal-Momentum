@@ -172,9 +172,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
     const startSpecificLevel = (levelNum) => {
         startNewGame(false);
         state.currentStage = levelNum;
-        for (let i = 2; i <= levelNum; i++) {
-            handleThematicUnlock(i);
-        }
+        // The incorrect unlock loop has been removed from here.
         state.enemies = [];
         spawnEnemy(true);
         state.bossSpawnCooldownEnd = Infinity;
