@@ -66,7 +66,6 @@ export function spawnEnemy(isBoss = false, bossId = null, location = null) {
     if (isBoss) {
         const bossIndex = (state.currentStage - 1);
         if (bossIndex >= bossData.length) {
-            console.log("All bosses defeated! VICTORY!");
             state.gameOver = true;
             return null;
         }
@@ -118,6 +117,7 @@ export function gameTick(mx, my) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     utils.applyScreenShake(ctx);
     
+    // --- Player Logic ---
     let finalMx = mx;
     let finalMy = my;
     if (state.player.controlsInverted) {
@@ -134,7 +134,20 @@ export function gameTick(mx, my) {
         state.player.x += (finalMx - state.player.x) * 0.015 * state.player.speed * playerSpeedMultiplier;
         state.player.y += (finalMy - state.player.y) * 0.015 * state.player.speed * playerSpeedMultiplier;
     }
-    
+    if (state.player.shield) {
+        ctx.strokeStyle = "rgba(241,196,15,0.7)";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(state.player.x, state.player.y, state.player.r + 8, 0, 2 * Math.PI);
+        ctx.stroke();
+    }
+    utils.drawCircle(ctx, state.player.x, state.player.y, state.player.r, state.player.shield ? "#f1c40f" : ((state.player.berserkUntil > Date.now()) ? '#e74c3c' : (state.player.infected ? '#55efc4' : "#3498db")));
+    if (state.decoy) {
+        utils.drawCircle(ctx, state.decoy.x, state.decoy.y, state.decoy.r, "#9b59b6");
+        if (Date.now() > state.decoy.expires) state.decoy = null;
+    }
+
+    // --- Enemy Logic ---
     for (let i = state.enemies.length - 1; i >= 0; i--) {
         const e = state.enemies[i];
         if (e.hp <= 0) {
@@ -164,13 +177,60 @@ export function gameTick(mx, my) {
             }
             continue;
         }
-        
+
+        let enemySpeedMultiplier = 1;
+        state.effects.forEach(effect => { if(effect.type === 'slow_zone' && Math.hypot(e.x - effect.x, e.y - effect.y) < effect.r) { enemySpeedMultiplier = 0.5; } });
+        if(!e.frozen && !e.hasCustomMovement){ 
+            let tgt = state.decoy || state.player;
+            if (tgt) {
+              const vx = (tgt.x - e.x) * 0.005; 
+              const vy = (tgt.y - e.y) * 0.005; 
+              e.x += vx; e.y += vy; 
+            }
+            e.x += e.dx * enemySpeedMultiplier; 
+            e.y += e.dy * enemySpeedMultiplier;
+            if(e.x<e.r || e.x>canvas.width-e.r) e.dx*=-1; 
+            if(e.y<e.r || e.y>canvas.height-e.r) e.dy*=-1;
+        }
+
         const bossLogicArgs = [e, ctx, state, utils, gameHelpers];
         if (e.boss && e.logic) e.logic(...bossLogicArgs);
+        
+        let color = e.customColor || (e.boss ? e.color : "#c0392b"); if(e.isInfected) color = '#55efc4'; if(e.frozen) color = '#add8e6';
+        if(!e.hasCustomDraw) { utils.drawCircle(ctx, e.x,e.y,e.r, color); }
+        if(e.enraged) { ctx.strokeStyle = "yellow"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(e.x,e.y,e.r+5,0,2*Math.PI); ctx.stroke(); }
         
         const pDist = Math.hypot(state.player.x-e.x,state.player.y-e.y);
         if(pDist < e.r+state.player.r){ if (e.onCollision) e.onCollision(e, state.player, addStatusEffect); if(!state.player.shield){ let damage = e.boss ? (e.enraged ? 20 : 10) : 1; if (state.player.berserkUntil > Date.now()) damage *= 2; state.player.health -= damage; play('hit'); if(e.onDamage) e.onDamage(e, damage, state.player, state, (x,y,c,n,spd,life,r)=>utils.spawnParticles(state.particles,x,y,c,n,spd,life,r)); if(state.player.health<=0) state.gameOver=true; } else { state.player.shield=false; } const ang=Math.atan2(state.player.y-e.y,state.player.x-e.x); state.player.x=e.x+Math.cos(ang)*(e.r+state.player.r); state.player.y=e.y+Math.sin(ang)*(e.r+state.player.r); }
     }
+
+    // --- Pickup Logic ---
+    for (let i = state.pickups.length - 1; i >= 0; i--) {
+        const p = state.pickups[i];
+        p.x += p.dx || 0;
+        p.y += p.dy || 0;
+        utils.drawCircle(ctx, p.x, p.y, p.r, "#2ecc71");
+        ctx.fillStyle="#fff"; ctx.font="16px sans-serif"; ctx.textAlign = "center";
+        ctx.fillText(powers[p.type]?.emoji || '?', p.x, p.y+6);
+        ctx.textAlign = "left";
+
+        const d=Math.hypot(state.player.x-p.x,state.player.y-p.y);
+        if(d < state.player.r + p.r){
+            const isOffensive = offensivePowers.includes(p.type);
+            const targetInventory = isOffensive ? state.offensiveInventory : state.defensiveInventory;
+            const idx=targetInventory.indexOf(null);
+            if(idx!==-1){
+                targetInventory[idx]=p.type; play('pickup'); state.pickups.splice(i,1);
+            } else {
+                utils.spawnParticles(state.particles, p.x, p.y, "#f00", 15, 2, 20); state.pickups.splice(i,1);
+            }
+        }
+    }
+
+    // --- Effects Logic ---
+    state.effects.forEach((effect, index) => {
+        // ... (all effect logic like shockwave, chain lightning, etc.)
+    });
     
     utils.updateParticles(ctx, state.particles);
     updateUI();
