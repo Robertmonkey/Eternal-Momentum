@@ -29,7 +29,7 @@ export const powers={
           if(state.player.shield_end_time <= shieldEndTime){
               state.player.shield=false;
               if(state.player.purchasedTalents.has('aegis-retaliation')){
-                  state.effects.push({ type: 'repulsion_field', x: state.player.x, y: state.player.y, radius: 250, endTime: Date.now() + 100 });
+                  state.effects.push({ type: 'shockwave', caster: state.player, x: state.player.x, y: state.player.y, radius: 0, maxRadius: 250, speed: 1000, startTime: Date.now(), hitEnemies: new Set(), damage: 0, color: 'rgba(255, 255, 255, 0.5)' });
                   play('shockwave');
               }
           }
@@ -93,7 +93,7 @@ export const powers={
       play('chain'); 
       let chainCount = 6;
       const chainTalentRank = state.player.purchasedTalents.get('havoc-chain');
-      if(chainTalentRank) chainCount += chainTalentRank * 1;
+      if(chainTalentRank) chainCount += chainTalentRank * 2; // Fixed to use rank
 
       const targets = []; 
       let currentTarget = state.player; 
@@ -136,16 +136,32 @@ export const powers={
   stack:{emoji:"🧠",desc:"Double next power-up",apply:(utils, game)=>{ state.stacked=true; game.addStatusEffect('Stacked', '🧠', 60000); utils.spawnParticles(state.particles, state.player.x,state.player.y,"#aaa",40,4,30); }},
   score: {emoji: "💎", desc: "Gain a large amount of Essence.", apply: (utils, game) => { game.addEssence(200 + state.player.level * 10); utils.spawnParticles(state.particles, state.player.x, state.player.y, "#f1c40f", 40, 4, 30); }},
   repulsion: {emoji: "🖐️", desc: "Pushes enemies away.", apply: () => { 
-      const hasKineticOverload = state.player.purchasedTalents.has('kinetic-overload');
-      state.effects.push({ 
-          type: 'repulsion_field', 
-          x: state.player.x, 
-          y: state.player.y, 
-          radius: 250, 
-          startTime: Date.now(),
-          endTime: Date.now() + 5000, 
-          isOverloaded: hasKineticOverload 
-      }); 
+      const radius = 250;
+      if (state.player.purchasedTalents.has('kinetic-overload')) {
+          const knockbackDuration = 2000;
+          state.enemies.forEach(e => {
+              if (!e.boss) {
+                  const dist = Math.hypot(e.x - state.player.x, e.y - state.player.y);
+                  if (dist < radius) {
+                      e.knockbackUntil = Date.now() + knockbackDuration;
+                  }
+              }
+          });
+      } else {
+          // Base effect: A simple, one-time push for non-talented version
+          state.enemies.forEach(e => {
+              if (!e.boss) {
+                  const dist = Math.hypot(e.x - state.player.x, e.y - state.player.y);
+                  if (dist < radius) {
+                      const angle = Math.atan2(e.y - state.player.y, e.x - state.player.x);
+                      const knockbackForce = 25; 
+                      e.x += Math.cos(angle) * knockbackForce;
+                      e.y += Math.sin(angle) * knockbackForce;
+                  }
+              }
+          });
+      }
+      state.effects.push({ type: 'shockwave', caster: state.player, x: state.player.x, y: state.player.y, radius: 0, maxRadius: radius, speed: 1000, startTime: Date.now(), hitEnemies: new Set(), damage: 0, color: 'rgba(255, 255, 255, 0.5)' });
       play('shockwave'); 
   }},
   orbitalStrike: {emoji: "☄️", desc: "Calls 3 meteors on random enemies", apply: () => { 
@@ -169,7 +185,6 @@ export const powers={
   berserk: {emoji: "💢", desc: "8s: Deal 2x damage, take 2x damage", apply:(utils, game)=>{ state.player.berserkUntil = Date.now() + 8000; game.addStatusEffect('Berserk', '💢', 8000); utils.spawnParticles(state.particles, state.player.x, state.player.y, "#e74c3c", 40, 3, 30); }},
   ricochetShot: {emoji: "🔄", desc: "Fires a shot that bounces multiple times", apply:(utils, game, mx, my) => { 
       let bounceCount = 6; 
-      if(state.player.purchasedTalents.has('havoc-ricochet')) bounceCount += 2; 
       const angle = Math.atan2(my - state.player.y, mx - state.player.x); 
       const speed = 10; 
       state.effects.push({ 
