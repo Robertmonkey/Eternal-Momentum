@@ -156,7 +156,7 @@ button {
 }
 button:hover { background: rgba(0, 255, 255, 0.4); }
 
-#bossBanner, #levelSelectModal, #bossHpContainer, #vignette, #ascensionGridModal { position:absolute; }
+#bossBanner, #levelSelectModal, #bossHpContainer, #vignette, #ascensionGridModal, #unlock-notification { position:absolute; }
 #bossBanner { top:30%; width:100%; text-align:center; font-size:2rem; color:#f1c40f; text-shadow:2px 2px 4px black; opacity:0; transition:opacity 1s; pointer-events: none; }
 #bossHpContainer { top: 8px; left: 50%; transform: translateX(-50%); width: 80%; max-width: 400px; display: flex; flex-direction: column; gap: 5px; }
 .boss-hp-bar-wrapper { width: 100%; background: rgba(0,0,0,0.5); border: 1px solid #fff; border-radius: 6px; padding: 2px; box-sizing: border-box; }
@@ -168,14 +168,56 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
 #levelSelectGrid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; padding: 20px; max-width: 500px; }
 #levelSelectGrid button { padding: 15px; font-size: 1.1rem; background: #2c3e50; width: auto; height: auto;}
 #levelSelectGrid button:hover { background: #34495e; }
+#levelSelectGrid button.locked {
+    background: #444;
+    color: #888;
+    cursor: not-allowed;
+    border-color: #555;
+}
+#levelSelectGrid button.locked:hover {
+    background: #444;
+}
 #modal-actions { display: flex; gap: 15px; margin-top: 20px; }
 #modal-actions button { width: auto; height: auto; padding: 10px 20px; font-size: 1rem; }
 #arenaBtn { background: rgba(155, 89, 182, 0.4); border-color: rgba(155, 89, 182, 1); }
 #arenaBtn:hover { background: rgba(155, 89, 182, 0.6); }
 #closeLevelSelectBtn { background: #c0392b; }
 
+#unlock-notification {
+    top: 20px; left: 50%;
+    transform: translateX(-50%);
+    background: var(--ui-bg);
+    color: var(--primary-glow);
+    padding: 15px 30px;
+    border-radius: 10px;
+    border: 2px solid var(--primary-glow);
+    box-shadow: 0 0 20px var(--primary-glow);
+    font-size: 1.5rem;
+    font-weight: bold;
+    z-index: 200;
+    text-align: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease-in-out, top 0.5s ease-in-out;
+}
+#unlock-notification.show {
+    opacity: 1;
+    top: 40px;
+}
+#unlock-notification .unlock-title {
+    font-size: 1.2rem;
+    color: white;
+    opacity: 0.8;
+    display: block;
+    margin-bottom: 5px;
+}
+#unlock-notification .unlock-name {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+}
 
-/* --- NEW STYLES for Ascension Bar --- */
 #ascension-bar-container {
   width: 100%; height: 20px; background: var(--health-bar-bg);
   border-radius: 5px; position: relative; overflow: hidden;
@@ -198,13 +240,12 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
   text-shadow: 0 0 8px var(--primary-glow);
 }
 
-/* --- NEW STYLES for Ascension Grid --- */
 #ascensionGridModal {
     top: 0; left: 0; width: 100%; height: 100%; 
     background: rgba(10, 10, 20, 0.8);
     backdrop-filter: blur(8px) brightness(0.7);
     -webkit-backdrop-filter: blur(8px) brightness(0.7);
-    display: none; /* Initially hidden */
+    display: none;
     align-items: center; justify-content: center; 
     color: var(--font-color);
     pointer-events: all;
