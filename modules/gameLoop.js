@@ -50,9 +50,11 @@ export function handleThematicUnlock(stageJustCleared) {
         const powerName = powers[unlock.id]?.desc || unlock.id;
         showUnlockNotification(`Power Unlocked: ${powers[unlock.id].emoji} ${powerName}`);
     } else if (unlock.type === 'slot') {
-        if (unlock.id === 'offensiveQueue1' && state.player.unlockedOffensiveSlots < 2) state.player.unlockedOffensiveSlots++;
-        if (unlock.id === 'defensiveQueue1' && state.player.unlockedDefensiveSlots < 2) state.player.unlockedDefensiveSlots++;
-        showUnlockNotification(`Inventory Slot Unlocked!`);
+        if (unlock.id === 'queueSlot1') {
+            if (state.player.unlockedOffensiveSlots < 2) state.player.unlockedOffensiveSlots++;
+            if (state.player.unlockedDefensiveSlots < 2) state.player.unlockedDefensiveSlots++;
+            showUnlockNotification(`Inventory Slot Unlocked!`);
+        }
     } else if (unlock.type === 'bonus') {
         state.player.ascensionPoints += unlock.value;
         showUnlockNotification(`Bonus: +${unlock.value} Ascension Points!`);
@@ -79,6 +81,7 @@ export function addEssence(amount) {
 export function spawnEnemy(isBoss = false, bossId = null, location = null) {
     const e = { x: location ? location.x : Math.random() * canvas.width, y: location ? location.y : Math.random() * canvas.height, dx: (Math.random() - 0.5) * 0.75, dy: (Math.random() - 0.5) * 0.75, r: isBoss ? 50 : 15, hp: isBoss ? 200 : 1, maxHP: isBoss ? 200 : 1, boss: isBoss, frozen: false, targetBosses: false };
     if (isBoss) {
+        state.bossHasSpawnedThisRun = true;
         const bossIndex = (state.currentStage - 1);
         if (bossIndex >= bossData.length) {
             console.log("All stages cleared!");
