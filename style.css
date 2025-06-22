@@ -16,6 +16,10 @@
     0% { transform: translateX(-150%) skewX(-30deg); }
     100% { transform: translateX(350%) skewX(-30deg); }
 }
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
 
 html, body { 
   margin:0; padding:0; overflow:hidden; background:var(--dark-bg);
@@ -30,7 +34,11 @@ canvas { display:block; width:100vw; height:100vh; }
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: var(--dark-bg);
+    background-color: var(--dark-bg); /* Fallback color */
+    background-image: url('./assets/load.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -38,18 +46,14 @@ canvas { display:block; width:100vw; height:100vh; }
     z-index: 10000;
     transition: opacity 0.5s ease-out;
 }
-.loading-logo {
-    width: 250px;
-    height: auto;
-    margin-bottom: 20px;
-}
 #loading-progress-container {
     width: 300px;
     height: 20px;
     border: 2px solid var(--primary-glow);
     border-radius: 10px;
-    background-color: rgba(0,0,0,0.3);
+    background-color: rgba(0,0,0,0.5);
     padding: 2px;
+    margin-top: 20px; /* Add some space from the center */
 }
 #loading-progress-fill {
     width: 0%;
@@ -64,7 +68,7 @@ canvas { display:block; width:100vw; height:100vh; }
     color: var(--font-color);
     font-size: 1.1rem;
     letter-spacing: 1px;
-    text-shadow: 0 0 5px var(--primary-glow);
+    text-shadow: 0 0 8px var(--primary-glow);
 }
 
 #ui-container {
