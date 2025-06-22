@@ -19,8 +19,13 @@ export const state = {
     unlockedDefensiveSlots: 1,
     infected: false, infectionEnd: 0, lastSpore: 0,
     
+    // --- NEW/MODIFIED PROPERTIES FOR TALENTS ---
+    lastStandUsed: false,
+    preordinanceUsed: false,
+    
     talent_modifiers: {
         damage_multiplier: 1.0,
+        damage_taken_multiplier: 1.0, // New modifier for Glass Cannon
         pickup_radius_bonus: 0,
         essence_gain_modifier: 1.0,
         pull_resistance_modifier: 0,
@@ -96,6 +101,10 @@ export function resetGame(isArena = false) {
     state.player.berserkUntil = 0;
     state.player.talent_states.phaseMomentum.lastDamageTime = Date.now();
     state.player.talent_states.reactivePlating.cooldownUntil = 0;
+
+    // --- RESET ONCE-PER-STAGE TALENTS ---
+    state.player.lastStandUsed = false;
+    state.player.preordinanceUsed = false;
     
     Object.assign(state, {
         enemies: [], pickups: [], effects: [], particles: [], decoy: null,
@@ -110,7 +119,7 @@ export function resetGame(isArena = false) {
         bossSpawnCooldownEnd: Date.now() + 3000, 
     });
 
-    // --- NEW: Temporal Echo Talent Logic ---
+    // --- Temporal Echo Talent Logic ---
     if (state.player.purchasedTalents.has('temporal-echo')) {
         const unlocked = [...state.player.unlockedPowers];
         if (unlocked.length > 0) {
