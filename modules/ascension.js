@@ -56,13 +56,9 @@ function drawConnectorLines() {
                         line.style.stroke = constellationColor;
                     }
 
-                    if (talent.id === 'overload-protocol') {
-                         line.classList.add('synergy');
-                    }
-                    
-                    // --- NEW: Add class for capstone glow effect ---
-                    if (talent.id === 'overload-protocol' && ['phase-momentum', 'unstable-singularity', 'energetic-recycling'].includes(prereqId)) {
-                        line.classList.add('capstone-connector');
+                    // --- NEW: Cleaner logic for nexus glow effect ---
+                    if (talent.isNexus || prereqTalent.isNexus) {
+                        line.classList.add('nexus-connector');
                     }
 
                     svg.appendChild(line);
@@ -86,7 +82,7 @@ function createTalentNode(talent, constellationColor) {
     const prereqsMet = talent.prerequisites.every(p => state.player.purchasedTalents.has(p));
     const canPurchase = prereqsMet && state.player.ascensionPoints >= cost;
 
-    if (talent.id === 'core-nexus' || talent.id === 'overload-protocol') {
+    if (talent.isNexus) {
         node.classList.add('nexus-node');
     }
     
@@ -170,20 +166,23 @@ function purchaseTalent(talentId) {
 }
 
 export function applyAllTalentEffects() {
+    // Reset modifiers to base values
     let baseMaxHealth = 100;
     let baseSpeed = 1.0;
     let baseDamageMultiplier = 1.0;
+    let baseDamageTakenMultiplier = 1.0;
     let basePickupRadius = 0;
     let baseEssenceGain = 1.0;
     let basePullResistance = 0;
 
+    // Apply all purchased talents
     state.player.purchasedTalents.forEach((rank, id) => {
         if (id === 'exo-weave-plating') {
-            const values = [15, 15, 20];
+            const values = [15, 20, 25];
             for (let i = 0; i < rank; i++) baseMaxHealth += values[i];
         }
         if (id === 'fleet-footed') {
-            const values = [0.05, 0.07];
+            const values = [0.06, 0.06];
             for (let i = 0; i < rank; i++) baseSpeed *= (1 + values[i]);
         }
         if (id === 'high-frequency-emitters') {
@@ -197,15 +196,17 @@ export function applyAllTalentEffects() {
             const values = [0.10, 0.15];
             for (let i = 0; i < rank; i++) baseEssenceGain += values[i];
         }
-        if (id === 'gravitic-dampeners') {
-            const values = [0.25, 0.25];
-            for (let i = 0; i < rank; i++) basePullResistance += values[i];
+        if (id === 'glass-cannon') {
+            baseDamageMultiplier += 0.15;
+            baseDamageTakenMultiplier += 0.15;
         }
     });
 
+    // Update player state with final values
     state.player.maxHealth = baseMaxHealth;
     state.player.speed = baseSpeed;
     state.player.talent_modifiers.damage_multiplier = baseDamageMultiplier;
+    state.player.talent_modifiers.damage_taken_multiplier = baseDamageTakenMultiplier;
     state.player.talent_modifiers.pickup_radius_bonus = basePickupRadius;
     state.player.talent_modifiers.essence_gain_modifier = baseEssenceGain;
     state.player.talent_modifiers.pull_resistance_modifier = basePullResistance;
