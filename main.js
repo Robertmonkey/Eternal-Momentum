@@ -8,8 +8,29 @@ import { usePower } from './modules/powers.js';
 import * as utils from './modules/utils.js';
 import { renderAscensionGrid, applyAllTalentEffects } from './modules/ascension.js';
 
+const loadingScreen = document.getElementById('loading-screen');
+const progressFill = document.getElementById('loading-progress-fill');
+const statusText = document.getElementById('loading-status-text');
+let progressInterval = null;
+
+function simulateProgress() {
+    let currentProgress = 0;
+    progressInterval = setInterval(() => {
+        currentProgress += 1;
+        if (currentProgress > 95) {
+             clearInterval(progressInterval);
+        } else {
+            progressFill.style.width = `${currentProgress}%`;
+        }
+    }, 20);
+}
+
 window.addEventListener('load', (event) => {
-    
+    // 1. Finalize the loading bar
+    clearInterval(progressInterval);
+    progressFill.style.width = '100%';
+    statusText.innerText = 'Momentum Stabilized!';
+
     // --- DOM & Canvas Setup ---
     const canvas = document.getElementById("gameCanvas");
     const soundBtn = document.getElementById("soundToggle");
@@ -29,10 +50,6 @@ window.addEventListener('load', (event) => {
     const gameOverMenu = document.getElementById('gameOverMenu');
     const restartStageBtn = document.getElementById('restartStageBtn');
     const levelSelectMenuBtn = document.getElementById('levelSelectMenuBtn');
-    
-    const loadingScreen = document.getElementById('loading-screen');
-    const progressFill = document.getElementById('loading-progress-fill');
-    const statusText = document.getElementById('loading-status-text');
 
     let mx = 0, my = 0;
     const allAudioElements = Array.from(document.querySelectorAll('audio'));
@@ -105,7 +122,7 @@ window.addEventListener('load', (event) => {
         arenaBtn.addEventListener("click", () => startNewGame(true));
         jumpToFrontierBtn.addEventListener("click", () => {
             let frontierStage = (state.player.highestStageBeaten > 0 ? state.player.highestStageBeaten + 1 : 1);
-            frontierStage = Math.min(frontierStage, bossData.length); // Cap at max stage
+            frontierStage = Math.min(frontierStage, bossData.length);
             startSpecificLevel(frontierStage);
         });
 
@@ -185,7 +202,7 @@ window.addEventListener('load', (event) => {
         updateUI();
     };
     
-    // --- START THE GAME ---
+    // --- FADE OUT LOADING SCREEN AND START ---
     setTimeout(() => {
         loadingScreen.style.opacity = '0';
         loadingScreen.addEventListener('transitionend', () => {
@@ -198,3 +215,6 @@ window.addEventListener('load', (event) => {
         updateUI();
     }, 500);
 });
+
+// Start the simulated progress bar immediately
+simulateProgress();
