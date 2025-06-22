@@ -45,7 +45,6 @@ export function addStatusEffect(name, emoji, duration) {
 
 export function handleThematicUnlock(stageJustCleared) {
     const unlockLevel = stageJustCleared + 1;
-    // MODIFIED: Check if an unlock exists for this level before proceeding
     const unlock = THEMATIC_UNLOCKS[unlockLevel];
     if (!unlock) return;
 
@@ -88,16 +87,14 @@ export function addEssence(amount) {
     }
 }
 
-// NEW: Function to handle all boss spawning logic
+// MODIFIED: This function is now exported
 export function spawnBossesForStage(stageNum) {
     if (stageNum <= 20) {
-        // Normal progression
         const bossIndex = stageNum - 1;
         if (bossIndex < bossData.length) {
             spawnEnemy(true, bossData[bossIndex].id);
         }
     } else {
-        // Infinite loop logic
         const bossNum1 = ((stageNum - 1) % 10) + 1;
         const bossNum2 = bossNum1 + 10;
 
@@ -109,7 +106,6 @@ export function spawnBossesForStage(stageNum) {
         
         if (bossId1) {
             for (let i = 0; i < count1; i++) {
-                // Spawn slightly offset
                 const location = { x: canvas.width/2 + (Math.random()-0.5)*100, y: canvas.height/2 + (Math.random()-0.5)*100 };
                 spawnEnemy(true, bossId1, location);
             }
@@ -133,7 +129,6 @@ export function spawnEnemy(isBoss = false, bossId = null, location = null) {
         
         const baseHp = bd.maxHP || 200;
         const scalingFactor = 15;
-        // Boss HP scales with the true stage number
         const bossIndex = (state.currentStage - 1);
         const finalHp = baseHp + (bossIndex * bossIndex * scalingFactor);
         e.maxHP = finalHp;
@@ -142,7 +137,6 @@ export function spawnEnemy(isBoss = false, bossId = null, location = null) {
         state.enemies.push(e);
         if (bd.init) bd.init(e, state, spawnEnemy, canvas);
         
-        // Ensure only one banner shows for multi-boss fights
         if (!state.bossActive) {
             showBossBanner(e);
         }
@@ -324,7 +318,6 @@ export function gameTick(mx, my) {
                         state.player.ascensionPoints += 1;
                         showUnlockNotification("Stage Cleared! +1 AP", `Level ${state.currentStage + 1} Unlocked`);
                     }
-                    // Only call thematic unlock for defined progression stages
                     if (THEMATIC_UNLOCKS[state.currentStage + 1]) {
                         handleThematicUnlock(state.currentStage);
                     }
@@ -842,7 +835,7 @@ export function gameTick(mx, my) {
                     if (state.player.shield) {
                         state.player.shield = false;
                     } else {
-                        state.player.health -= 2; // Beam damage
+                        state.player.health -= 2;
                     }
                 }
             }
