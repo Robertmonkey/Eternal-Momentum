@@ -92,26 +92,26 @@ function createTalentNode(talent, constellationColor) {
     const costText = !isMaxRank ? `<span>Cost: ${cost} AP</span>` : '<span>MAXED</span>';
     
     const descriptionText = talent.description(purchasedRank + 1, isMaxRank);
+    
+    const tooltip = document.createElement('div');
+    tooltip.className = 'talent-tooltip';
+    if (talent.position.x > 75) {
+        tooltip.classList.add('show-left');
+    }
 
-    node.innerHTML = `
-        <span class="talent-icon">${talent.icon}</span>
-        <div class="talent-tooltip">
-            <div class="tooltip-header">
-                <span class="tooltip-icon">${talent.icon}</span>
-                <span class="tooltip-name">${talent.name}</span>
-            </div>
-            <div class="tooltip-desc">${descriptionText}</div>
-            <div class="tooltip-footer">${rankText}${costText}</div>
-        </div>`;
+    tooltip.innerHTML = `
+        <div class="tooltip-header">
+            <span class="tooltip-icon">${talent.icon}</span>
+            <span class="tooltip-name">${talent.name}</span>
+        </div>
+        <div class="tooltip-desc">${descriptionText}</div>
+        <div class="tooltip-footer">${rankText}${costText}</div>`;
+    
+    node.innerHTML = `<span class="talent-icon">${talent.icon}</span>`;
+    node.appendChild(tooltip);
     
     if (!isMaxRank && canPurchase) {
         node.onclick = () => purchaseTalent(talent.id);
-    }
-    
-    // UI FIX: Statically check node position and apply class if needed for tooltip
-    const tooltip = node.querySelector('.talent-tooltip');
-    if (talent.position.x > 75) {
-        tooltip.classList.add('show-left');
     }
     
     gridContainer.appendChild(node);
