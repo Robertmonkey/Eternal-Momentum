@@ -681,6 +681,8 @@ export const bossData = [{
         b.lastAction = 0;
         b.wells = [];
         b.beamTarget = null;
+        b.teleportingAt = null;
+        b.teleportTarget = null;
     },
     logic: (b, ctx, state, utils, gameHelpers) => {
         const canvas = ctx.canvas;
@@ -736,22 +738,25 @@ export const bossData = [{
                         r: 100,
                         endTime: Date.now() + 3000
                     });
-                    b.beamTarget = {
-                        x: Math.random() * canvas.width,
-                        y: Math.random() * canvas.height
-                    };
-                }
-                if (b.beamTarget) {
-                    utils.drawLightning(ctx, b.x, b.y, b.beamTarget.x, b.beamTarget.y, '#fd79a8', 8);
+                    const beamTarget = { x: Math.random() * canvas.width, y: Math.random() * canvas.height };
+                    state.effects.push({ type: 'singularity_beam', source: b, target: beamTarget, endTime: Date.now() + 500 });
                 }
                 break;
             case 3:
-                if (Date.now() - b.lastAction > 1000) {
+                if (!b.teleportingAt && Date.now() - b.lastAction > 2000) {
+                    b.teleportingAt = Date.now() + 1000;
+                    const targetX = Math.random() * canvas.width;
+                    const targetY = Math.random() * canvas.height;
+                    b.teleportTarget = { x: targetX, y: targetY };
+                    state.effects.push({ type: 'teleport_indicator', x: targetX, y: targetY, r: b.r, endTime: b.teleportingAt });
+                }
+                if (b.teleportingAt && Date.now() > b.teleportingAt) {
+                    utils.spawnParticles(state.particles, b.x, b.y, "#fff", 30, 4, 20);
+                    b.x = b.teleportTarget.x;
+                    b.y = b.teleportTarget.y;
+                    utils.spawnParticles(state.particles, b.x, b.y, "#fff", 30, 4, 20);
+                    b.teleportingAt = null;
                     b.lastAction = Date.now();
-                    utils.spawnParticles(state.particles, b.x, b.y, "#fff", 30, 4, 20);
-                    b.x = Math.random() * canvas.width;
-                    b.y = Math.random() * canvas.height;
-                    utils.spawnParticles(state.particles, b.x, b.y, "#fff", 30, 4, 20);
                     for (let i = 0; i < 3; i++) {
                         const spore = gameHelpers.spawnEnemy(false, null, {
                             x: b.x,
