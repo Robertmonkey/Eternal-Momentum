@@ -20,16 +20,16 @@ export const powers={
 
       const shieldEndTime = Date.now() + duration;
       state.player.shield = true;
-      state.player.shield_end_time = shieldEndTime; // Store for mastery check
+      state.player.shield_end_time = shieldEndTime;
       game.addStatusEffect('Shield', '🛡️', duration); 
       utils.spawnParticles(state.particles, state.player.x,state.player.y,"#f1c40f",30,4,30); 
       
       setTimeout(()=> {
           // Only trigger mastery if this specific shield instance is the one expiring
-          if(Date.now() >= shieldEndTime){
+          if(state.player.shield_end_time <= shieldEndTime){
               state.player.shield=false;
-              // Mastery: Release repulsion wave
               if(state.player.purchasedTalents.has('aegis-retaliation')){
+                  // Mastery: Release repulsion wave
                   state.effects.push({ type: 'repulsion_field', x: state.player.x, y: state.player.y, radius: 250, endTime: Date.now() + 100 });
                   play('shockwave');
               }
@@ -39,8 +39,15 @@ export const powers={
   },
   heal:{emoji:"❤️",desc:"+30 HP",apply:()=>{ state.player.health=Math.min(state.player.maxHealth,state.player.health+30); }},
   shockwave:{emoji:"💥",desc:"Expanding wave damages enemies.",apply:(utils, game)=>{ 
+      let talentRank = state.player.purchasedTalents.get('havoc-shockwave');
+      let speed = 800;
+      let radius = Math.max(innerWidth, innerHeight);
+      if(talentRank) {
+        speed *= (1 + talentRank * 0.15);
+        radius *= (1 + talentRank * 0.15);
+      }
       let damage = ((state.player.berserkUntil > Date.now()) ? 30 : 15) * state.player.talent_modifiers.damage_multiplier;
-      state.effects.push({ type: 'shockwave', caster: state.player, x: state.player.x, y: state.player.y, radius: 0, maxRadius: Math.max(innerWidth, innerHeight), speed: 800, startTime: Date.now(), hitEnemies: new Set(), damage: damage }); 
+      state.effects.push({ type: 'shockwave', caster: state.player, x: state.player.x, y: state.player.y, radius: 0, maxRadius: radius, speed: speed, startTime: Date.now(), hitEnemies: new Set(), damage: damage }); 
       play('shockwave'); 
   }},
   missile:{
@@ -125,12 +132,12 @@ export function usePower(queueType, utils, game, mx, my){
   powerType = inventory[0];
   if (!powerType) return;
   
-  const isQueuedSlot = inventory.length > 1 && inventory[1] !== null;
+  const isQueuedSlot = inventory !== state.offensiveInventory && inventory !== state.defensiveInventory;
   const recycleTalent = state.player.purchasedTalents.get('energetic-recycling');
 
   if (isQueuedSlot && recycleTalent && Math.random() < 0.20) {
-      // Don't consume the power, just use it and move it to the back
-      inventory.push(inventory.shift());
+      const recycledPower = inventory.shift();
+      inventory.push(recycledPower);
   } else {
       inventory.shift();
       inventory.push(null);
