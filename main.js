@@ -2,11 +2,11 @@
 import { state, resetGame, loadPlayerState } from './modules/state.js';
 import { bossData } from './modules/bosses.js';
 import { AudioManager } from './modules/audio.js';
-import { updateUI, populateLevelSelect, showCustomConfirm } from './modules.ui.js';
+import { updateUI, populateLevelSelect, showCustomConfirm } from './modules/ui.js';
 import { gameTick, spawnEnemy, spawnPickup, addStatusEffect, handleThematicUnlock } from './modules/gameLoop.js';
 import { usePower } from './modules/powers.js';
 import * as utils from './modules/utils.js';
-import { renderAscensionGrid } from './modules/ascension.js';
+import { renderAscensionGrid, applyAllTalentEffects } from './modules/ascension.js';
 
 window.addEventListener('DOMContentLoaded', (event) => {
     
@@ -36,6 +36,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
     // --- INITIALIZATION ---
     function initialize() {
         loadPlayerState();
+        applyAllTalentEffects(); // Apply talents on initial load
 
         mx = canvas.width / 2;
         my = canvas.height / 2;
@@ -161,6 +162,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
 
     const startNewGame = (isArena) => {
         if (state.gameLoopId) cancelAnimationFrame(state.gameLoopId);
+        applyAllTalentEffects(); // Apply talents before resetting the game
         resetGame(isArena);
         state.isPaused = false;
         levelSelectModal.style.display = 'none';
