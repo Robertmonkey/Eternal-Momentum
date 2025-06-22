@@ -110,7 +110,6 @@ function createTalentNode(talent, constellationColor) {
     
     gridContainer.appendChild(node);
 
-    // Reposition tooltip if it overflows
     const tooltip = node.querySelector('.talent-tooltip');
     node.addEventListener('mouseenter', () => {
         const rect = tooltip.getBoundingClientRect();
