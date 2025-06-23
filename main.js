@@ -55,6 +55,7 @@ window.addEventListener('load', (event) => {
 
     // --- DOM & Canvas Setup ---
     const canvas = document.getElementById("gameCanvas");
+    const uiContainer = document.getElementById("ui-container");
     const soundBtn = document.getElementById("soundToggle");
     const ascensionBtn = document.getElementById("ascensionBtn");
     const levelSelectBtn = document.getElementById("levelSelectBtn");
@@ -194,6 +195,8 @@ window.addEventListener('load', (event) => {
             homeScreen.addEventListener('transitionend', () => {
                 homeScreen.style.display = 'none';
             }, { once: true });
+            // Show the in-game UI now that the game is starting
+            uiContainer.style.display = 'flex';
         }
 
         newGameBtn.addEventListener('click', () => {
@@ -208,7 +211,6 @@ window.addEventListener('load', (event) => {
         });
 
         eraseGameBtn.addEventListener('click', () => {
-            // Unlock audio immediately on click before showing the dialog
             AudioManager.unlockAudio(); 
             showCustomConfirm(
                 "|| SEVER TIMELINE? ||",
