@@ -18,13 +18,13 @@ function isTalentVisible(talent) {
     if (!talent) return false;
     const powerUnlocked = !talent.powerPrerequisite || state.player.unlockedPowers.has(talent.powerPrerequisite);
     
-    // A talent is visible if its prerequisites are met. This is the new, robust check.
+    // --- VISIBILITY BUG FIX ---
+    // A talent should be VISIBLE if its prerequisite has been purchased at least once.
+    // The check for whether it's maxed out happens later, when determining if it's PURCHASABLE.
     const prereqsMet = talent.prerequisites.every(p => {
-        const prereqTalent = allTalents[p];
-        if (!prereqTalent) return false;
-        const ranksNeeded = prereqTalent.maxRanks;
-        const currentRank = state.player.purchasedTalents.get(p) || 0;
-        return currentRank >= ranksNeeded;
+        // The recursive call was removed to fix a logic loop.
+        // We only need to know if the prerequisite has been touched to make the next one visible.
+        return state.player.purchasedTalents.has(p);
     });
 
     return powerUnlocked && (talent.prerequisites.length === 0 || prereqsMet);
@@ -48,32 +48,32 @@ function drawConnectorLines() {
 
             talent.prerequisites.forEach(prereqId => {
                 const prereqTalent = allTalents[prereqId];
-                if (prereqTalent) {
-                    // Draw connector if the child talent is visible OR the prereq is purchased (to show where you can go)
-                    const isPrereqPurchased = state.player.purchasedTalents.has(prereqId);
-                    if(isTalentVisible(talent) || isPrereqPurchased) {
-                        const line = document.createElementNS("http://www.w3.org/2000/svg", 'line');
-                        line.setAttribute('x1', `${prereqTalent.position.x}%`);
-                        line.setAttribute('y1', `${prereqTalent.position.y}%`);
-                        line.setAttribute('x2', `${talent.position.x}%`);
-                        line.setAttribute('y2', `${talent.position.y}%`);
-                        line.classList.add('connector-line');
-                        
-                        const isNexusConnection = talent.isNexus || prereqTalent.isNexus;
-                        
-                        if (isPrereqPurchased) {
-                            line.classList.add('unlocked');
-                            if (!isNexusConnection) {
-                                line.style.stroke = constellationColor;
-                            }
+                // Connector is drawn if the prerequisite has been purchased, revealing the path.
+                if (prereqTalent && state.player.purchasedTalents.has(prereqId)) {
+                    const line = document.createElementNS("http://www.w3.org/2000/svg", 'line');
+                    line.setAttribute('x1', `${prereqTalent.position.x}%`);
+                    line.setAttribute('y1', `${prereqTalent.position.y}%`);
+                    line.setAttribute('x2', `${talent.position.x}%`);
+                    line.setAttribute('y2', `${talent.position.y}%`);
+                    line.classList.add('connector-line');
+                    
+                    const isNexusConnection = talent.isNexus || prereqTalent.isNexus;
+                    
+                    // The line becomes fully colored in once the prereq is maxed AND the child is unlocked
+                    const prereqRanksNeeded = prereqTalent.maxRanks;
+                    const prereqCurrentRank = state.player.purchasedTalents.get(prereqId) || 0;
+                    if (prereqCurrentRank >= prereqRanksNeeded) {
+                        line.classList.add('unlocked');
+                        if (!isNexusConnection) {
+                            line.style.stroke = constellationColor;
                         }
-
-                        if (isNexusConnection) {
-                            line.classList.add('nexus-connector');
-                        }
-
-                        svg.appendChild(line);
                     }
+
+                    if (isNexusConnection) {
+                        line.classList.add('nexus-connector');
+                    }
+
+                    svg.appendChild(line);
                 }
             });
         }
@@ -91,9 +91,8 @@ function createTalentNode(talent, constellationColor) {
     const isMaxRank = purchasedRank >= talent.maxRanks;
     const cost = isMaxRank ? Infinity : (talent.costPerRank[purchasedRank] || Infinity);
     
-    // --- PREREQUISITE BUG FIX --- 
-    // This logic now correctly checks if prerequisite talents are fully maxed out.
-    const prereqsMet = talent.prerequisites.every(p => {
+    // This strict check determines if a talent is PURCHASABLE.
+    const prereqsMetForPurchase = talent.prerequisites.every(p => {
         const prereqTalent = allTalents[p];
         if (!prereqTalent) return false;
         const ranksNeeded = prereqTalent.maxRanks;
@@ -101,7 +100,7 @@ function createTalentNode(talent, constellationColor) {
         return currentRank >= ranksNeeded;
     });
 
-    const canPurchase = prereqsMet && state.player.ascensionPoints >= cost;
+    const canPurchase = prereqsMetForPurchase && state.player.ascensionPoints >= cost;
 
     if (talent.isNexus) {
         node.classList.add('nexus-node');
@@ -158,8 +157,8 @@ function createTalentNode(talent, constellationColor) {
             }
         });
     });
-
-    // Only render the node if it's visible according to the logic
+    
+    // A node is only added to the DOM if it's meant to be visible.
     if (isTalentVisible(talent) || state.player.purchasedTalents.has(talent.id)) {
         gridContainer.appendChild(node);
     }
@@ -174,7 +173,6 @@ function purchaseTalent(talentId) {
 
     const cost = talent.costPerRank[currentRank];
     
-    // Use the same robust prerequisite check here
     const prereqsMet = talent.prerequisites.every(p => {
         const prereqTalent = allTalents[p];
         if (!prereqTalent) return false;
@@ -260,7 +258,6 @@ export function renderAscensionGrid() {
         for (const talentId in constellation) {
             if (talentId === 'color') continue;
             const talent = constellation[talentId];
-            // The createTalentNode function now contains the logic to check if it should be rendered
             createTalentNode(talent, constellationColor);
         }
     }
