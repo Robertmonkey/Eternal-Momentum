@@ -14,21 +14,38 @@ Object.values(TALENT_GRID_CONFIG).forEach(constellation => {
     });
 });
 
+/**
+ * Determines if a talent node should be visible on the grid.
+ * This was the location of the corrected bug fix.
+ * @param {object} talent The talent object from TALENT_GRID_CONFIG.
+ * @returns {boolean}
+ */
 function isTalentVisible(talent) {
     if (!talent) return false;
-    
+
+    // A power prerequisite must be met
     const powerUnlocked = !talent.powerPrerequisite || state.player.unlockedPowers.has(talent.powerPrerequisite);
     if (!powerUnlocked) {
         return false;
     }
 
+    // Core talents with no prerequisites are always visible
     if (talent.prerequisites.length === 0) {
         return true;
     }
-    
-    // A talent is visible if its prerequisite talents have been purchased at least once.
-    return talent.prerequisites.every(p => state.player.purchasedTalents.has(p));
+
+    // A talent is visible only if ALL its prerequisites are fully ranked up.
+    return talent.prerequisites.every(prereqId => {
+        const prereqTalent = allTalents[prereqId];
+        if (!prereqTalent) return false; // Safety check
+
+        const ranksNeeded = prereqTalent.maxRanks;
+        const currentRank = state.player.purchasedTalents.get(prereqId) || 0;
+
+        return currentRank >= ranksNeeded;
+    });
 }
+
 
 function drawConnectorLines() {
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -249,8 +266,6 @@ export function renderAscensionGrid() {
             if (talentId === 'color') continue;
             const talent = constellation[talentId];
             
-            // --- VISIBILITY BUG FIX ---
-            // The visibility check now happens here, in the main render loop.
             // A node is drawn if it has been purchased OR if it is visible according to the rules.
             if (state.player.purchasedTalents.has(talent.id) || isTalentVisible(talent)) {
                 createTalentNode(talent, constellationColor);
