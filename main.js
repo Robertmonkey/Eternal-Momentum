@@ -1,13 +1,12 @@
 // modules/main.js
-import { state, resetGame, loadPlayerState } from './modules/state.js';
-import { bossData } from './modules/bosses.js';
-import { AudioManager } from './modules/audio.js';
-import { updateUI, populateLevelSelect, showCustomConfirm } from './modules/ui.js';
-// MODIFIED: spawnBossesForStage is now called from startSpecificLevel
-import { gameTick, spawnBossesForStage, addStatusEffect, addEssence } from './modules/gameLoop.js';
-import { usePower } from './modules/powers.js';
-import * as utils from './modules/utils.js';
-import { renderAscensionGrid, applyAllTalentEffects } from './modules/ascension.js';
+import { state, resetGame, loadPlayerState, savePlayerState } from './state.js';
+import { bossData } from './bosses.js';
+import { AudioManager } from './audio.js';
+import { updateUI, populateLevelSelect, showCustomConfirm } from './ui.js';
+import { gameTick, spawnBossesForStage, addStatusEffect, addEssence } from './gameLoop.js';
+import { usePower } from './powers.js';
+import * as utils from './utils.js';
+import { renderAscensionGrid, applyAllTalentEffects } from './ascension.js';
 
 const loadingScreen = document.getElementById('loading-screen');
 const progressFill = document.getElementById('loading-progress-fill');
@@ -150,7 +149,6 @@ window.addEventListener('load', (event) => {
     }
 
     // --- Game Flow ---
-    // MODIFIED: Simplified loop, all spawn logic is now in gameTick
     function loop() {
         if (!gameTick(mx, my)) {
             if (state.gameLoopId) cancelAnimationFrame(state.gameLoopId);
@@ -161,7 +159,6 @@ window.addEventListener('load', (event) => {
 
     function arenaLoop() {
         if (!gameTick(mx, my)) { if (state.gameLoopId) cancelAnimationFrame(state.gameLoopId); return; }
-        // Note: Arena spawning logic is also now inside gameTick
         state.gameLoopId = requestAnimationFrame(arenaLoop);
     }
 
@@ -196,6 +193,25 @@ window.addEventListener('load', (event) => {
         loop();
     };
     
+    // --- DEBUG FUNCTION FOR TESTING ---
+    window.addAP = function(amount) {
+        if (typeof amount !== 'number' || amount <= 0) {
+            console.log("Please provide a positive number of AP to add.");
+            return;
+        }
+        state.player.ascensionPoints += amount;
+        savePlayerState(); // Persist the new AP amount to localStorage
+        updateUI(); // Update the visible UI to reflect the new total
+        
+        // Also update the AP display if the ascension grid is open
+        const apDisplayAscGrid = document.getElementById("ap-total-asc-grid");
+        if(apDisplayAscGrid) {
+            apDisplayAscGrid.innerText = state.player.ascensionPoints;
+        }
+        
+        console.log(`${amount} AP added. Total AP: ${state.player.ascensionPoints}`);
+    };
+
     // --- FADE OUT LOADING SCREEN AND START ---
     setTimeout(() => {
         loadingScreen.style.opacity = '0';
