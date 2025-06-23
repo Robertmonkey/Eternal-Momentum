@@ -23,6 +23,9 @@ window.addAP = function(amount) {
         apDisplayAscGrid.innerText = state.player.ascensionPoints;
     }
     
+    // --- THIS IS THE FIX ---
+    // If the ascension grid is visible when AP is added, this forces a re-render,
+    // which updates all nodes to be clickable if you can afford them.
     if (document.getElementById('ascensionGridModal').style.display === 'flex') {
         renderAscensionGrid();
     }
