@@ -69,7 +69,10 @@ canvas { display:block; width:100vw; height:100vh; }
 
 #ui-container {
   position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
-  width: 95%; max-width: 900px; display: flex; flex-direction: column;
+  width: 95%; max-width: 900px;
+  /* --- UI FLASH FIX --- */
+  display: none; /* Hide the UI by default */
+  flex-direction: column;
   align-items: center; gap: 8px; pointer-events: none; 
 }
 
@@ -622,8 +625,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     display: none;
     align-items: center;
     justify-content: center;
-    /* --- BUG FIX #1: Z-INDEX --- */
-    z-index: 10001; /* Set higher than home screen to ensure it's on top */
+    z-index: 10001; 
 }
 #custom-confirm-box {
     background: var(--ui-bg);
@@ -662,11 +664,9 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     border-color: #e74c3c;
 }
 
-/* --- BUG FIX #2: REMOVED CONFLICTING BUTTON STYLE --- */
-/* #confirm-no {
-    background: #555;
-    border-color: #888;
-} */
+#confirm-no {
+    /* This rule is now handled by the .btn-modal-close class */
+}
 
 
 /* --- HOME SCREEN STYLES --- */
@@ -677,7 +677,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     left: 0;
     width: 100%;
     height: 100%;
-    z-index: 1000; /* Below loading screen & confirm dialog, above everything else */
+    z-index: 1000;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -746,7 +746,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     flex-direction: column;
     gap: 20px;
     opacity: 0;
-    animation: title-glow-in 3s 1s ease-in-out forwards; /* Fade in after title */
+    animation: title-glow-in 3s 1s ease-in-out forwards;
 }
 
 .home-btn {
