@@ -150,7 +150,7 @@ export function spawnEnemy(isBoss = false, bossId = null, location = null) {
         const baseHp = bd.maxHP || 200;
         const bossIndex = (state.currentStage - 1);
         
-        const scalingFactor = 12; 
+        const scalingFactor = 12;
         const finalHp = baseHp + (Math.pow(bossIndex, 1.5) * scalingFactor);
         e.maxHP = Math.round(finalHp);
         e.hp = e.maxHP;
@@ -257,6 +257,8 @@ export function gameTick(mx, my) {
     if (state.player.statusEffects.some(e => e.name === 'Slowed') && !isBerserkImmune) {
         playerSpeedMultiplier *= 0.5;
     }
+    
+    const activeRepulsionFields = state.effects.filter(eff => eff.type === 'repulsion_field');
     
     state.effects.forEach(effect => { 
         if(effect.type === 'slow_zone' && Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < effect.r && !isBerserkImmune) {
@@ -398,6 +400,24 @@ export function gameTick(mx, my) {
                 e.x = pillar.x + Math.cos(angle) * (e.r + pillar.r);
                 e.y = pillar.y + Math.sin(angle) * (e.r + pillar.r);
             }
+        }
+        
+        if (activeRepulsionFields.length > 0) {
+            activeRepulsionFields.forEach(field => {
+                if (!e.boss) {
+                    const dist = Math.hypot(e.x - field.x, e.y - field.y);
+                    if (dist < field.radius) {
+                        let knockbackForce = 5;
+                        const isOverloaded = field.isOverloaded && Date.now() < field.startTime + 2000;
+                        if (isOverloaded) {
+                            knockbackForce = 15;
+                        }
+                        const angle = Math.atan2(e.y - field.y, e.x - field.x);
+                        e.x += Math.cos(angle) * knockbackForce;
+                        e.y += Math.sin(angle) * knockbackForce;
+                    }
+                }
+            });
         }
         
         if (e.eatenBy) {
@@ -732,6 +752,25 @@ export function gameTick(mx, my) {
             utils.drawCircle(ctx, effect.x, effect.y, effect.r, '#ff9944');
             state.enemies.forEach(e => { if(Math.hypot(e.x - effect.x, e.y - effect.y) < e.r + effect.r) { e.hp -= effect.damage; state.effects.splice(index, 1); }});
             if(Date.now() > effect.startTime + effect.life) state.effects.splice(index, 1);
+        } else if (effect.type === 'repulsion_field') {
+            if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
+            effect.x = state.player.x;
+            effect.y = state.player.y;
+            
+            const isOverloaded = effect.isOverloaded && Date.now() < effect.startTime + 2000;
+
+            if (isOverloaded) {
+                const pulseAlpha = 0.8 * (1 - (Date.now() - effect.startTime) / 2000);
+                ctx.strokeStyle = `rgba(0, 255, 255, ${pulseAlpha})`;
+                ctx.lineWidth = 6;
+            } else {
+                const alpha = (effect.endTime - Date.now()) / 5000 * 0.4;
+                ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+                ctx.lineWidth = 4;
+            }
+            ctx.beginPath();
+            ctx.arc(effect.x, effect.y, effect.radius, 0, 2*Math.PI);
+            ctx.stroke();
         } else if (effect.type === 'glitch_zone') {
             if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
             const alpha = (effect.endTime - Date.now()) / 5000 * 0.3;
@@ -801,16 +840,6 @@ export function gameTick(mx, my) {
                     if (target.health <= 0) state.gameOver = true;
                 }
             });
-        } else if (effect.type === 'slow_zone') {
-            if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
-            const alpha = 0.15 + ((effect.endTime - Date.now()) / 6000 * 0.2);
-            for(let i=0; i<3; i++) {
-                ctx.strokeStyle = `rgba(0, 150, 255, ${alpha * (0.6 + Math.sin(Date.now()/200 + i*2)*0.4)})`;
-                ctx.lineWidth = 3;
-                ctx.beginPath();
-                ctx.arc(effect.x, effect.y, effect.r * (0.6 + i*0.2), 0, Math.PI*2);
-                ctx.stroke();
-            }
         } else if (effect.type === 'juggernaut_charge_ring') {
             const progress = (Date.now() - effect.startTime) / effect.duration;
             if (progress >= 1) { state.effects.splice(index, 1); return; }
