@@ -402,19 +402,30 @@ export function gameTick(mx, my) {
             }
         }
         
-        if (activeRepulsionFields.length > 0) {
+        // MODIFICATION #1: The Repulsion logic is completely replaced with a more robust version
+        // that handles both the standard push and the new "Kinetic Overload" knockback status effect.
+        if (!e.boss && activeRepulsionFields.length > 0) {
             activeRepulsionFields.forEach(field => {
-                if (!e.boss) {
-                    const dist = Math.hypot(e.x - field.x, e.y - field.y);
-                    if (dist < field.radius) {
-                        let knockbackForce = 5;
-                        const isOverloaded = field.isOverloaded && Date.now() < field.startTime + 2000;
-                        if (isOverloaded) {
-                            knockbackForce = 15;
+                const dist = Math.hypot(e.x - field.x, e.y - field.y);
+                if (dist < field.radius + e.r) {
+                    // If player has 'Kinetic Overload', apply the new powerful knockback.
+                    if (field.isOverloaded) {
+                        if (!field.hitEnemies.has(e)) {
+                            const knockbackVelocity = 20; // A strong initial speed
+                            const angle = Math.atan2(e.y - field.y, e.x - field.x);
+                            e.knockbackDx = Math.cos(angle) * knockbackVelocity;
+                            e.knockbackDy = Math.sin(angle) * knockbackVelocity;
+                            e.knockbackUntil = Date.now() + 2000; // Enemy loses control for 2 seconds
+                            field.hitEnemies.add(e); // Mark as hit to prevent this from re-triggering
                         }
+                    } else {
+                        // Otherwise, apply the standard, continuous, weaker push for grouping.
+                        const knockbackForce = 5;
                         const angle = Math.atan2(e.y - field.y, e.x - field.x);
-                        e.x += Math.cos(angle) * knockbackForce;
-                        e.y += Math.sin(angle) * knockbackForce;
+                        const pushX = e.x + Math.cos(angle) * knockbackForce;
+                        const pushY = e.y + Math.sin(angle) * knockbackForce;
+                        e.x = Math.max(e.r, Math.min(canvas.width - e.r, pushX));
+                        e.y = Math.max(e.r, Math.min(canvas.height - e.r, pushY));
                     }
                 }
             });
@@ -438,7 +449,28 @@ export function gameTick(mx, my) {
                 state.enemies.splice(i, 1);
                 continue;
             }
-        } else if(!e.frozen && !e.hasCustomMovement){ 
+        } 
+        // MODIFICATION #2: A new movement state for when an enemy is flying from Kinetic Overload.
+        // This takes priority over all other movement logic except being eaten.
+        else if (e.knockbackUntil && e.knockbackUntil > Date.now()) {
+            e.x += e.knockbackDx;
+            e.y += e.knockbackDy;
+            
+            // Apply friction to slow the enemy down
+            e.knockbackDx *= 0.98;
+            e.knockbackDy *= 0.98;
+
+            // Make the enemy bounce off walls
+            if (e.x < e.r || e.x > canvas.width - e.r) {
+                e.x = Math.max(e.r, Math.min(canvas.width - e.r, e.x));
+                e.knockbackDx *= -0.8;
+            }
+            if (e.y < e.r || e.y > canvas.height - e.r) {
+                e.y = Math.max(e.r, Math.min(canvas.height - e.r, e.y));
+                e.knockbackDy *= -0.8;
+            }
+        }
+        else if(!e.frozen && !e.hasCustomMovement){ 
             let tgt = state.decoy ? state.decoy : state.player;
             let enemySpeedMultiplier = 1;
             
