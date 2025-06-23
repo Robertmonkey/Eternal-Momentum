@@ -144,7 +144,8 @@ export const powers={
           radius: 250, 
           startTime: Date.now(),
           endTime: Date.now() + 5000, 
-          isOverloaded: hasKineticOverload 
+          isOverloaded: hasKineticOverload,
+          hitEnemies: new Set()
       }); 
       play('shockwave'); 
   }},
