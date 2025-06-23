@@ -66,9 +66,9 @@ export const TALENT_GRID_CONFIG = {
             position: { x: 10, y: 55 },
             prerequisites: ['aegis-shield'],
         },
-        'fleet-footed': {
+        'solar-wind': { // NAME UPDATED
             id: 'fleet-footed',
-            name: 'Fleet Footed',
+            name: 'Solar Wind',
             description: (rank, maxed) => maxed
                 ? 'Base movement speed is increased by a total of 12%.'
                 : `Increases base movement speed by 6%.`,
@@ -86,7 +86,7 @@ export const TALENT_GRID_CONFIG = {
             maxRanks: 2,
             costPerRank: [2, 3],
             position: { x: 30, y: 60 },
-            prerequisites: ['fleet-footed'],
+            prerequisites: ['solar-wind'],
         },
         'contingency-protocol': {
             id: 'contingency-protocol',
@@ -147,9 +147,9 @@ export const TALENT_GRID_CONFIG = {
             position: { x: 55, y: 58 },
             prerequisites: ['stellar-detonation'],
         },
-        'havoc-chain': {
+        'arc-cascade': { // NAME UPDATED
             id: 'havoc-chain',
-            name: 'High Voltage',
+            name: 'Arc Cascade',
             powerPrerequisite: 'chain',
             description: (rank, maxed) => maxed
                 ? 'Chain Lightning jumps to 2 additional targets.'
@@ -169,7 +169,7 @@ export const TALENT_GRID_CONFIG = {
             maxRanks: 2,
             costPerRank: [2, 2],
             position: { x: 80, y: 55 },
-            prerequisites: ['havoc-chain'],
+            prerequisites: ['arc-cascade'],
         },
         'unstoppable-frenzy': {
             id: 'havoc-berserk',
