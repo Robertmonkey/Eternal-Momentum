@@ -16,7 +16,7 @@ Object.values(TALENT_GRID_CONFIG).forEach(constellation => {
 
 /**
  * Determines if a talent node should be visible on the grid.
- * This was the location of the corrected bug fix.
+ * This is the location of the corrected bug fix.
  * @param {object} talent The talent object from TALENT_GRID_CONFIG.
  * @returns {boolean}
  */
