@@ -55,6 +55,17 @@ export const TALENT_GRID_CONFIG = {
             position: { x: 20, y: 40 },
             prerequisites: ['exo-weave-plating'],
         },
+        'cryo-shatter': {
+            id: 'aegis-freeze', // Internal ID from the original game logic
+            name: 'Cryo-Shatter',
+            powerPrerequisite: 'freeze',
+            description: (rank, maxed) => `Enemies defeated while Frozen have a ${maxed ? '50%' : '25%'} chance to shatter, releasing a damaging burst of ice.`,
+            icon: '🥶',
+            maxRanks: 2,
+            costPerRank: [2, 2],
+            position: { x: 10, y: 55 },
+            prerequisites: ['aegis-shield'],
+        },
         'fleet-footed': {
             id: 'fleet-footed',
             name: 'Fleet Footed',
@@ -67,25 +78,13 @@ export const TALENT_GRID_CONFIG = {
             position: { x: 40, y: 45 },
             prerequisites: ['exo-weave-plating'],
         },
-        'aegis-retaliation': {
-            id: 'aegis-retaliation',
-            name: 'Mastery: Aegis Retaliation',
-            powerPrerequisite: 'shield',
-            description: () => 'When your Shield expires or breaks, it releases a Repulsion wave.',
-            icon: '💥',
-            maxRanks: 1,
-            costPerRank: [2],
-            position: { x: 10, y: 55 },
-            prerequisites: ['aegis-shield'],
-        },
-        'kinetic-overload': {
-            id: 'kinetic-overload',
-            name: 'Kinetic Overload',
-            powerPrerequisite: 'repulsion',
-            description: () => 'Your Repulsion field now violently ejects enemies on first contact. Ejected enemies are sent flying and lose control of their movement for 2 seconds.',
-            icon: '✋',
-            maxRanks: 1,
-            costPerRank: [2],
+        'reactive-plating': {
+            id: 'reactive-plating',
+            name: 'Reactive Plating',
+            description: (rank, maxed) => `Taking heavy damage automatically grants a temporary Shield. Cooldown: 30s. Shield duration: ${maxed ? '3s' : '1.5s'}.`,
+            icon: '⚡',
+            maxRanks: 2,
+            costPerRank: [2, 3],
             position: { x: 30, y: 60 },
             prerequisites: ['fleet-footed'],
         },
@@ -97,7 +96,7 @@ export const TALENT_GRID_CONFIG = {
             maxRanks: 1,
             costPerRank: [4],
             position: { x: 5, y: 75 },
-            prerequisites: ['aegis-retaliation'],
+            prerequisites: ['cryo-shatter'],
         },
         'phase-momentum': {
             id: 'phase-momentum',
@@ -107,7 +106,7 @@ export const TALENT_GRID_CONFIG = {
             maxRanks: 1,
             costPerRank: [3],
             position: { x: 30, y: 80 },
-            prerequisites: ['kinetic-overload'],
+            prerequisites: ['reactive-plating'],
         }
     },
     
@@ -126,23 +125,23 @@ export const TALENT_GRID_CONFIG = {
             position: { x: 70, y: 25 },
             prerequisites: ['core-nexus'],
         },
-        'targeting-algorithm': {
-            id: 'targeting-algorithm',
-            name: 'Targeting Algorithm',
-            powerPrerequisite: 'orbitalStrike',
-            description: () => `Orbital Strike targeting indicators will now follow their targets.`,
-            icon: '☄️',
-            maxRanks: 1,
-            costPerRank: [3],
+        'amplified-wavefront': {
+            id: 'havoc-shockwave', // Internal ID from the original game logic
+            name: 'Amplified Wavefront',
+            powerPrerequisite: 'shockwave',
+            description: (rank, maxed) => `Increases the radius and travel speed of the Shockwave power by ${maxed ? '30%' : '15%'}.`,
+            icon: '🌐',
+            maxRanks: 2,
+            costPerRank: [1, 2],
             position: { x: 60, y: 40 },
             prerequisites: ['high-frequency-emitters'],
         },
-        'unstable-payload': {
-            id: 'unstable-payload',
-            name: 'Unstable Payload',
-            powerPrerequisite: 'ricochetShot',
-            description: () => 'Your Ricochet Shot becomes increasingly unstable with each bounce, growing in size and power.',
-            icon: '🔄',
+        'unstoppable-frenzy': {
+            id: 'havoc-berserk', // Internal ID from the original game logic
+            name: 'Unstoppable Frenzy',
+            powerPrerequisite: 'berserk',
+            description: () => 'While Berserk is active, you are immune to all Slow and Stun effects.',
+            icon: '😤',
             maxRanks: 1,
             costPerRank: [2],
             position: { x: 80, y: 45 },
@@ -159,7 +158,7 @@ export const TALENT_GRID_CONFIG = {
             maxRanks: 2,
             costPerRank: [1, 1],
             position: { x: 55, y: 58 },
-            prerequisites: ['targeting-algorithm'],
+            prerequisites: ['amplified-wavefront'],
         },
         'volatile-finish': {
             id: 'volatile-finish',
@@ -169,7 +168,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '💣',
             maxRanks: 1,
             costPerRank: [2],
-            position: { x: 55, y: 75 }, // New Position for a clear branch
+            position: { x: 55, y: 75 },
             prerequisites: ['havoc-chain'],
         },
         'nova-pulsar': {
@@ -181,7 +180,7 @@ export const TALENT_GRID_CONFIG = {
             maxRanks: 1,
             costPerRank: [2],
             position: { x: 90, y: 60 },
-            prerequisites: ['unstable-payload'],
+            prerequisites: ['unstoppable-frenzy'],
         },
         'overcharged-capacitors': {
             id: 'overcharged-capacitors',
@@ -191,7 +190,7 @@ export const TALENT_GRID_CONFIG = {
             maxRanks: 1,
             costPerRank: [3],
             position: { x: 70, y: 65 },
-            prerequisites: ['havoc-chain', 'unstable-payload'],
+            prerequisites: ['havoc-chain', 'unstoppable-frenzy'],
         },
         'unstable-singularity': {
             id: 'unstable-singularity',
@@ -233,15 +232,13 @@ export const TALENT_GRID_CONFIG = {
             position: { x: 50, y: 40 },
             prerequisites: ['essence-conduit'],
         },
-        'power-scavenger': {
-            id: 'power-scavenger',
-            name: 'Power Scavenger',
-            description: (rank, maxed) => maxed
-                ? 'Non-boss enemies have a 2.5% chance to drop an Essence Crystal.'
-                : `Non-boss enemies have a ${[1, 1.5][rank-1] || 0}% chance to drop an Essence Crystal.`,
-            icon: '💎',
+        'temporal-anomaly': {
+            id: 'temporal-anomaly',
+            name: 'Temporal Anomaly',
+            description: (rank, maxed) => `Power-ups decay ${maxed ? '50%' : '25%'} slower, remaining on the field longer.`,
+            icon: '⏳',
             maxRanks: 2,
-            costPerRank: [2, 2],
+            costPerRank: [1, 2],
             position: { x: 40, y: 55 },
             prerequisites: ['resonance-magnet'],
         },
@@ -249,7 +246,7 @@ export const TALENT_GRID_CONFIG = {
             id: 'quantum-duplicate',
             name: 'Quantum Duplicate',
             powerPrerequisite: 'decoy',
-            description: () => `Project a fleeting duplicate of yourself from a parallel timeline. This Quantum Duplicate actively moves away from your position, drawing enemy aggression.`,
+            description: () => `Your Decoy now actively moves away from your position, drawing enemy aggression more effectively.`,
             icon: '👥',
             maxRanks: 1,
             costPerRank: [2],
@@ -275,7 +272,7 @@ export const TALENT_GRID_CONFIG = {
             maxRanks: 1,
             costPerRank: [4],
             position: { x: 35, y: 70 },
-            prerequisites: ['power-scavenger'],
+            prerequisites: ['temporal-anomaly'],
         },
         'energetic-recycling': {
             id: 'energetic-recycling',
