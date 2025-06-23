@@ -58,7 +58,7 @@ window.addEventListener('load', (event) => {
     const soundBtn = document.getElementById("soundToggle");
     const ascensionBtn = document.getElementById("ascensionBtn");
     const levelSelectBtn = document.getElementById("levelSelectBtn");
-
+    
     // Home Screen Elements
     const homeScreen = document.getElementById('home-screen');
     const newGameBtn = document.getElementById('new-game-btn');
@@ -208,7 +208,8 @@ window.addEventListener('load', (event) => {
         });
 
         eraseGameBtn.addEventListener('click', () => {
-            AudioManager.unlockAudio(); // Unlock audio before showing confirm dialog
+            // Unlock audio immediately on click before showing the dialog
+            AudioManager.unlockAudio(); 
             showCustomConfirm(
                 "|| SEVER TIMELINE? ||",
                 "This timeline will be erased. All progress and unlocks will be lost to the void. This action cannot be undone.",
