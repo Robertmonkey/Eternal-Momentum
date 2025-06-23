@@ -49,7 +49,7 @@ export const TALENT_GRID_CONFIG = {
             description: (rank, maxed) => maxed
                 ? 'Shield power-up duration is increased by a total of 3 seconds.'
                 : `Increases Shield power-up duration by 1.5s.`,
-            icon: '⏱️',
+            icon: '🔋',
             maxRanks: 2,
             costPerRank: [1, 1],
             position: { x: 20, y: 40 },
@@ -66,13 +66,13 @@ export const TALENT_GRID_CONFIG = {
             position: { x: 10, y: 55 },
             prerequisites: ['aegis-shield'],
         },
-        'solar-wind': { // NAME UPDATED
+        'solar-wind': {
             id: 'fleet-footed',
             name: 'Solar Wind',
             description: (rank, maxed) => maxed
                 ? 'Base movement speed is increased by a total of 12%.'
                 : `Increases base movement speed by 6%.`,
-            icon: '🏃',
+            icon: '»',
             maxRanks: 2,
             costPerRank: [1, 2],
             position: { x: 40, y: 45 },
@@ -92,7 +92,7 @@ export const TALENT_GRID_CONFIG = {
             id: 'contingency-protocol',
             name: 'Contingency Protocol',
             description: () => 'Once per stage, taking fatal damage instead sets your Health to 1 and grants 3s of invulnerability.',
-            icon: '💪',
+            icon: '☥',
             maxRanks: 1,
             costPerRank: [4],
             position: { x: 5, y: 75 },
@@ -147,7 +147,7 @@ export const TALENT_GRID_CONFIG = {
             position: { x: 55, y: 58 },
             prerequisites: ['stellar-detonation'],
         },
-        'arc-cascade': { // NAME UPDATED
+        'arc-cascade': {
             id: 'havoc-chain',
             name: 'Arc Cascade',
             powerPrerequisite: 'chain',
@@ -165,7 +165,7 @@ export const TALENT_GRID_CONFIG = {
             name: 'Amplified Wavefront',
             powerPrerequisite: 'shockwave',
             description: (rank, maxed) => `Increases the radius and travel speed of the Shockwave power by ${maxed ? '30%' : '15%'}.`,
-            icon: '🌐',
+            icon: '◎',
             maxRanks: 2,
             costPerRank: [2, 2],
             position: { x: 80, y: 55 },
