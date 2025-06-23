@@ -262,7 +262,6 @@ export function gameTick(mx, my) {
     const activeRepulsionFields = state.effects.filter(eff => eff.type === 'repulsion_field');
     const timeEater = state.enemies.find(e => e.id === 'time_eater');
     const slowZones = timeEater ? state.effects.filter(e => e.type === 'slow_zone') : [];
-
     
     state.effects.forEach(effect => { 
         if(effect.type === 'slow_zone' && Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < effect.r && !isBerserkImmune) {
@@ -332,18 +331,13 @@ export function gameTick(mx, my) {
         }
     }
 
-    // --- PLAYER DRAWING LOGIC ---
-    // (Moved before enemy loop to apply collision pushes correctly)
-    const isInvulnerable = false; // Placeholder for future i-frame implementation
-    if (isInvulnerable) {
-        ctx.globalAlpha = 0.5;
-    }
     if (state.player.talent_states.phaseMomentum.active) {
         ctx.globalAlpha = 0.3;
         utils.drawCircle(ctx, state.player.x, state.player.y, state.player.r + 5, 'rgba(0, 255, 255, 0.5)');
         utils.spawnParticles(state.particles, state.player.x, state.player.y, 'rgba(0, 255, 255, 0.5)', 1, 0.5, 10, state.player.r * 0.5);
-        ctx.globalAlpha = isInvulnerable ? 0.5 : 1.0;
+        ctx.globalAlpha = 1.0;
     }
+
     if (state.player.shield) {
         ctx.strokeStyle = "rgba(241,196,15,0.7)";
         ctx.lineWidth = 4;
@@ -352,9 +346,6 @@ export function gameTick(mx, my) {
         ctx.stroke();
     }
     utils.drawCircle(ctx, state.player.x, state.player.y, state.player.r, state.player.shield ? "#f1c40f" : ((state.player.berserkUntil > Date.now()) ? '#e74c3c' : (state.player.infected ? '#55efc4' : "#3498db")));
-    if (isInvulnerable) {
-        ctx.globalAlpha = 1.0;
-    }
     
     if (state.decoy) {
         utils.drawCircle(ctx, state.decoy.x, state.decoy.y, state.decoy.r, "#9b59b6");
@@ -440,7 +431,7 @@ export function gameTick(mx, my) {
             for (const zone of slowZones) {
                 if (Math.hypot(e.x - zone.x, e.y - zone.y) < zone.r) {
                     e.eatenBy = zone;
-                    break; // Enemy can only be eaten by one zone at a time.
+                    break;
                 }
             }
         }
@@ -552,7 +543,6 @@ export function gameTick(mx, my) {
                 }
                 
                 // --- COLLISION JIGGLE FIX ---
-                // Instead of moving the player, add this collision to the aggregate push vector.
                 const overlap = (e.r + state.player.r) - pDist;
                 const ang=Math.atan2(state.player.y-e.y,state.player.x-e.x); 
                 totalPlayerPushX += Math.cos(ang) * overlap;
@@ -563,7 +553,6 @@ export function gameTick(mx, my) {
     }
 
     // --- COLLISION JIGGLE FIX ---
-    // After checking all enemies, apply the final aggregated push to the player.
     if (playerCollisions > 0) {
         state.player.x += totalPlayerPushX / playerCollisions;
         state.player.y += totalPlayerPushY / playerCollisions;
@@ -578,7 +567,6 @@ export function gameTick(mx, my) {
         }
 
         // --- TIME EATER BUG FIX (Part 2) ---
-        // New, optimized logic inside the pickup loop.
         if (timeEater && !p.eatenBy) {
             for (const zone of slowZones) {
                 if (Math.hypot(p.x - zone.x, p.y - zone.y) < zone.r) {
@@ -658,7 +646,7 @@ export function gameTick(mx, my) {
     }
 
     // --- TIME EATER BUG FIX (Part 3) ---
-    // The old, inefficient logic block that was here has been REMOVED.
+    // The old, inefficient logic block that was here has been REMOVED entirely.
     
     state.effects.forEach((effect, index) => {
         if (effect.type === 'shockwave') {
@@ -903,6 +891,18 @@ export function gameTick(mx, my) {
                         state.player.health -= 2;
                     }
                 }
+            }
+        // --- SLOW ZONE ANIMATION FIX ---
+        // This block restores the drawing logic for slow zones.
+        } else if (effect.type === 'slow_zone') {
+            if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
+            const alpha = (effect.endTime - Date.now()) / 6000 * 0.4;
+            for(let i=0; i<3; i++) {
+                ctx.strokeStyle = `rgba(223, 230, 233, ${alpha * (0.5 + Math.sin(Date.now()/200 + i*2)*0.5)})`;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(effect.x, effect.y, effect.r * (0.6 + i*0.2), 0, Math.PI*2);
+                ctx.stroke();
             }
         }
     });
