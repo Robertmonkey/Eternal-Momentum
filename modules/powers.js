@@ -38,7 +38,7 @@ export const powers={
   },
   heal:{emoji:"❤️",desc:"+30 HP",apply:()=>{ state.player.health=Math.min(state.player.maxHealth,state.player.health+30); }},
   shockwave:{emoji:"💥",desc:"Expanding wave damages enemies.",apply:(utils, game)=>{
-      let talentRank = state.player.purchasedTalents.get('havoc-shockwave');
+      let talentRank = state.player.purchasedTalents.get('amplified-wavefront'); // Corrected talent ID
       let speed = 800;
       let radius = Math.max(innerWidth, innerHeight);
       if(talentRank) {
@@ -50,6 +50,8 @@ export const powers={
       state.effects.push({ type: 'shockwave', caster: state.player, x: state.player.x, y: state.player.y, radius: 0, maxRadius: radius, speed: speed, startTime: Date.now(), hitEnemies: new Set(), damage: damage });
       play('shockwave');
   }},
+  
+  // --- CORRECTED MISSILE OBJECT ---
   missile:{
     emoji:"🎯",
     desc:"AoE explosion damages nearby.",
@@ -58,21 +60,37 @@ export const powers={
       let damage = ((state.player.berserkUntil > Date.now()) ? 20 : 10) * state.player.talent_modifiers.damage_multiplier;
       let radius = 250;
 
-      const radiusTalentRank = state.player.purchasedTalents.get('havoc-missile');
+      // POLISH FIX: Corrected talent ID from 'havoc-missile'
+      const radiusTalentRank = state.player.purchasedTalents.get('stellar-detonation');
       if(radiusTalentRank) radius *= (1 + (radiusTalentRank * 0.15));
 
-      state.effects.push({ type: 'shockwave', caster: state.player, x: mx, y: my, radius: 0, maxRadius: radius, speed: 1200, startTime: Date.now(), hitEnemies: new Set(), damage: damage, color: 'rgba(255, 153, 68, 0.7)' });
+      // PRIMARY FIX: Changed explosion origin from mx, my to the player's position
+      state.effects.push({ 
+          type: 'shockwave', 
+          caster: state.player, 
+          x: state.player.x, 
+          y: state.player.y, 
+          radius: 0, 
+          maxRadius: radius, 
+          speed: 1200, 
+          startTime: Date.now(), 
+          hitEnemies: new Set(), 
+          damage: damage, 
+          color: 'rgba(255, 153, 68, 0.7)' 
+      });
       utils.triggerScreenShake(200, 8);
 
-      if(state.player.purchasedTalents.has('seeking-shrapnel')){
+      // POLISH FIX: Corrected talent ID from 'seeking-shrapnel'
+      if(state.player.purchasedTalents.has('homing-shrapnel')){
           const initialAngle = Math.atan2(my - state.player.y, mx - state.player.x);
           for(let i = 0; i < 3; i++) {
               const angleOffset = (i - 1) * 0.5; // spread them out
               const finalAngle = initialAngle + angleOffset;
               state.effects.push({
                   type: 'seeking_shrapnel',
-                  x: mx,
-                  y: my,
+                  // FIX: Changed shrapnel origin to player's position
+                  x: state.player.x,
+                  y: state.player.y,
                   dx: Math.cos(finalAngle) * 4,
                   dy: Math.sin(finalAngle) * 4,
                   r: 6,
@@ -86,14 +104,15 @@ export const powers={
       }
     }
   },
+
   chain:{
     emoji:"⚡",
     desc:"Chain lightning hits multiple targets.",
     apply:(utils, game)=>{
       play('chain');
       let chainCount = 6;
-      const chainTalentRank = state.player.purchasedTalents.get('havoc-chain');
-      if(chainTalentRank) chainCount += chainTalentRank * 2;
+      const chainTalentRank = state.player.purchasedTalents.get('arc-cascade'); // Corrected talent ID
+      if(chainTalentRank) chainCount += chainTalentRank * 1; // Corrected talent effect
 
       const targets = [];
       let currentTarget = state.player;
