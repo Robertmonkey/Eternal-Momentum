@@ -82,7 +82,14 @@ function createTalentNode(talent, constellationColor) {
     const isMaxRank = purchasedRank >= talent.maxRanks;
     const cost = isMaxRank ? Infinity : (talent.costPerRank[purchasedRank] || Infinity);
     
-    const prereqsMet = talent.prerequisites.every(p => state.player.purchasedTalents.has(p));
+    const prereqsMet = talent.prerequisites.every(p => {
+        const prereqTalent = allTalents[p];
+        if (!prereqTalent) return false;
+        const ranksNeeded = prereqTalent.maxRanks;
+        const currentRank = state.player.purchasedTalents.get(p) || 0;
+        return currentRank >= ranksNeeded;
+    });
+
     const canPurchase = prereqsMet && state.player.ascensionPoints >= cost;
 
     if (talent.isNexus) {
@@ -152,7 +159,14 @@ function purchaseTalent(talentId) {
     if (currentRank >= talent.maxRanks) return;
 
     const cost = talent.costPerRank[currentRank];
-    const prereqsMet = talent.prerequisites.every(p => state.player.purchasedTalents.has(p));
+    
+    const prereqsMet = talent.prerequisites.every(p => {
+        const prereqTalent = allTalents[p];
+        if (!prereqTalent) return false;
+        const ranksNeeded = prereqTalent.maxRanks;
+        const currentPrereqRank = state.player.purchasedTalents.get(p) || 0;
+        return currentPrereqRank >= ranksNeeded;
+    });
 
     if (prereqsMet && state.player.ascensionPoints >= cost) {
         state.player.ascensionPoints -= cost;
@@ -166,7 +180,7 @@ function purchaseTalent(talentId) {
         updateUI();
 
     } else {
-        console.log("Cannot purchase talent!");
+        console.log("Cannot purchase talent! Not enough AP or prerequisites not met.");
     }
 }
 
@@ -186,7 +200,8 @@ export function applyAllTalentEffects() {
             const values = [15, 20, 25];
             for (let i = 0; i < rank; i++) baseMaxHealth += values[i];
         }
-        if (id === 'fleet-footed') {
+        // --- BUG FIX: Updated ID from 'fleet-footed' to 'solar-wind' ---
+        if (id === 'solar-wind') {
             const values = [0.06, 0.06];
             for (let i = 0; i < rank; i++) baseSpeed *= (1 + values[i]);
         }
