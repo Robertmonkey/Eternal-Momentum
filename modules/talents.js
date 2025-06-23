@@ -56,7 +56,7 @@ export const TALENT_GRID_CONFIG = {
             prerequisites: ['exo-weave-plating'],
         },
         'cryo-shatter': {
-            id: 'cryo-shatter', // ID FIXED
+            id: 'cryo-shatter',
             name: 'Cryo-Shatter',
             powerPrerequisite: 'freeze',
             description: (rank, maxed) => `Enemies defeated while Frozen have a ${maxed ? '50%' : '25%'} chance to shatter, dealing area damage.`,
@@ -67,7 +67,7 @@ export const TALENT_GRID_CONFIG = {
             prerequisites: ['aegis-shield'],
         },
         'solar-wind': {
-            id: 'solar-wind', // ID FIXED
+            id: 'solar-wind',
             name: 'Solar Wind',
             description: (rank, maxed) => maxed
                 ? 'Base movement speed is increased by a total of 12%.'
@@ -126,7 +126,7 @@ export const TALENT_GRID_CONFIG = {
             prerequisites: ['core-nexus'],
         },
         'stellar-detonation': {
-            id: 'stellar-detonation', // ID FIXED
+            id: 'stellar-detonation',
             name: 'Stellar Detonation',
             powerPrerequisite: 'missile',
             description: (rank, maxed) => `Increases the explosion radius of the Missile power by ${maxed ? '30%' : '15%'}.`,
@@ -137,7 +137,7 @@ export const TALENT_GRID_CONFIG = {
             prerequisites: ['high-frequency-emitters'],
         },
         'homing-shrapnel': {
-            id: 'homing-shrapnel', // ID FIXED
+            id: 'homing-shrapnel',
             name: 'Homing Shrapnel',
             powerPrerequisite: 'missile',
             description: () => 'Your Missile power now releases a volley of seeking shrapnel upon impact.',
@@ -148,7 +148,7 @@ export const TALENT_GRID_CONFIG = {
             prerequisites: ['stellar-detonation'],
         },
         'arc-cascade': {
-            id: 'arc-cascade', // ID FIXED
+            id: 'arc-cascade',
             name: 'Arc Cascade',
             powerPrerequisite: 'chain',
             description: (rank, maxed) => maxed
@@ -161,7 +161,7 @@ export const TALENT_GRID_CONFIG = {
             prerequisites: ['homing-shrapnel'],
         },
         'amplified-wavefront': {
-            id: 'amplified-wavefront', // ID FIXED
+            id: 'amplified-wavefront',
             name: 'Amplified Wavefront',
             powerPrerequisite: 'shockwave',
             description: (rank, maxed) => `Increases the radius and travel speed of the Shockwave power by ${maxed ? '30%' : '15%'}.`,
@@ -172,7 +172,7 @@ export const TALENT_GRID_CONFIG = {
             prerequisites: ['arc-cascade'],
         },
         'unstoppable-frenzy': {
-            id: 'unstoppable-frenzy', // ID FIXED
+            id: 'unstoppable-frenzy',
             name: 'Unstoppable Frenzy',
             powerPrerequisite: 'berserk',
             description: () => 'While Berserk is active, you are immune to all Slow and Stun effects.',
