@@ -14,23 +14,19 @@ Object.values(TALENT_GRID_CONFIG).forEach(constellation => {
     });
 });
 
-// --- VISIBILITY BUG FIX ---
-// This function now correctly determines if a talent should be visible on the grid.
 function isTalentVisible(talent) {
     if (!talent) return false;
     
-    // A talent is not visible if its required power-up is not unlocked.
     const powerUnlocked = !talent.powerPrerequisite || state.player.unlockedPowers.has(talent.powerPrerequisite);
     if (!powerUnlocked) {
         return false;
     }
 
-    // A talent with no prerequisites is always visible (e.g., Core Nexus).
     if (talent.prerequisites.length === 0) {
         return true;
     }
     
-    // Otherwise, a talent is visible if its prerequisites have been purchased at least once.
+    // A talent is visible if its prerequisite talents have been purchased at least once.
     return talent.prerequisites.every(p => state.player.purchasedTalents.has(p));
 }
 
@@ -52,7 +48,6 @@ function drawConnectorLines() {
 
             talent.prerequisites.forEach(prereqId => {
                 const prereqTalent = allTalents[prereqId];
-                // Connector is drawn if the prerequisite has been purchased, revealing the path.
                 if (prereqTalent && state.player.purchasedTalents.has(prereqId)) {
                     const line = document.createElementNS("http://www.w3.org/2000/svg", 'line');
                     line.setAttribute('x1', `${prereqTalent.position.x}%`);
@@ -63,7 +58,6 @@ function drawConnectorLines() {
                     
                     const isNexusConnection = talent.isNexus || prereqTalent.isNexus;
                     
-                    // The line becomes fully colored in once the prereq is maxed out.
                     const prereqRanksNeeded = prereqTalent.maxRanks;
                     const prereqCurrentRank = state.player.purchasedTalents.get(prereqId) || 0;
                     if (prereqCurrentRank >= prereqRanksNeeded) {
@@ -86,11 +80,6 @@ function drawConnectorLines() {
 }
 
 function createTalentNode(talent, constellationColor) {
-    // Only try to create a node if it's supposed to be visible.
-    if (!isTalentVisible(talent) && !state.player.purchasedTalents.has(talent.id)) {
-        return;
-    }
-
     const node = document.createElement('div');
     node.className = 'talent-node';
     node.style.left = `${talent.position.x}%`;
@@ -100,7 +89,6 @@ function createTalentNode(talent, constellationColor) {
     const isMaxRank = purchasedRank >= talent.maxRanks;
     const cost = isMaxRank ? Infinity : (talent.costPerRank[purchasedRank] || Infinity);
     
-    // This strict check correctly determines if a talent is PURCHASABLE.
     const prereqsMetForPurchase = talent.prerequisites.every(p => {
         const prereqTalent = allTalents[p];
         if (!prereqTalent) return false;
@@ -204,7 +192,6 @@ function purchaseTalent(talentId) {
 }
 
 export function applyAllTalentEffects() {
-    // Reset modifiers to base values
     let baseMaxHealth = 100;
     let baseSpeed = 1.0;
     let baseDamageMultiplier = 1.0;
@@ -213,7 +200,6 @@ export function applyAllTalentEffects() {
     let baseEssenceGain = 1.0;
     let basePullResistance = 0;
 
-    // Apply all purchased talents
     state.player.purchasedTalents.forEach((rank, id) => {
         if (id === 'exo-weave-plating') {
             const values = [15, 20, 25];
@@ -240,7 +226,6 @@ export function applyAllTalentEffects() {
         }
     });
 
-    // Update player state with final values
     state.player.maxHealth = baseMaxHealth;
     state.player.speed = baseSpeed;
     state.player.talent_modifiers.damage_multiplier = baseDamageMultiplier;
@@ -249,7 +234,6 @@ export function applyAllTalentEffects() {
     state.player.talent_modifiers.essence_gain_modifier = baseEssenceGain;
     state.player.talent_modifiers.pull_resistance_modifier = basePullResistance;
 }
-
 
 export function renderAscensionGrid() {
     if (!gridContainer) return;
@@ -264,7 +248,13 @@ export function renderAscensionGrid() {
         for (const talentId in constellation) {
             if (talentId === 'color') continue;
             const talent = constellation[talentId];
-            createTalentNode(talent, constellationColor);
+            
+            // --- VISIBILITY BUG FIX ---
+            // The visibility check now happens here, in the main render loop.
+            // A node is drawn if it has been purchased OR if it is visible according to the rules.
+            if (state.player.purchasedTalents.has(talent.id) || isTalentVisible(talent)) {
+                createTalentNode(talent, constellationColor);
+            }
         }
     }
 }
