@@ -82,7 +82,7 @@ export const TALENT_GRID_CONFIG = {
             id: 'kinetic-overload',
             name: 'Kinetic Overload',
             powerPrerequisite: 'repulsion',
-            description: () => 'Enemies hit by your Repulsion power are knocked back for 2 seconds.',
+            description: () => 'Your Repulsion field now violently ejects enemies on first contact. Ejected enemies are sent flying and lose control of their movement for 2 seconds.',
             icon: '✋',
             maxRanks: 1,
             costPerRank: [2],
