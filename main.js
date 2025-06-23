@@ -9,18 +9,27 @@ import * as utils from './modules/utils.js';
 import { renderAscensionGrid, applyAllTalentEffects } from './modules/ascension.js';
 
 // --- DEBUG FUNCTION FOR TESTING ---
+// This function is now defined in the module's scope and explicitly attached to the window
+// object, making it accessible from the developer console.
 window.addAP = function(amount) {
     if (typeof amount !== 'number' || amount <= 0) {
         console.log("Please provide a positive number of AP to add.");
         return;
     }
     state.player.ascensionPoints += amount;
-    savePlayerState(); 
-    updateUI(); 
+    savePlayerState(); // Persist the new AP amount to localStorage
+    updateUI(); // Update the visible UI to reflect the new total
     
     const apDisplayAscGrid = document.getElementById("ap-total-asc-grid");
     if(apDisplayAscGrid) {
         apDisplayAscGrid.innerText = state.player.ascensionPoints;
+    }
+
+    // --- BUG FIX ---
+    // If the ascension grid is visible, we must re-render it
+    // to update the nodes' styles and click handlers.
+    if (document.getElementById('ascensionGridModal').style.display === 'flex') {
+        renderAscensionGrid();
     }
     
     console.log(`${amount} AP added. Total AP: ${state.player.ascensionPoints}`);
