@@ -14,20 +14,24 @@ Object.values(TALENT_GRID_CONFIG).forEach(constellation => {
     });
 });
 
+// --- VISIBILITY BUG FIX ---
+// This function now correctly determines if a talent should be visible on the grid.
 function isTalentVisible(talent) {
     if (!talent) return false;
-    const powerUnlocked = !talent.powerPrerequisite || state.player.unlockedPowers.has(talent.powerPrerequisite);
     
-    // --- VISIBILITY BUG FIX ---
-    // A talent should be VISIBLE if its prerequisite has been purchased at least once.
-    // The check for whether it's maxed out happens later, when determining if it's PURCHASABLE.
-    const prereqsMet = talent.prerequisites.every(p => {
-        // The recursive call was removed to fix a logic loop.
-        // We only need to know if the prerequisite has been touched to make the next one visible.
-        return state.player.purchasedTalents.has(p);
-    });
+    // A talent is not visible if its required power-up is not unlocked.
+    const powerUnlocked = !talent.powerPrerequisite || state.player.unlockedPowers.has(talent.powerPrerequisite);
+    if (!powerUnlocked) {
+        return false;
+    }
 
-    return powerUnlocked && (talent.prerequisites.length === 0 || prereqsMet);
+    // A talent with no prerequisites is always visible (e.g., Core Nexus).
+    if (talent.prerequisites.length === 0) {
+        return true;
+    }
+    
+    // Otherwise, a talent is visible if its prerequisites have been purchased at least once.
+    return talent.prerequisites.every(p => state.player.purchasedTalents.has(p));
 }
 
 function drawConnectorLines() {
@@ -59,7 +63,7 @@ function drawConnectorLines() {
                     
                     const isNexusConnection = talent.isNexus || prereqTalent.isNexus;
                     
-                    // The line becomes fully colored in once the prereq is maxed AND the child is unlocked
+                    // The line becomes fully colored in once the prereq is maxed out.
                     const prereqRanksNeeded = prereqTalent.maxRanks;
                     const prereqCurrentRank = state.player.purchasedTalents.get(prereqId) || 0;
                     if (prereqCurrentRank >= prereqRanksNeeded) {
@@ -82,6 +86,11 @@ function drawConnectorLines() {
 }
 
 function createTalentNode(talent, constellationColor) {
+    // Only try to create a node if it's supposed to be visible.
+    if (!isTalentVisible(talent) && !state.player.purchasedTalents.has(talent.id)) {
+        return;
+    }
+
     const node = document.createElement('div');
     node.className = 'talent-node';
     node.style.left = `${talent.position.x}%`;
@@ -91,7 +100,7 @@ function createTalentNode(talent, constellationColor) {
     const isMaxRank = purchasedRank >= talent.maxRanks;
     const cost = isMaxRank ? Infinity : (talent.costPerRank[purchasedRank] || Infinity);
     
-    // This strict check determines if a talent is PURCHASABLE.
+    // This strict check correctly determines if a talent is PURCHASABLE.
     const prereqsMetForPurchase = talent.prerequisites.every(p => {
         const prereqTalent = allTalents[p];
         if (!prereqTalent) return false;
@@ -158,10 +167,7 @@ function createTalentNode(talent, constellationColor) {
         });
     });
     
-    // A node is only added to the DOM if it's meant to be visible.
-    if (isTalentVisible(talent) || state.player.purchasedTalents.has(talent.id)) {
-        gridContainer.appendChild(node);
-    }
+    gridContainer.appendChild(node);
 }
 
 function purchaseTalent(talentId) {
