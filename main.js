@@ -9,25 +9,20 @@ import * as utils from './modules/utils.js';
 import { renderAscensionGrid, applyAllTalentEffects } from './modules/ascension.js';
 
 // --- DEBUG FUNCTION FOR TESTING ---
-// This function is now defined in the module's scope and explicitly attached to the window
-// object, making it accessible from the developer console.
 window.addAP = function(amount) {
     if (typeof amount !== 'number' || amount <= 0) {
         console.log("Please provide a positive number of AP to add.");
         return;
     }
     state.player.ascensionPoints += amount;
-    savePlayerState(); // Persist the new AP amount to localStorage
-    updateUI(); // Update the visible UI to reflect the new total
+    savePlayerState(); 
+    updateUI(); 
     
     const apDisplayAscGrid = document.getElementById("ap-total-asc-grid");
     if(apDisplayAscGrid) {
         apDisplayAscGrid.innerText = state.player.ascensionPoints;
     }
-
-    // --- BUG FIX ---
-    // If the ascension grid is visible, we must re-render it
-    // to update the nodes' styles and click handlers.
+    
     if (document.getElementById('ascensionGridModal').style.display === 'flex') {
         renderAscensionGrid();
     }
@@ -63,8 +58,14 @@ window.addEventListener('load', (event) => {
     const soundBtn = document.getElementById("soundToggle");
     const ascensionBtn = document.getElementById("ascensionBtn");
     const levelSelectBtn = document.getElementById("levelSelectBtn");
+
+    // Home Screen Elements
+    const homeScreen = document.getElementById('home-screen');
+    const newGameBtn = document.getElementById('new-game-btn');
+    const continueGameBtn = document.getElementById('continue-game-btn');
+    const eraseGameBtn = document.getElementById('erase-game-btn');
     
-    // Modals and their controls
+    // Modals and other controls
     const levelSelectModal = document.getElementById("levelSelectModal");
     const closeLevelSelectBtn = document.getElementById("closeLevelSelectBtn");
     const arenaBtn = document.getElementById("arenaBtn");
@@ -95,6 +96,20 @@ window.addEventListener('load', (event) => {
 
         AudioManager.setup(allAudioElements, music, soundBtn);
         setupEventListeners();
+        setupHomeScreen();
+    }
+
+    function setupHomeScreen() {
+        const hasSaveData = localStorage.getItem('eternalMomentumSave') !== null;
+        if (hasSaveData) {
+            continueGameBtn.style.display = 'block';
+            eraseGameBtn.style.display = 'block';
+            newGameBtn.style.display = 'none';
+        } else {
+            continueGameBtn.style.display = 'none';
+            eraseGameBtn.style.display = 'none';
+            newGameBtn.style.display = 'block';
+        }
     }
 
     // --- Event Listeners ---
@@ -122,9 +137,7 @@ window.addEventListener('load', (event) => {
         document.getElementById('slot-def-0').addEventListener('click', useDefensivePower);
 
         soundBtn.addEventListener("click", () => AudioManager.toggleMute());
-        document.body.addEventListener("click", () => AudioManager.unlockAudio(), { once: true });
-        document.body.addEventListener("touchstart", () => AudioManager.unlockAudio(), { once: true });
-
+        
         levelSelectBtn.addEventListener("click", () => { 
             state.isPaused = true; 
             populateLevelSelect(startSpecificLevel);
@@ -173,6 +186,38 @@ window.addEventListener('load', (event) => {
             populateLevelSelect(startSpecificLevel);
             levelSelectModal.style.display = 'flex';
         });
+
+        // --- Home Screen Button Listeners ---
+        function startGameFromHome() {
+            AudioManager.unlockAudio(); // Unlocks audio context and starts music
+            homeScreen.classList.remove('visible');
+            homeScreen.addEventListener('transitionend', () => {
+                homeScreen.style.display = 'none';
+            }, { once: true });
+        }
+
+        newGameBtn.addEventListener('click', () => {
+            startGameFromHome();
+            startSpecificLevel(1);
+        });
+
+        continueGameBtn.addEventListener('click', () => {
+            startGameFromHome();
+            const startStage = state.player.highestStageBeaten > 0 ? state.player.highestStageBeaten + 1 : 1;
+            startSpecificLevel(startStage);
+        });
+
+        eraseGameBtn.addEventListener('click', () => {
+            AudioManager.unlockAudio(); // Unlock audio before showing confirm dialog
+            showCustomConfirm(
+                "|| SEVER TIMELINE? ||",
+                "This timeline will be erased. All progress and unlocks will be lost to the void. This action cannot be undone.",
+                () => {
+                    localStorage.removeItem('eternalMomentumSave');
+                    window.location.reload();
+                }
+            );
+        });
     }
 
     // --- Game Flow ---
@@ -219,17 +264,21 @@ window.addEventListener('load', (event) => {
         updateUI();
         loop();
     };
-
+    
     // --- FADE OUT LOADING SCREEN AND START ---
     setTimeout(() => {
         loadingScreen.style.opacity = '0';
         loadingScreen.addEventListener('transitionend', () => {
             loadingScreen.style.display = 'none';
+            // Show the home screen *after* the loading screen has faded
+            homeScreen.style.display = 'flex';
+            requestAnimationFrame(() => {
+                 homeScreen.classList.add('visible');
+            });
         }, { once: true });
 
+        // Initialize everything needed for the home screen and eventual game start
         initialize();
-        const startStage = state.player.highestStageBeaten > 0 ? state.player.highestStageBeaten + 1 : 1;
-        startSpecificLevel(startStage);
     }, 500);
 });
 
