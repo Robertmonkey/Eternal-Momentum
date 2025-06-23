@@ -14,6 +14,20 @@
       <p id="loading-status-text">Initializing Systems...</p>
   </div>
 
+  <div id="home-screen" style="display: none;">
+    <video autoplay muted loop playsinline id="home-video-bg">
+      <source src="./assets/home.mp4" type="video/mp4">
+    </video>
+    <div id="home-overlay">
+      <h1 id="game-title">ETERNAL MOMENTUM</h1>
+      <div id="home-actions">
+        <button id="new-game-btn" class="home-btn" style="display: none;">NEW GAME</button>
+        <button id="continue-game-btn" class="home-btn" style="display: none;">CONTINUE</button>
+        <button id="erase-game-btn" class="home-btn erase" style="display: none;">ERASE & RESTART</button>
+      </div>
+    </div>
+  </div>
+
   <canvas id="gameCanvas"></canvas>
   <div id="vignette"></div>
   <div id="unlock-notification"></div>
