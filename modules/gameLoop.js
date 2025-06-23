@@ -258,7 +258,11 @@ export function gameTick(mx, my) {
         playerSpeedMultiplier *= 0.5;
     }
     
+    // --- CACHE ARRAYS FOR EFFICIENCY ---
     const activeRepulsionFields = state.effects.filter(eff => eff.type === 'repulsion_field');
+    const timeEater = state.enemies.find(e => e.id === 'time_eater');
+    const slowZones = timeEater ? state.effects.filter(e => e.type === 'slow_zone') : [];
+
     
     state.effects.forEach(effect => { 
         if(effect.type === 'slow_zone' && Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < effect.r && !isBerserkImmune) {
@@ -328,13 +332,18 @@ export function gameTick(mx, my) {
         }
     }
 
+    // --- PLAYER DRAWING LOGIC ---
+    // (Moved before enemy loop to apply collision pushes correctly)
+    const isInvulnerable = false; // Placeholder for future i-frame implementation
+    if (isInvulnerable) {
+        ctx.globalAlpha = 0.5;
+    }
     if (state.player.talent_states.phaseMomentum.active) {
         ctx.globalAlpha = 0.3;
         utils.drawCircle(ctx, state.player.x, state.player.y, state.player.r + 5, 'rgba(0, 255, 255, 0.5)');
         utils.spawnParticles(state.particles, state.player.x, state.player.y, 'rgba(0, 255, 255, 0.5)', 1, 0.5, 10, state.player.r * 0.5);
-        ctx.globalAlpha = 1.0;
+        ctx.globalAlpha = isInvulnerable ? 0.5 : 1.0;
     }
-
     if (state.player.shield) {
         ctx.strokeStyle = "rgba(241,196,15,0.7)";
         ctx.lineWidth = 4;
@@ -343,6 +352,9 @@ export function gameTick(mx, my) {
         ctx.stroke();
     }
     utils.drawCircle(ctx, state.player.x, state.player.y, state.player.r, state.player.shield ? "#f1c40f" : ((state.player.berserkUntil > Date.now()) ? '#e74c3c' : (state.player.infected ? '#55efc4' : "#3498db")));
+    if (isInvulnerable) {
+        ctx.globalAlpha = 1.0;
+    }
     
     if (state.decoy) {
         utils.drawCircle(ctx, state.decoy.x, state.decoy.y, state.decoy.r, "#9b59b6");
@@ -350,6 +362,12 @@ export function gameTick(mx, my) {
             state.decoy = null;
         }
     }
+
+    // --- COLLISION JIGGLE FIX ---
+    // Aggregate all push forces on the player before applying them once.
+    let totalPlayerPushX = 0;
+    let totalPlayerPushY = 0;
+    let playerCollisions = 0;
 
     for (let i = state.enemies.length - 1; i >= 0; i--) {
         const e = state.enemies[i];
@@ -402,33 +420,29 @@ export function gameTick(mx, my) {
             }
         }
         
-        // MODIFICATION #1: The Repulsion logic is completely replaced with a more robust version
-        // that handles both the standard push and the new "Kinetic Overload" knockback status effect.
+        // --- KINETIC OVERLOAD FIX ---
+        // Now applies a continuous push instead of a one-time state.
         if (!e.boss && activeRepulsionFields.length > 0) {
             activeRepulsionFields.forEach(field => {
                 const dist = Math.hypot(e.x - field.x, e.y - field.y);
                 if (dist < field.radius + e.r) {
-                    // If player has 'Kinetic Overload', apply the new powerful knockback.
-                    if (field.isOverloaded) {
-                        if (!field.hitEnemies.has(e)) {
-                            const knockbackVelocity = 20; // A strong initial speed
-                            const angle = Math.atan2(e.y - field.y, e.x - field.x);
-                            e.knockbackDx = Math.cos(angle) * knockbackVelocity;
-                            e.knockbackDy = Math.sin(angle) * knockbackVelocity;
-                            e.knockbackUntil = Date.now() + 2000; // Enemy loses control for 2 seconds
-                            field.hitEnemies.add(e); // Mark as hit to prevent this from re-triggering
-                        }
-                    } else {
-                        // Otherwise, apply the standard, continuous, weaker push for grouping.
-                        const knockbackForce = 5;
-                        const angle = Math.atan2(e.y - field.y, e.x - field.x);
-                        const pushX = e.x + Math.cos(angle) * knockbackForce;
-                        const pushY = e.y + Math.sin(angle) * knockbackForce;
-                        e.x = Math.max(e.r, Math.min(canvas.width - e.r, pushX));
-                        e.y = Math.max(e.r, Math.min(canvas.height - e.r, pushY));
-                    }
+                    const knockbackForce = field.isOverloaded ? 15 : 5;
+                    const angle = Math.atan2(e.y - field.y, e.x - field.x);
+                    e.x += Math.cos(angle) * knockbackForce;
+                    e.y += Math.sin(angle) * knockbackForce;
                 }
             });
+        }
+        
+        // --- TIME EATER BUG FIX (Part 1) ---
+        // This is the new, OPTIMIZED logic that runs inside the enemy loop.
+        if (timeEater && !e.boss && !e.eatenBy) {
+            for (const zone of slowZones) {
+                if (Math.hypot(e.x - zone.x, e.y - zone.y) < zone.r) {
+                    e.eatenBy = zone;
+                    break; // Enemy can only be eaten by one zone at a time.
+                }
+            }
         }
         
         if (e.eatenBy) {
@@ -441,36 +455,12 @@ export function gameTick(mx, my) {
             e.y += e.dy;
             e.r *= 0.95;
             if (e.r < 2) {
-                const timeEater = state.enemies.find(b => b.id === 'time_eater');
-                if (timeEater) {
-                    timeEater.hp -= 5;
-                }
+                if (timeEater) timeEater.hp -= 5;
                 utils.spawnParticles(state.particles, e.x, e.y, "#d63031", 10, 2, 15);
                 state.enemies.splice(i, 1);
                 continue;
             }
-        } 
-        // MODIFICATION #2: A new movement state for when an enemy is flying from Kinetic Overload.
-        // This takes priority over all other movement logic except being eaten.
-        else if (e.knockbackUntil && e.knockbackUntil > Date.now()) {
-            e.x += e.knockbackDx;
-            e.y += e.knockbackDy;
-            
-            // Apply friction to slow the enemy down
-            e.knockbackDx *= 0.98;
-            e.knockbackDy *= 0.98;
-
-            // Make the enemy bounce off walls
-            if (e.x < e.r || e.x > canvas.width - e.r) {
-                e.x = Math.max(e.r, Math.min(canvas.width - e.r, e.x));
-                e.knockbackDx *= -0.8;
-            }
-            if (e.y < e.r || e.y > canvas.height - e.r) {
-                e.y = Math.max(e.r, Math.min(canvas.height - e.r, e.y));
-                e.knockbackDy *= -0.8;
-            }
-        }
-        else if(!e.frozen && !e.hasCustomMovement){ 
+        } else if(!e.frozen && !e.hasCustomMovement){ 
             let tgt = state.decoy ? state.decoy : state.player;
             let enemySpeedMultiplier = 1;
             
@@ -526,6 +516,7 @@ export function gameTick(mx, my) {
         const pDist = Math.hypot(state.player.x-e.x,state.player.y-e.y);
         if(pDist < e.r+state.player.r){
             if (state.player.talent_states.phaseMomentum.active && !e.boss) {
+                // Phasing through non-boss enemies
             } else {
                 state.player.talent_states.phaseMomentum.lastDamageTime = Date.now();
                 state.player.talent_states.phaseMomentum.active = false;
@@ -534,35 +525,21 @@ export function gameTick(mx, my) {
                 if(!state.player.shield){ 
                     let damage = e.boss ? (e.enraged ? 20 : 10) : 1; 
                     if (state.player.berserkUntil > Date.now()) damage *= 2;
-                    
                     damage *= state.player.talent_modifiers.damage_taken_multiplier;
+                    const wouldBeFatal = (state.player.health - damage) <= 0;
 
-                    const reactiveRank = state.player.purchasedTalents.get('reactive-plating');
-                    if(reactiveRank && damage >= 20 && Date.now() > state.player.talent_states.reactivePlating.cooldownUntil) {
-                        const shieldDuration = [1, 2, 3][reactiveRank-1] * 1000;
-                        addStatusEffect('Reactive Shield', '🛡️', shieldDuration);
-                        utils.spawnParticles(state.particles, state.player.x, state.player.y, '#f1c40f', 40, 4, 35, 3);
-                        state.player.talent_states.reactivePlating.cooldownUntil = Date.now() + 30000;
+                    if(wouldBeFatal && state.player.purchasedTalents.has('contingency-protocol') && !state.player.contingencyUsed) {
+                        state.player.contingencyUsed = true;
+                        state.player.health = 1;
+                        addStatusEffect('Contingency Protocol', '💪', 3000);
+                        const invulnShieldEndTime = Date.now() + 3000;
+                        state.player.shield = true;
+                        state.player.shield_end_time = invulnShieldEndTime;
+                        setTimeout(()=> { if(state.player.shield_end_time <= invulnShieldEndTime) state.player.shield = false; }, 3000);
+                        utils.spawnParticles(state.particles, state.player.x, state.player.y, '#f1c40f', 100, 8, 50);
                     } else {
-                        const wouldBeFatal = (state.player.health - damage) <= 0;
-                        if(wouldBeFatal && state.player.purchasedTalents.has('contingency-protocol') && !state.player.contingencyUsed) {
-                            state.player.contingencyUsed = true;
-                            state.player.health = 1;
-                            addStatusEffect('Contingency Protocol', '💪', 3000);
-                            const invulnShieldEndTime = Date.now() + 3000;
-                            state.player.shield = true;
-                            state.player.shield_end_time = invulnShieldEndTime;
-                            setTimeout(()=> {
-                                if(state.player.shield_end_time <= invulnShieldEndTime){
-                                    state.player.shield = false;
-                                }
-                            }, 3000);
-                            utils.spawnParticles(state.particles, state.player.x, state.player.y, '#f1c40f', 100, 8, 50);
-                        } else {
-                            state.player.health -= damage; 
-                        }
+                        state.player.health -= damage; 
                     }
-                    
                     play('hit'); 
                     if(e.onDamage) e.onDamage(e, damage, state.player, state, spawnParticlesCallback); 
                     if(state.player.health<=0) state.gameOver=true; 
@@ -572,12 +549,24 @@ export function gameTick(mx, my) {
                         state.effects.push({ type: 'shockwave', caster: state.player, x: state.player.x, y: state.player.y, radius: 0, maxRadius: 250, speed: 1000, startTime: Date.now(), hitEnemies: new Set(), damage: 0, color: 'rgba(255, 255, 255, 0.5)' });
                         play('shockwave');
                     }
-                } 
+                }
+                
+                // --- COLLISION JIGGLE FIX ---
+                // Instead of moving the player, add this collision to the aggregate push vector.
+                const overlap = (e.r + state.player.r) - pDist;
                 const ang=Math.atan2(state.player.y-e.y,state.player.x-e.x); 
-                state.player.x=e.x+Math.cos(ang)*(e.r+state.player.r); 
-                state.player.y=e.y+Math.sin(ang)*(e.r+state.player.r);
+                totalPlayerPushX += Math.cos(ang) * overlap;
+                totalPlayerPushY += Math.sin(ang) * overlap;
+                playerCollisions++;
             }
         }
+    }
+
+    // --- COLLISION JIGGLE FIX ---
+    // After checking all enemies, apply the final aggregated push to the player.
+    if (playerCollisions > 0) {
+        state.player.x += totalPlayerPushX / playerCollisions;
+        state.player.y += totalPlayerPushY / playerCollisions;
     }
 
     for (let i = state.pickups.length - 1; i >= 0; i--) {
@@ -588,6 +577,17 @@ export function gameTick(mx, my) {
             continue;
         }
 
+        // --- TIME EATER BUG FIX (Part 2) ---
+        // New, optimized logic inside the pickup loop.
+        if (timeEater && !p.eatenBy) {
+            for (const zone of slowZones) {
+                if (Math.hypot(p.x - zone.x, p.y - zone.y) < zone.r) {
+                    p.eatenBy = zone;
+                    break;
+                }
+            }
+        }
+
         if (p.eatenBy) {
             const pullX = p.eatenBy.x - p.x;
             const pullY = p.eatenBy.y - p.y;
@@ -595,7 +595,6 @@ export function gameTick(mx, my) {
             p.vy = (pullY / (Math.hypot(pullX, pullY) || 1)) * 3;
             p.r *= 0.95;
             if (p.r < 2) {
-                const timeEater = state.enemies.find(e => e.id === 'time_eater');
                 if (timeEater) timeEater.hp = Math.min(timeEater.maxHP, timeEater.hp + 10);
                 utils.spawnParticles(state.particles, p.x, p.y, "#fff", 10, 2, 15);
                 state.pickups.splice(i, 1);
@@ -658,15 +657,9 @@ export function gameTick(mx, my) {
         }
     }
 
-    const timeEater = state.enemies.find(e => e.id === 'time_eater');
-    const slowZones = state.effects.filter(e => e.type === 'slow_zone');
-    if (timeEater && slowZones.length > 0) {
-        for(const zone of slowZones) {
-            for (let i = state.pickups.length - 1; i >= 0; i--) { const p = state.pickups[i]; if (!p.eatenBy && Math.hypot(p.x - zone.x, p.y - zone.y) < zone.r) { p.eatenBy = zone; } }
-            for (let i = state.enemies.length - 1; i >= 0; i--) { const e = state.enemies[i]; if (!e.boss && !e.eatenBy && Math.hypot(e.x - zone.x, e.y - zone.y) < zone.r) { e.eatenBy = zone; } }
-        }
-    }
-
+    // --- TIME EATER BUG FIX (Part 3) ---
+    // The old, inefficient logic block that was here has been REMOVED.
+    
     state.effects.forEach((effect, index) => {
         if (effect.type === 'shockwave') {
             const elapsed = (Date.now() - effect.startTime) / 1000;
