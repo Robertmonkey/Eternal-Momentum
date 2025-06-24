@@ -612,9 +612,15 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     background-color: rgba(0, 255, 255, 0.2);
     border: 1px solid var(--border-color);
 }
-#levelSelectMenuBtn {
+#restartStageBtn:hover {
+    background-color: rgba(0, 255, 255, 0.4);
+}
+#ascensionMenuBtn, #levelSelectMenuBtn {
     background-color: rgba(155, 89, 182, 0.4);
     border-color: rgba(155, 89, 182, 1);
+}
+#ascensionMenuBtn:hover, #levelSelectMenuBtn:hover {
+    background-color: rgba(155, 89, 182, 0.6);
 }
 
 #custom-confirm {
