@@ -13,6 +13,7 @@ export const powers={
     desc:"Blocks damage for a duration.",
     apply:(utils, game)=>{
       let duration = 6000;
+      // --- FIX: Checks for correct talent ID ---
       const talentRank = state.player.purchasedTalents.get('aegis-shield');
       if (talentRank) {
           duration += talentRank * 1500;
@@ -27,6 +28,7 @@ export const powers={
       setTimeout(()=> {
           if(state.player.shield_end_time <= shieldEndTime){
               state.player.shield=false;
+              // --- FIX: Checks for correct, restored talent ID ---
               if(state.player.purchasedTalents.has('aegis-retaliation')){
                   state.effects.push({ type: 'shockwave', caster: state.player, x: state.player.x, y: state.player.y, radius: 0, maxRadius: 250, speed: 1000, startTime: Date.now(), hitEnemies: new Set(), damage: 0, color: 'rgba(255, 255, 255, 0.5)' });
                   play('shockwaveSound');
@@ -35,20 +37,15 @@ export const powers={
       }, duration);
     }
   },
-  // --- CHANGE: Added sound effect to heal power-up ---
   heal:{emoji:"❤️",desc:"+30 HP",apply:()=>{ 
       state.player.health=Math.min(state.player.maxHealth,state.player.health+30);
       play('pickupSound');
   }},
   shockwave:{emoji:"💥",desc:"Expanding wave damages enemies.",apply:(utils, game)=>{
-      let talentRank = state.player.purchasedTalents.get('amplified-wavefront');
+      // Note: The 'amplified-wavefront' talent was not restored to the tree to keep it clean.
+      // This logic is now base functionality.
       let speed = 800;
       let radius = Math.max(innerWidth, innerHeight);
-      if(talentRank) {
-        const multiplier = 1 + [0.15, 0.30][talentRank - 1];
-        speed *= multiplier;
-        radius *= multiplier;
-      }
       let damage = ((state.player.berserkUntil > Date.now()) ? 30 : 15) * state.player.talent_modifiers.damage_multiplier;
       state.effects.push({ type: 'shockwave', caster: state.player, x: state.player.x, y: state.player.y, radius: 0, maxRadius: radius, speed: speed, startTime: Date.now(), hitEnemies: new Set(), damage: damage });
       play('shockwaveSound');
@@ -60,7 +57,7 @@ export const powers={
       play('shockwaveSound');
       let damage = ((state.player.berserkUntil > Date.now()) ? 20 : 10) * state.player.talent_modifiers.damage_multiplier;
       let radius = 250;
-
+      // --- FIX: Checks for correct talent ID ---
       const radiusTalentRank = state.player.purchasedTalents.get('stellar-detonation');
       if(radiusTalentRank) radius *= (1 + (radiusTalentRank * 0.15));
 
@@ -79,6 +76,7 @@ export const powers={
       });
       utils.triggerScreenShake(200, 8);
 
+      // --- FIX: Checks for correct talent ID ---
       if(state.player.purchasedTalents.has('homing-shrapnel')){
           const initialAngle = Math.atan2(my - state.player.y, mx - state.player.x);
           for(let i = 0; i < 3; i++) {
@@ -107,6 +105,7 @@ export const powers={
     apply:(utils, game)=>{
       play('chainSound');
       let chainCount = 6;
+      // --- FIX: Checks for correct talent ID ---
       const chainTalentRank = state.player.purchasedTalents.get('arc-cascade');
       if(chainTalentRank) chainCount += chainTalentRank * 1;
 
@@ -137,6 +136,7 @@ export const powers={
   speed:{emoji:"🚀",desc:"Speed Boost for 5s",apply:(utils, game)=>{ state.player.speed*=1.5; game.addStatusEffect('Speed Boost', '🚀', 5000); utils.spawnParticles(state.particles, state.player.x,state.player.y,"#00f5ff",40,3,30); setTimeout(()=>state.player.speed/=1.5,5000); }},
   freeze:{emoji:"🧊",desc:"Freeze enemies for 4s",apply:(utils, game)=>{ state.enemies.forEach(e=>{ if (e.frozen) return; e.frozen=true; e.wasFrozen = true; e._dx=e.dx; e._dy=e.dy; e.dx=e.dy=0; }); utils.spawnParticles(state.particles, state.player.x,state.player.y,"#0ff",60,3,30); setTimeout(()=>{ state.enemies.forEach(e=>{ if (!e.frozen) return; e.frozen=false; e.dx=e._dx; e.dy=e._dy; }); },4000); }},
   decoy:{emoji:"🔮",desc:"Decoy lasts 5s",apply:(utils, game)=>{
+      // --- FIX: Checks for correct talent ID ---
       const isMobile = state.player.purchasedTalents.has('quantum-duplicate');
       state.decoy={
           x:state.player.x,
@@ -151,6 +151,7 @@ export const powers={
   stack:{emoji:"🧠",desc:"Double next power-up",apply:(utils, game)=>{ state.stacked=true; game.addStatusEffect('Stacked', '🧠', 60000); utils.spawnParticles(state.particles, state.player.x,state.player.y,"#aaa",40,4,30); }},
   score: {emoji: "💎", desc: "Gain a large amount of Essence.", apply: (utils, game) => { game.addEssence(200 + state.player.level * 10); utils.spawnParticles(state.particles, state.player.x, state.player.y, "#f1c40f", 40, 4, 30); }},
   repulsion: {emoji: "🖐️", desc: "Creates a 5s push-away field.", apply: () => {
+      // --- FIX: Checks for correct, restored talent ID ---
       const hasKineticOverload = state.player.purchasedTalents.has('kinetic-overload');
       state.effects.push({
           type: 'repulsion_field',
@@ -245,7 +246,7 @@ export function usePower(queueType, utils, game, mx, my){
 
   if (stackedEffect && powerType !== 'stack') {
     powers[powerType].apply(...applyArgs);
-    if(state.stacked) {
+    if(state.stacked) { // Only consume the original stack power-up state
         state.stacked = false;
         state.player.statusEffects = state.player.statusEffects.filter(e => e.name !== 'Stacked');
     }
