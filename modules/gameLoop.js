@@ -28,7 +28,7 @@ const spawnParticlesCallback = (x, y, c, n, spd, life, r) => utils.spawnParticle
 export function addStatusEffect(name, emoji, duration) {
     const now = Date.now();
     
-    // --- FIX: Check for the correct talent ID 'unstoppable-frenzy' ---
+    // --- FIX: Checks for correct talent ID ---
     if (name === 'Stunned' || name === 'Petrified' || name === 'Slowed') {
         const isBerserk = state.player.berserkUntil > now;
         const hasTalent = state.player.purchasedTalents.has('unstoppable-frenzy');
