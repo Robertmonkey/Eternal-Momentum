@@ -1,22 +1,16 @@
 // modules/audio.js
 
 export const AudioManager = {
-    // --- STATE ---
     unlocked: false,
     userMuted: false,
-    sfxVolume: 0.8, // Adjusted default SFX volume slightly
+    sfxVolume: 0.8,
     musicVolume: 0.5,
-    
-    // --- Element Storage ---
     soundElements: {},
     musicPlaylist: [],
-    
-    // --- Music State ---
     currentTrackIndex: -1,
     currentMusic: null,
     isFading: false,
     
-    // --- SETUP ---
     setup(audioElements, soundBtn) {
         audioElements.forEach(el => {
             this.soundElements[el.id] = el;
@@ -24,9 +18,7 @@ export const AudioManager = {
                 this.musicPlaylist.push(el);
             }
         });
-        
         this.musicPlaylist.sort(() => Math.random() - 0.5);
-        
         this.soundBtn = soundBtn;
         this.updateButtonIcon();
     },
@@ -42,12 +34,10 @@ export const AudioManager = {
         this.playMusic();
     },
     
-    // --- GENERAL CONTROLS ---
     toggleMute() {
         if (!this.unlocked) this.unlockAudio();
         this.userMuted = !this.userMuted;
         
-        // Mute looping elements directly
         Object.values(this.soundElements).forEach(el => {
             if (el.loop) el.muted = this.userMuted;
         });
@@ -65,16 +55,10 @@ export const AudioManager = {
         if(this.soundBtn) this.soundBtn.innerText = this.userMuted ? "🔇" : "🔊";
     },
 
-    // --- SFX ---
-    // --- CHANGE: This is the new, professional implementation for SFX playback ---
     playSfx(soundId) {
         if (!this.unlocked || this.userMuted) return;
-
-        // Find the original audio element to get its source path
         const originalSfx = this.soundElements[soundId];
-        
         if (originalSfx) {
-            // Create a new, independent Audio object for this specific playback
             const sfxInstance = new Audio(originalSfx.src);
             sfxInstance.volume = this.sfxVolume;
             sfxInstance.play().catch(e => console.warn(`SFX instance for ${soundId} failed to play.`, e));
@@ -98,27 +82,40 @@ export const AudioManager = {
             sfx.pause();
         }
     },
+    
+    // --- CHANGE: New function to handle audio when tab is hidden/closed ---
+    handleVisibilityChange() {
+        if (!this.unlocked) return; // Don't do anything if audio isn't active
+        
+        if (document.hidden) {
+            // Pause current music if it's playing
+            if (this.currentMusic && !this.currentMusic.paused) {
+                this.currentMusic.pause();
+            }
+            // Stop any other looping sounds
+            this.stopLoopingSfx('beamHumSound');
+        } else {
+            // If not muted by the user, resume music when tab becomes visible
+            if (!this.userMuted && this.currentMusic && this.currentMusic.paused) {
+                this.currentMusic.play().catch(e => {});
+            }
+        }
+    },
 
-    // --- MUSIC SYSTEM ---
     _fade(audioElement, startVol, endVol, duration, onComplete) {
         if (this.isFading && endVol > 0) return;
         this.isFading = true;
-
         let currentVol = startVol;
         audioElement.volume = currentVol;
         const interval = 50;
         const step = (endVol - startVol) / (duration / interval);
-
         const fade = setInterval(() => {
             currentVol += step;
             if ((step > 0 && currentVol >= endVol) || (step < 0 && currentVol <= endVol)) {
                 currentVol = endVol;
             }
-
-            // Ensure volume is not muted by the master toggle during a fade
             audioElement.muted = false; 
             audioElement.volume = currentVol;
-
             if (currentVol === endVol) {
                 clearInterval(fade);
                 this.isFading = false;
@@ -128,7 +125,7 @@ export const AudioManager = {
     },
 
     fadeOutMusic(duration = 2000) {
-        if (this.currentMusic && !this.isFading) {
+        if (this.currentMusic) {
             const trackToFade = this.currentMusic;
             this._fade(trackToFade, trackToFade.volume, 0, duration, () => {
                 trackToFade.pause();
@@ -141,18 +138,14 @@ export const AudioManager = {
 
     crossfadeToNextTrack(duration = 3000) {
         if (this.isFading || this.userMuted) return;
-
         if (this.currentMusic) {
              this.fadeOutMusic(duration);
         }
-        
         this.currentTrackIndex = (this.currentTrackIndex + 1) % this.musicPlaylist.length;
         const nextTrack = this.musicPlaylist[this.currentTrackIndex];
         this.currentMusic = nextTrack;
-        
         nextTrack.currentTime = 0;
         nextTrack.play().catch(e => {});
-
         this._fade(nextTrack, 0, this.musicVolume, duration);
     },
     
