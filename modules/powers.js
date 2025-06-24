@@ -4,8 +4,7 @@ import { AudioManager } from './audio.js';
 import * as utils from './utils.js';
 
 function play(soundId) {
-    const soundElement = document.getElementById(soundId + "Sound");
-    if (soundElement) AudioManager.playSfx(soundElement);
+    AudioManager.playSfx(soundId);
 }
 
 export const powers={
@@ -30,15 +29,19 @@ export const powers={
               state.player.shield=false;
               if(state.player.purchasedTalents.has('aegis-retaliation')){
                   state.effects.push({ type: 'shockwave', caster: state.player, x: state.player.x, y: state.player.y, radius: 0, maxRadius: 250, speed: 1000, startTime: Date.now(), hitEnemies: new Set(), damage: 0, color: 'rgba(255, 255, 255, 0.5)' });
-                  play('shockwave');
+                  play('shockwaveSound');
               }
           }
       }, duration);
     }
   },
-  heal:{emoji:"❤️",desc:"+30 HP",apply:()=>{ state.player.health=Math.min(state.player.maxHealth,state.player.health+30); }},
+  // --- CHANGE: Added sound effect to heal power-up ---
+  heal:{emoji:"❤️",desc:"+30 HP",apply:()=>{ 
+      state.player.health=Math.min(state.player.maxHealth,state.player.health+30);
+      play('pickupSound');
+  }},
   shockwave:{emoji:"💥",desc:"Expanding wave damages enemies.",apply:(utils, game)=>{
-      let talentRank = state.player.purchasedTalents.get('amplified-wavefront'); // Corrected talent ID
+      let talentRank = state.player.purchasedTalents.get('amplified-wavefront');
       let speed = 800;
       let radius = Math.max(innerWidth, innerHeight);
       if(talentRank) {
@@ -48,23 +51,19 @@ export const powers={
       }
       let damage = ((state.player.berserkUntil > Date.now()) ? 30 : 15) * state.player.talent_modifiers.damage_multiplier;
       state.effects.push({ type: 'shockwave', caster: state.player, x: state.player.x, y: state.player.y, radius: 0, maxRadius: radius, speed: speed, startTime: Date.now(), hitEnemies: new Set(), damage: damage });
-      play('shockwave');
+      play('shockwaveSound');
   }},
-  
-  // --- CORRECTED MISSILE OBJECT ---
   missile:{
     emoji:"🎯",
     desc:"AoE explosion damages nearby.",
     apply:(utils, game, mx, my)=>{
-      play('shockwave');
+      play('shockwaveSound');
       let damage = ((state.player.berserkUntil > Date.now()) ? 20 : 10) * state.player.talent_modifiers.damage_multiplier;
       let radius = 250;
 
-      // POLISH FIX: Corrected talent ID from 'havoc-missile'
       const radiusTalentRank = state.player.purchasedTalents.get('stellar-detonation');
       if(radiusTalentRank) radius *= (1 + (radiusTalentRank * 0.15));
 
-      // PRIMARY FIX: Changed explosion origin from mx, my to the player's position
       state.effects.push({ 
           type: 'shockwave', 
           caster: state.player, 
@@ -80,15 +79,13 @@ export const powers={
       });
       utils.triggerScreenShake(200, 8);
 
-      // POLISH FIX: Corrected talent ID from 'seeking-shrapnel'
       if(state.player.purchasedTalents.has('homing-shrapnel')){
           const initialAngle = Math.atan2(my - state.player.y, mx - state.player.x);
           for(let i = 0; i < 3; i++) {
-              const angleOffset = (i - 1) * 0.5; // spread them out
+              const angleOffset = (i - 1) * 0.5;
               const finalAngle = initialAngle + angleOffset;
               state.effects.push({
                   type: 'seeking_shrapnel',
-                  // FIX: Changed shrapnel origin to player's position
                   x: state.player.x,
                   y: state.player.y,
                   dx: Math.cos(finalAngle) * 4,
@@ -104,15 +101,14 @@ export const powers={
       }
     }
   },
-
   chain:{
     emoji:"⚡",
     desc:"Chain lightning hits multiple targets.",
     apply:(utils, game)=>{
-      play('chain');
+      play('chainSound');
       let chainCount = 6;
-      const chainTalentRank = state.player.purchasedTalents.get('arc-cascade'); // Corrected talent ID
-      if(chainTalentRank) chainCount += chainTalentRank * 1; // Corrected talent effect
+      const chainTalentRank = state.player.purchasedTalents.get('arc-cascade');
+      if(chainTalentRank) chainCount += chainTalentRank * 1;
 
       const targets = [];
       let currentTarget = state.player;
@@ -137,7 +133,7 @@ export const powers={
       state.effects.push({ type: 'chain_lightning', targets: targets, links: [], startTime: Date.now(), durationPerLink: 80, damage: damage, caster: state.player });
     }
   },
-  gravity:{emoji:"🌀",desc:"Pulls enemies for 1s",apply:(utils, game)=>{ play('gravity'); state.gravityActive=true; state.gravityEnd=Date.now()+1000; utils.spawnParticles(state.particles, innerWidth/2, innerHeight/2,"#9b59b6",100,4,40); }},
+  gravity:{emoji:"🌀",desc:"Pulls enemies for 1s",apply:(utils, game)=>{ play('gravitySound'); state.gravityActive=true; state.gravityEnd=Date.now()+1000; utils.spawnParticles(state.particles, innerWidth/2, innerHeight/2,"#9b59b6",100,4,40); }},
   speed:{emoji:"🚀",desc:"Speed Boost for 5s",apply:(utils, game)=>{ state.player.speed*=1.5; game.addStatusEffect('Speed Boost', '🚀', 5000); utils.spawnParticles(state.particles, state.player.x,state.player.y,"#00f5ff",40,3,30); setTimeout(()=>state.player.speed/=1.5,5000); }},
   freeze:{emoji:"🧊",desc:"Freeze enemies for 4s",apply:(utils, game)=>{ state.enemies.forEach(e=>{ if (e.frozen) return; e.frozen=true; e.wasFrozen = true; e._dx=e.dx; e._dy=e.dy; e.dx=e.dy=0; }); utils.spawnParticles(state.particles, state.player.x,state.player.y,"#0ff",60,3,30); setTimeout(()=>{ state.enemies.forEach(e=>{ if (!e.frozen) return; e.frozen=false; e.dx=e._dx; e.dy=e._dy; }); },4000); }},
   decoy:{emoji:"🔮",desc:"Decoy lasts 5s",apply:(utils, game)=>{
@@ -164,9 +160,9 @@ export const powers={
           startTime: Date.now(),
           endTime: Date.now() + 5000,
           isOverloaded: hasKineticOverload,
-          hitEnemies: new Set() // This is required for the "uncontrollable flight" mechanic
+          hitEnemies: new Set()
       });
-      play('shockwave');
+      play('shockwaveSound');
   }},
   orbitalStrike: {emoji: "☄️", desc: "Calls 3 meteors on random enemies", apply: () => {
       const availableTargets = state.enemies.filter(e => !e.boss);
@@ -185,7 +181,7 @@ export const powers={
             }
         }
     }},
-  black_hole: {emoji: "⚫", desc: "Pulls and damages enemies for 4s", apply: () => { let damage = ((state.player.berserkUntil > Date.now()) ? 6 : 3) * state.player.talent_modifiers.damage_multiplier; let radius = 350; state.effects.push({ type: 'black_hole', x: state.player.x, y: state.player.y, radius: 20, maxRadius: radius, damageRate: 200, lastDamage: new Map(), endTime: Date.now() + 4000, damage: damage, caster: state.player }); play('gravity'); }},
+  black_hole: {emoji: "⚫", desc: "Pulls and damages enemies for 4s", apply: () => { let damage = ((state.player.berserkUntil > Date.now()) ? 6 : 3) * state.player.talent_modifiers.damage_multiplier; let radius = 350; state.effects.push({ type: 'black_hole', x: state.player.x, y: state.player.y, radius: 20, maxRadius: radius, damageRate: 200, lastDamage: new Map(), endTime: Date.now() + 4000, damage: damage, caster: state.player }); play('gravitySound'); }},
   berserk: {emoji: "💢", desc: "8s: Deal 2x damage, take 2x damage", apply:(utils, game)=>{ state.player.berserkUntil = Date.now() + 8000; game.addStatusEffect('Berserk', '💢', 8000); utils.spawnParticles(state.particles, state.player.x, state.player.y, "#e74c3c", 40, 3, 30); }},
   ricochetShot: {emoji: "🔄", desc: "Fires a shot that bounces 6 times", apply:(utils, game, mx, my) => {
       let bounceCount = 6;
@@ -249,7 +245,7 @@ export function usePower(queueType, utils, game, mx, my){
 
   if (stackedEffect && powerType !== 'stack') {
     powers[powerType].apply(...applyArgs);
-    if(state.stacked) { // Only consume the original stack power-up state
+    if(state.stacked) {
         state.stacked = false;
         state.player.statusEffects = state.player.statusEffects.filter(e => e.name !== 'Stacked');
     }
