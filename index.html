@@ -32,7 +32,7 @@
   <div id="vignette"></div>
   <div id="unlock-notification"></div>
 
-  <div id="gameOverMenu">
+  <div id="gameOverMenu" class="modal-background">
       <h1>GAME OVER</h1>
       <div id="gameOverActions">
           <button id="restartStageBtn">Restart Stage</button>
@@ -41,7 +41,7 @@
   </div>
 
   <div id="custom-confirm">
-      <div id="custom-confirm-box">
+      <div id="custom-confirm-box" class="modal-background">
           <h2 id="custom-confirm-title"></h2>
           <p id="custom-confirm-text"></p>
           <div id="custom-confirm-actions">
@@ -98,7 +98,7 @@
   <div id="bossHpContainer"></div>
 
   <div id="levelSelectModal">
-    <div id="modal-content">
+    <div id="modal-content" class="modal-background">
         <h2 class="modal-title">SELECT STAGE</h2>
         <div id="level-select-list-container">
             <div id="level-select-list">
@@ -113,7 +113,7 @@
   </div>
   
   <div id="ascensionGridModal">
-    <div id="ascension-grid-container">
+    <div id="ascension-grid-container" class="modal-background">
         <div class="ascension-header">
             <h1>ASCENSION CONDUIT</h1>
             <div class="ap-display-header">
@@ -130,23 +130,49 @@
     </div>
   </div>
   
-  <audio id="pickupSound" src="./assets/pickup.mp3" preload="auto"></audio>
-  <audio id="hitSound" src="./assets/hit.mp3" preload="auto"></audio>
-  <audio id="shockwaveSound" src="./assets/shockwave.mp3" preload="auto"></audio>
-  <audio id="chainSound" src="./assets/chain.mp3" preload="auto"></audio>
-  <audio id="gravitySound" src="./assets/gravity.mp3" preload="auto"></audio>
-  <audio id="bgMusic" src="./assets/music.mp3" loop preload="auto"></audio>
-  <audio id="chargeUpSound" src="./assets/chargeUp.mp3" preload="auto"></audio>
-  <audio id="chargeDashSound" src="./assets/chargeDash.mp3" preload="auto"></audio>
-  <audio id="magicDispelSound" src="./assets/magicDispel.mp3" preload="auto"></audio>
-  <audio id="glitchSound" src="./assets/glitch.mp3" preload="auto"></audio>
-  <audio id="systemErrorSound" src="./assets/systemError.mp3" preload="auto"></audio>
-  <audio id="beamHumSound" src="./assets/beamHum.mp3" preload="auto" loop></audio>
-  <audio id="stoneCrackingSound" src="./assets/stoneCracking.mp3" preload="auto"></audio>
-  <audio id="powerSirenSound" src="./assets/powerSiren.mp3" preload="auto"></audio>
-  <audio id="annihilatorBeamSound" src="./assets/annihilatorBeam.mp3" preload="auto"></audio>
-  <audio id="phaseShiftSound" src="./assets/phaseShift.mp3" preload="auto"></audio>
-  <audio id="finalBossPhaseSound" src="./assets/finalBossPhase.mp3" preload="auto"></audio>
+  <audio id="annihilatorBeamSound" src="./assets/annihilatorBeamSound.mp3" preload="auto"></audio>
+  <audio id="architectBuild" src="./assets/architectBuild.mp3" preload="auto"></audio>
+  <audio id="beamHumSound" src="./assets/beamHumSound.mp3" preload="auto" loop></audio>
+  <audio id="bossDefeatSound" src="./assets/bossDefeatSound.mp3" preload="auto"></audio>
+  <audio id="bossSpawnSound" src="./assets/bossSpawnSound.mp3" preload="auto"></audio>
+  <audio id="chainSound" src="./assets/chainSound.mp3" preload="auto"></audio>
+  <audio id="chargeDashSound" src="./assets/chargeDashSound.mp3" preload="auto"></audio>
+  <audio id="chargeUpSound" src="./assets/chargeUpSound.mp3" preload="auto"></audio>
+  <audio id="empDischarge" src="./assets/empDischarge.mp3" preload="auto"></audio>
+  <audio id="finalBossPhaseSound" src="./assets/finalBossPhaseSound.mp3" preload="auto"></audio>
+  <audio id="glitchSound" src="./assets/glitchSound.mp3" preload="auto"></audio>
+  <audio id="gravitySound" src="./assets/gravitySound.mp3" preload="auto"></audio>
+  <audio id="hitSound" src="./assets/hitSound.mp3" preload="auto"></audio>
+  <audio id="magicDispelSound" src="./assets/magicDispelSound.mp3" preload="auto"></audio>
+  <audio id="mirrorSwap" src="./assets/mirrorSwap.mp3" preload="auto"></audio>
+  <audio id="phaseShiftSound" src="./assets/phaseShiftSound.mp3" preload="auto"></audio>
+  <audio id="pickupSound" src="./assets/pickupSound.mp3" preload="auto"></audio>
+  <audio id="powerSirenSound" src="./assets/powerSirenSound.mp3" preload="auto"></audio>
+  <audio id="puppeteerConvert" src="./assets/puppeteerConvert.mp3" preload="auto"></audio>
+  <audio id="reflectorOnHit" src="./assets/reflectorOnHit.mp3" preload="auto"></audio>
+  <audio id="shieldBreak" src="./assets/shieldBreak.mp3" preload="auto"></audio>
+  <audio id="shockwaveSound" src="./assets/shockwaveSound.mp3" preload="auto"></audio>
+  <audio id="splitterOnDeath" src="./assets/splitterOnDeath.mp3" preload="auto"></audio>
+  <audio id="stoneCrackingSound" src="./assets/stoneCrackingSound.mp3" preload="auto"></audio>
+  <audio id="systemErrorSound" src="./assets/systemErrorSound.mp3" preload="auto"></audio>
+  <audio id="talentError" src="./assets/talentError.mp3" preload="auto"></audio>
+  <audio id="talentPurchase" src="./assets/talentPurchase.mp3" preload="auto"></audio>
+  <audio id="uiClickSound" src="./assets/uiClickSound.mp3" preload="auto"></audio>
+  <audio id="uiHoverSound" src="./assets/uiHoverSound.mp3" preload="auto"></audio>
+  <audio id="uiModalClose" src="./assets/uiModalClose.mp3" preload="auto"></audio>
+  <audio id="uiModalOpen" src="./assets/uiModalOpen.mp3" preload="auto"></audio>
+  <audio id="vampireHeal" src="./assets/vampireHeal.mp3" preload="auto"></audio>
+
+  <audio id="bgMusic_01" src="./assets/bgMusic_01.mp3" loop preload="auto"></audio>
+  <audio id="bgMusic_02" src="./assets/bgMusic_02.mp3" loop preload="auto"></audio>
+  <audio id="bgMusic_03" src="./assets/bgMusic_03.mp3" loop preload="auto"></audio>
+  <audio id="bgMusic_04" src="./assets/bgMusic_04.mp3" loop preload="auto"></audio>
+  <audio id="bgMusic_05" src="./assets/bgMusic_05.mp3" loop preload="auto"></audio>
+  <audio id="bgMusic_06" src="./assets/bgMusic_06.mp3" loop preload="auto"></audio>
+  <audio id="bgMusic_07" src="./assets/bgMusic_07.mp3" loop preload="auto"></audio>
+  <audio id="bgMusic_08" src="./assets/bgMusic_08.mp3" loop preload="auto"></audio>
+  <audio id="bgMusic_09" src="./assets/bgMusic_09.mp3" loop preload="auto"></audio>
+  <audio id="bgMusic_10" src="./assets/bgMusic_10.mp3" loop preload="auto"></audio>
   
   <script type="module" src="./main.js"></script>
 </body>
