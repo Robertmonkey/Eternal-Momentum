@@ -1,7 +1,7 @@
 // modules/talents.js
 
 export const TALENT_GRID_CONFIG = {
-    // --- CORE CONSTALLATION (Always Visible) ---
+    // --- CORE CONSTALLATION (Remains the same) ---
     core: {
         'core-nexus': {
             id: 'core-nexus',
@@ -27,7 +27,7 @@ export const TALENT_GRID_CONFIG = {
         }
     },
 
-    // --- AEGIS CONSTALLATION (Defense & Survival) ---
+    // --- AEGIS CONSTALLATION (Defense & Survival) - Reworked for more branching ---
     aegis: {
         color: 'var(--primary-glow)',
         'exo-weave-plating': {
@@ -40,6 +40,16 @@ export const TALENT_GRID_CONFIG = {
             position: { x: 30, y: 25 },
             prerequisites: ['core-nexus'],
         },
+        'solar-wind': {
+            id: 'solar-wind',
+            name: 'Solar Wind',
+            description: (rank, maxed) => `Increases base movement speed by ${maxed ? '12%' : '6%'}.`,
+            icon: '🏃',
+            maxRanks: 2,
+            costPerRank: [1, 2],
+            position: { x: 45, y: 40 },
+            prerequisites: ['exo-weave-plating'],
+        },
         'aegis-shield': {
             id: 'aegis-shield',
             name: 'Extended Capacitor',
@@ -48,39 +58,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '🔋',
             maxRanks: 2,
             costPerRank: [1, 1],
-            position: { x: 20, y: 40 },
-            prerequisites: ['exo-weave-plating'],
-        },
-        'aegis-retaliation': {
-            id: 'aegis-retaliation',
-            name: 'Aegis Retaliation',
-            powerPrerequisite: 'shield',
-            description: () => 'When your Shield breaks from damage or expires, it releases a defensive shockwave that pushes enemies away.',
-            icon: '💥',
-            maxRanks: 1,
-            costPerRank: [2],
-            position: { x: 10, y: 55 },
-            prerequisites: ['aegis-shield'],
-        },
-        'cryo-shatter': {
-            id: 'cryo-shatter',
-            name: 'Cryo-Shatter',
-            powerPrerequisite: 'freeze',
-            description: (rank, maxed) => `Enemies defeated while Frozen have a ${maxed ? '50%' : '25%'} chance to shatter, damaging nearby enemies.`,
-            icon: '❄️',
-            maxRanks: 2,
-            costPerRank: [2, 3],
-            position: { x: 5, y: 75 },
-            prerequisites: ['aegis-retaliation'],
-        },
-        'solar-wind': {
-            id: 'solar-wind',
-            name: 'Solar Wind',
-            description: (rank, maxed) => `Increases base movement speed by ${maxed ? '12%' : '6%'}.`,
-            icon: '🏃',
-            maxRanks: 2,
-            costPerRank: [1, 2],
-            position: { x: 40, y: 45 },
+            position: { x: 15, y: 40 },
             prerequisites: ['exo-weave-plating'],
         },
         'kinetic-overload': {
@@ -91,8 +69,30 @@ export const TALENT_GRID_CONFIG = {
             icon: '🖐️',
             maxRanks: 1,
             costPerRank: [3],
-            position: { x: 30, y: 60 },
+            position: { x: 45, y: 60 },
             prerequisites: ['solar-wind'],
+        },
+        'aegis-retaliation': {
+            id: 'aegis-retaliation',
+            name: 'Aegis Retaliation',
+            powerPrerequisite: 'shield',
+            description: () => 'When your Shield breaks from damage or expires, it releases a defensive shockwave that pushes enemies away.',
+            icon: '💥',
+            maxRanks: 1,
+            costPerRank: [2],
+            position: { x: 15, y: 60 },
+            prerequisites: ['aegis-shield'],
+        },
+        'cryo-shatter': {
+            id: 'cryo-shatter',
+            name: 'Cryo-Shatter',
+            powerPrerequisite: 'freeze',
+            description: (rank, maxed) => `Enemies defeated while Frozen have a ${maxed ? '50%' : '25%'} chance to shatter, damaging nearby enemies.`,
+            icon: '❄️',
+            maxRanks: 2,
+            costPerRank: [2, 3],
+            position: { x: 30, y: 65 },
+            prerequisites: ['aegis-retaliation', 'solar-wind'], // Cross-branch requirement
         },
         'phase-momentum': {
             id: 'phase-momentum',
@@ -101,12 +101,12 @@ export const TALENT_GRID_CONFIG = {
             icon: '👻',
             maxRanks: 1,
             costPerRank: [4],
-            position: { x: 30, y: 80 },
+            position: { x: 30, y: 85 },
             prerequisites: ['kinetic-overload', 'cryo-shatter'],
         }
     },
     
-    // --- HAVOC CONSTALLATION (Offense & Destruction) ---
+    // --- HAVOC CONSTALLATION (Offense & Destruction) - Reworked for more branching ---
     havoc: {
         color: '#ff8800',
         'high-frequency-emitters': {
@@ -138,30 +138,8 @@ export const TALENT_GRID_CONFIG = {
             icon: '🧭',
             maxRanks: 1,
             costPerRank: [2],
-            position: { x: 55, y: 58 },
+            position: { x: 55, y: 55 },
             prerequisites: ['stellar-detonation'],
-        },
-        'arc-cascade': {
-            id: 'arc-cascade',
-            name: 'Arc Cascade',
-            powerPrerequisite: 'chain',
-            description: (rank, maxed) => `Chain Lightning jumps to ${maxed ? '2' : '1'} additional targets.`,
-            icon: '⛓️',
-            maxRanks: 2,
-            costPerRank: [1, 1],
-            position: { x: 65, y: 70 },
-            prerequisites: ['homing-shrapnel'],
-        },
-        'volatile-finish': {
-            id: 'volatile-finish',
-            name: 'Volatile Finish',
-            powerPrerequisite: 'chain',
-            description: () => 'The final target of Chain Lightning erupts in a damaging explosion.',
-            icon: '💣',
-            maxRanks: 1,
-            costPerRank: [3],
-            position: { x: 70, y: 85 },
-            prerequisites: ['arc-cascade'],
         },
         'targeting-algorithm': {
             id: 'targeting-algorithm',
@@ -185,6 +163,28 @@ export const TALENT_GRID_CONFIG = {
             position: { x: 85, y: 55 },
             prerequisites: ['targeting-algorithm'],
         },
+        'arc-cascade': {
+            id: 'arc-cascade',
+            name: 'Arc Cascade',
+            powerPrerequisite: 'chain',
+            description: (rank, maxed) => `Chain Lightning jumps to ${maxed ? '2' : '1'} additional targets.`,
+            icon: '⛓️',
+            maxRanks: 2,
+            costPerRank: [2, 2],
+            position: { x: 70, y: 65 },
+            prerequisites: ['homing-shrapnel', 'unstable-payload'], // Cross-branch requirement
+        },
+        'volatile-finish': {
+            id: 'volatile-finish',
+            name: 'Volatile Finish',
+            powerPrerequisite: 'chain',
+            description: () => 'The final target of Chain Lightning erupts in a damaging explosion.',
+            icon: '💣',
+            maxRanks: 1,
+            costPerRank: [3],
+            position: { x: 65, y: 80 },
+            prerequisites: ['arc-cascade'],
+        },
         'unstoppable-frenzy': {
             id: 'unstoppable-frenzy',
             name: 'Unstoppable Frenzy',
@@ -192,9 +192,9 @@ export const TALENT_GRID_CONFIG = {
             description: () => 'While Berserk is active, you are immune to all Slow and Stun effects.',
             icon: '💢',
             maxRanks: 1,
-            costPerRank: [3],
-            position: { x: 90, y: 25 },
-            prerequisites: ['high-frequency-emitters'],
+            costPerRank: [2],
+            position: { x: 90, y: 20 },
+            prerequisites: ['high-frequency-emitters'], // New independent branch for Frenzy
         },
         'nova-pulsar': {
             id: 'nova-pulsar',
@@ -204,8 +204,8 @@ export const TALENT_GRID_CONFIG = {
             icon: '💫',
             maxRanks: 1,
             costPerRank: [3],
-            position: { x: 90, y: 70 },
-            prerequisites: ['unstable-payload'],
+            position: { x: 95, y: 45 },
+            prerequisites: ['unstoppable-frenzy', 'targeting-algorithm'], // Another cross-branch
         },
         'unstable-singularity': {
             id: 'unstable-singularity',
@@ -215,12 +215,12 @@ export const TALENT_GRID_CONFIG = {
             icon: '⚫',
             maxRanks: 1,
             costPerRank: [4],
-            position: { x: 70, y: 92 },
-            prerequisites: ['volatile-finish', 'nova-pulsar'],
+            position: { x: 80, y: 85 },
+            prerequisites: ['volatile-finish', 'nova-pulsar'], // Merges the two major sub-trees
         },
     },
 
-    // --- FLUX CONSTALLATION (Utility & Mastery) ---
+    // --- FLUX CONSTALLATION (Utility & Mastery) - Reworked for more branching feel ---
     flux: {
         color: 'var(--secondary-glow)',
         'essence-conduit': {
@@ -250,7 +250,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '⏳',
             maxRanks: 2,
             costPerRank: [1, 2],
-            position: { x: 40, y: 55 },
+            position: { x: 38, y: 55 }, // Spaced out
             prerequisites: ['resonance-magnet'],
         },
         'preordinance': {
@@ -260,7 +260,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '🎲',
             maxRanks: 1,
             costPerRank: [4],
-            position: { x: 35, y: 70 },
+            position: { x: 42, y: 70 }, // Spaced out
             prerequisites: ['temporal-anomaly'],
         },
         'power-scavenger': {
@@ -270,7 +270,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '💎',
             maxRanks: 2,
             costPerRank: [2, 2],
-            position: { x: 60, y: 55 },
+            position: { x: 62, y: 55 }, // Spaced out
             prerequisites: ['resonance-magnet'],
         },
         'quantum-duplicate': {
@@ -281,7 +281,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '👥',
             maxRanks: 1,
             costPerRank: [2],
-            position: { x: 65, y: 70 },
+            position: { x: 58, y: 70 }, // Spaced out
             prerequisites: ['power-scavenger'],
         },
         'energetic-recycling': {
