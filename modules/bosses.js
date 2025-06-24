@@ -4,7 +4,8 @@ export const bossData = [{
     name: "Splitter Sentinel",
     color: "#ff4500",
     maxHP: 96,
-    onDeath: (b, state, spawnEnemy, spawnParticles) => {
+    onDeath: (b, state, spawnEnemy, spawnParticles, play) => {
+        play('splitterOnDeath');
         spawnParticles(state.particles, b.x, b.y, "#ff4500", 100, 6, 40, 5);
         const spawnInCircle = (count, radius, center) => {
             for (let i = 0; i < count; i++) {
@@ -59,9 +60,12 @@ export const bossData = [{
         }
         ctx.restore();
     },
-    onDamage: (b, dmg, source) => {
+    onDamage: (b, dmg, source, state, spawnParticles, play) => {
         if (b.phase !== "idle") b.hp += dmg;
-        if (b.reflecting && source && source.health) source.health -= 10;
+        if (b.reflecting) {
+            play('reflectorOnHit');
+            if(source && source.health) source.health -= 10;
+        }
     }
 }, {
     id: "vampire",
@@ -72,11 +76,12 @@ export const bossData = [{
         b.lastHit = Date.now();
         b.lastHeal = Date.now();
     },
-    logic: (b, ctx, state, utils) => {
+    logic: (b, ctx, state, utils, gameHelpers) => {
         const now = Date.now();
         if (now - b.lastHit > 3000 && now - b.lastHeal > 5000) {
             b.hp = Math.min(b.maxHP, b.hp + 5);
             b.lastHeal = now;
+            gameHelpers.play('vampireHeal');
             utils.spawnParticles(state.particles, b.x, b.y, "#800020", 20, 1, 40);
         }
     },
@@ -162,10 +167,11 @@ export const bossData = [{
         });
         b.lastSwap = Date.now();
     },
-    logic: (b, ctx, state, utils) => {
+    logic: (b, ctx, state, utils, gameHelpers) => {
         b.clones.forEach(c => utils.drawCircle(ctx, c.x, c.y, c.r, "rgba(255,0,255,0.5)"));
         if (Date.now() - b.lastSwap > 2000) {
             b.lastSwap = Date.now();
+            gameHelpers.play('mirrorSwap');
             const i = Math.floor(Math.random() * b.clones.length);
             [b.x, b.clones[i].x] = [b.clones[i].x, b.x];
             [b.y, b.clones[i].y] = [b.clones[i].y, b.y];
@@ -187,10 +193,10 @@ export const bossData = [{
         const canvas = ctx.canvas;
         if (Date.now() - b.lastEMP > 8000) {
             b.lastEMP = Date.now();
+            gameHelpers.play('empDischarge');
             state.offensiveInventory = [null, null, null];
             state.defensiveInventory = [null, null, null];
             
-            // MODIFIED: Replaced direct speed modification with a status effect
             gameHelpers.addStatusEffect('Slowed', '🐌', 1000);
             gameHelpers.addStatusEffect('Stunned', '😵', 500);
 
@@ -224,9 +230,10 @@ export const bossData = [{
         b.pillars = [];
         b.lastBuild = 0;
     },
-    logic: (b, ctx, state, utils) => {
+    logic: (b, ctx, state, utils, gameHelpers) => {
         if (Date.now() - b.lastBuild > 8000) {
             b.lastBuild = Date.now();
+            gameHelpers.play('architectBuild');
             b.pillars = [];
             for (let i = 0; i < 10; i++) {
                 const angle = Math.random() * 2 * Math.PI;
@@ -269,11 +276,12 @@ export const bossData = [{
     init: b => {
         b.lastTeleport = 0;
     },
-    logic: (b, ctx, state, utils) => {
+    logic: (b, ctx, state, utils, gameHelpers) => {
         const canvas = ctx.canvas;
         const interval = b.hp < b.maxHP * 0.25 ? 1500 : (b.hp < b.maxHP * 0.5 ? 2000 : 2500);
         if (Date.now() - b.lastTeleport > interval) {
             b.lastTeleport = Date.now();
+            gameHelpers.play('mirrorSwap');
             utils.spawnParticles(state.particles, b.x, b.y, "#fff", 30, 4, 20);
             b.x = Math.random() * canvas.width;
             b.y = Math.random() * canvas.height;
@@ -306,14 +314,14 @@ export const bossData = [{
                     startTime: Date.now(),
                     duration: 1000
                 });
-                gameHelpers.play('chargeUp');
+                gameHelpers.play('chargeUpSound');
                 setTimeout(() => {
                     const target = (state.arenaMode && b.target) ? b.target : state.player;
                     const angle = Math.atan2(target.y - b.y, target.x - b.x);
                     b.dx = Math.cos(angle) * 15;
                     b.dy = Math.sin(angle) * 15;
                     utils.triggerScreenShake(150, 3);
-                    gameHelpers.play('chargeDash');
+                    gameHelpers.play('chargeDashSound');
                     setTimeout(() => {
                         b.isCharging = false;
                         b.lastCharge = Date.now();
@@ -343,7 +351,7 @@ export const bossData = [{
     init: b => {
         b.lastConvert = Date.now();
     },
-    logic: (b, ctx, state, utils) => {
+    logic: (b, ctx, state, utils, gameHelpers) => {
         if (Date.now() - b.lastConvert > 1000) {
             let farthestEnemy = null;
             let maxDist = 0;
@@ -358,6 +366,7 @@ export const bossData = [{
             });
             if (farthestEnemy) {
                 b.lastConvert = Date.now();
+                gameHelpers.play('puppeteerConvert');
                 farthestEnemy.isPuppet = true;
                 farthestEnemy.customColor = b.color;
                 farthestEnemy.r *= 1.5;
@@ -369,7 +378,7 @@ export const bossData = [{
         }
     },
     onDeath: (b, state, spawnEnemy, spawnParticles, play) => {
-        play('magicDispel');
+        play('magicDispelSound');
         state.enemies.forEach(e => {
             if (e.isPuppet) e.hp = 0;
         });
@@ -387,7 +396,7 @@ export const bossData = [{
         const canvas = ctx.canvas;
         if (Date.now() - b.lastTeleport > 3000) {
             b.lastTeleport = Date.now();
-            gameHelpers.play('glitch');
+            gameHelpers.play('glitchSound');
             utils.spawnParticles(state.particles, b.x, b.y, b.color, 40, 4, 30);
             const oldX = b.x;
             const oldY = b.y;
@@ -481,14 +490,14 @@ export const bossData = [{
                         }
                     });
                 }
-                gameHelpers.playLooping('beamHum');
+                gameHelpers.playLooping('beamHumSound');
             } else {
-                gameHelpers.stopLoopingSfx('beamHum');
+                gameHelpers.stopLoopingSfx('beamHumSound');
             }
         }
     },
     onDeath: (b, state, spawnEnemy, spawnParticles, play, stopLoopingSfx) => {
-        stopLoopingSfx('beamHum');
+        stopLoopingSfx('beamHumSound');
         if (b.partner) b.partner.hp = 0;
     },
     onDamage: (b, dmg) => {
@@ -537,9 +546,9 @@ export const bossData = [{
     logic: (b, ctx, state, utils, gameHelpers) => {
         if (Date.now() - b.lastBeam > 12000 && !b.isChargingBeam) {
             b.isChargingBeam = true;
-            gameHelpers.play('powerSiren');
+            gameHelpers.play('powerSirenSound');
             setTimeout(() => {
-                gameHelpers.play('annihilatorBeam');
+                gameHelpers.play('annihilatorBeamSound');
                 state.effects.push({
                     type: 'annihilator_beam',
                     source: b,
@@ -600,7 +609,7 @@ export const bossData = [{
             b.phase = 'superposition';
             b.lastPhaseChange = Date.now();
             b.invulnerable = true;
-            gameHelpers.play('phaseShift');
+            gameHelpers.play('phaseShiftSound');
             for (let i = 0; i < 3; i++) {
                 b.echoes.push({
                     x: Math.random() * canvas.width,
@@ -690,14 +699,14 @@ export const bossData = [{
         const hpPercent = b.hp / b.maxHP;
         if (hpPercent <= 0.33 && b.phase < 3) {
             b.phase = 3;
-            gameHelpers.play('finalBossPhase');
+            gameHelpers.play('finalBossPhaseSound');
             utils.triggerScreenShake(500, 15);
             utils.spawnParticles(state.particles, b.x, b.y, "#d63031", 150, 8, 50);
             b.lastAction = Date.now();
             b.wells = [];
         } else if (hpPercent <= 0.66 && b.phase < 2) {
             b.phase = 2;
-            gameHelpers.play('finalBossPhase');
+            gameHelpers.play('finalBossPhaseSound');
             utils.triggerScreenShake(500, 10);
             utils.spawnParticles(state.particles, b.x, b.y, "#6c5ce7", 150, 8, 50);
             b.lastAction = Date.now();
