@@ -536,8 +536,7 @@ export function gameTick(mx, my) {
                         state.player.health -= damage; 
                     }
                     play('hitSound'); 
-                    // --- FIX: Pass the 'play' function to onDamage call ---
-                    if(e.onDamage) e.onDamage(e, damage, state.player, state, spawnParticlesCallback, play); 
+                    if(e.onDamage) e.onDamage(e, damage, state.player, state, spawnParticlesCallback, play);
                     if(state.player.health<=0) state.gameOver=true; 
                 } else { 
                     state.player.shield=false; 
@@ -635,7 +634,6 @@ export function gameTick(mx, my) {
                     if (effect.damage > 0) {
                         let dmg = (target.boss || target === state.player) ? effect.damage : 1000;
                         if(target.health) target.health -= dmg; else target.hp -= dmg;
-                        // --- FIX: Pass the 'play' function to onDamage call ---
                         if (target.onDamage) target.onDamage(target, dmg, effect.caster, state, spawnParticlesCallback, play);
                     }
                     effect.hitEnemies.add(target);
@@ -652,7 +650,6 @@ export function gameTick(mx, my) {
                     utils.spawnParticles(state.particles, to.x, to.y, '#ffffff', 30, 5, 20);
                     let dmg = (to.boss ? effect.damage : 50) * state.player.talent_modifiers.damage_multiplier;
                     to.hp -= dmg; 
-                    // --- FIX: Pass the 'play' function to onDamage call ---
                     if (to.onDamage) to.onDamage(to, dmg, effect.caster, state, spawnParticlesCallback, play);
                     effect.links.push(to);
                     if (state.player.purchasedTalents.has('volatile-finish') && i === effect.targets.length - 1) {
@@ -688,7 +685,20 @@ export function gameTick(mx, my) {
             const hasTracking = state.player.purchasedTalents.has('targeting-algorithm');
             if(hasTracking && effect.target && effect.target.hp > 0) { effect.x = effect.target.x; effect.y = effect.target.y; }
             const duration = 1500; const progress = (Date.now() - effect.startTime) / duration; 
-            if (progress >= 1) { spawnParticlesCallback(effect.x, effect.y, '#e67e22', 100, 8, 40); const explosionRadius = 150; state.enemies.forEach(e => { if (Math.hypot(e.x-effect.x, e.y-effect.y) < explosionRadius) { let damage = ((state.player.berserkUntil > Date.now()) ? 50 : 25)  * state.player.talent_modifiers.damage_multiplier; e.hp -= e.boss ? damage : 1000; if(e.onDamage) e.onDamage(e, damage, effect.caster, state, spawnParticlesCallback, play); } }); state.effects.splice(index, 1); return; } 
+            if (progress >= 1) { 
+                spawnParticlesCallback(effect.x, effect.y, '#e67e22', 100, 8, 40); 
+                const explosionRadius = 150; 
+                state.enemies.forEach(e => { 
+                    if (Math.hypot(e.x-effect.x, e.y-effect.y) < explosionRadius) { 
+                        let damage = ((state.player.berserkUntil > Date.now()) ? 50 : 25)  * state.player.talent_modifiers.damage_multiplier; 
+                        e.hp -= e.boss ? damage : 1000; 
+                        // --- FIX: This was the last remaining broken call. ---
+                        if(e.onDamage) e.onDamage(e, damage, effect.caster, state, spawnParticlesCallback, play); 
+                    } 
+                }); 
+                state.effects.splice(index, 1); 
+                return; 
+            } 
             ctx.strokeStyle = 'rgba(230, 126, 34, 0.8)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(effect.x, effect.y, 50 * (1-progress), 0, Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(effect.x-10, effect.y); ctx.lineTo(effect.x+10, effect.y); ctx.moveTo(effect.x, effect.y-10); ctx.lineTo(effect.x, effect.y+10); ctx.stroke(); 
         } else if (effect.type === 'black_hole') { 
             if (Date.now() > effect.endTime) { if (state.player.purchasedTalents.has('unstable-singularity')) { state.effects.push({ type: 'shockwave', caster: state.player, x: effect.x, y: effect.y, radius: 0, maxRadius: effect.maxRadius, speed: 800, startTime: Date.now(), hitEnemies: new Set(), damage: 25 * state.player.talent_modifiers.damage_multiplier }); } state.effects.splice(index, 1); return; } 
