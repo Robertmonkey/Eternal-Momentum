@@ -2,6 +2,7 @@
 import { state, savePlayerState } from './state.js';
 import { TALENT_GRID_CONFIG } from './talents.js';
 import { updateUI } from './ui.js';
+import { AudioManager } from './audio.js'; // --- CHANGE: Import AudioManager
 
 const gridContainer = document.querySelector("#ascensionGridModal .ascension-content");
 
@@ -17,7 +18,6 @@ Object.values(TALENT_GRID_CONFIG).forEach(constellation => {
 function isTalentVisible(talent) {
     if (!talent) return false;
 
-    // FIX #1 Part A: Check if the required power is unlocked.
     const powerUnlocked = !talent.powerPrerequisite || state.player.unlockedPowers.has(talent.powerPrerequisite);
     if (!powerUnlocked) {
         return false;
@@ -27,7 +27,6 @@ function isTalentVisible(talent) {
         return true;
     }
 
-    // FIX #2: Check if prerequisite talents are fully ranked up.
     return talent.prerequisites.every(prereqId => {
         const prereqTalent = allTalents[prereqId];
         if (!prereqTalent) return false;
@@ -59,7 +58,6 @@ function drawConnectorLines() {
             talent.prerequisites.forEach(prereqId => {
                 const prereqTalent = allTalents[prereqId];
                 
-                // FIX #1 Part B: Check power prerequisite BEFORE drawing a line.
                 const powerUnlocked = !talent.powerPrerequisite || state.player.unlockedPowers.has(talent.powerPrerequisite);
 
                 if (prereqTalent && state.player.purchasedTalents.has(prereqId) && powerUnlocked) {
@@ -99,6 +97,8 @@ function createTalentNode(talent, constellationColor) {
     node.style.left = `${talent.position.x}%`;
     node.style.top = `${talent.position.y}%`;
     
+    node.addEventListener('mouseenter', () => AudioManager.playSfx('uiHoverSound'));
+
     const purchasedRank = state.player.purchasedTalents.get(talent.id) || 0;
     const isMaxRank = purchasedRank >= talent.maxRanks;
     const cost = isMaxRank ? Infinity : (talent.costPerRank[purchasedRank] || Infinity);
@@ -146,9 +146,15 @@ function createTalentNode(talent, constellationColor) {
     node.innerHTML = `<span class="talent-icon">${talent.icon}</span>`;
     node.appendChild(tooltip);
     
-    if (!isMaxRank && canPurchase) {
-        node.onclick = () => purchaseTalent(talent.id);
-    }
+    node.onclick = () => {
+        if (!isMaxRank && canPurchase) {
+            purchaseTalent(talent.id);
+        } else if (!isMaxRank && !canPurchase && prereqsMetForPurchase) {
+            AudioManager.playSfx('talentError');
+        } else {
+            AudioManager.playSfx('uiClickSound');
+        }
+    };
     
     node.addEventListener('mouseenter', () => {
         requestAnimationFrame(() => {
@@ -193,6 +199,8 @@ function purchaseTalent(talentId) {
         state.player.ascensionPoints -= cost;
         state.player.purchasedTalents.set(talent.id, currentRank + 1);
         
+        AudioManager.playSfx('talentPurchase'); // --- CHANGE: Play sound on success
+        
         applyAllTalentEffects();
         savePlayerState();
 
@@ -201,6 +209,7 @@ function purchaseTalent(talentId) {
         updateUI();
 
     } else {
+        AudioManager.playSfx('talentError'); // --- CHANGE: Play sound on failure
         console.log("Cannot purchase talent! Not enough AP or prerequisites not met.");
     }
 }
