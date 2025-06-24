@@ -4,7 +4,7 @@ export const AudioManager = {
     // --- STATE ---
     unlocked: false,
     userMuted: false,
-    sfxVolume: 1.0,
+    sfxVolume: 0.8, // Adjusted default SFX volume slightly
     musicVolume: 0.5,
     
     // --- Element Storage ---
@@ -25,7 +25,6 @@ export const AudioManager = {
             }
         });
         
-        // Shuffle playlist for variety on each page load
         this.musicPlaylist.sort(() => Math.random() - 0.5);
         
         this.soundBtn = soundBtn;
@@ -48,7 +47,10 @@ export const AudioManager = {
         if (!this.unlocked) this.unlockAudio();
         this.userMuted = !this.userMuted;
         
-        Object.values(this.soundElements).forEach(el => el.muted = this.userMuted);
+        // Mute looping elements directly
+        Object.values(this.soundElements).forEach(el => {
+            if (el.loop) el.muted = this.userMuted;
+        });
         
         if (this.userMuted) {
             if(this.currentMusic) this.currentMusic.pause();
@@ -64,13 +66,20 @@ export const AudioManager = {
     },
 
     // --- SFX ---
+    // --- CHANGE: This is the new, professional implementation for SFX playback ---
     playSfx(soundId) {
         if (!this.unlocked || this.userMuted) return;
-        const sfx = this.soundElements[soundId];
-        if (sfx) {
-            sfx.volume = this.sfxVolume;
-            sfx.currentTime = 0;
-            sfx.play().catch(e => console.warn(`SFX playback failed for: ${soundId}`, e));
+
+        // Find the original audio element to get its source path
+        const originalSfx = this.soundElements[soundId];
+        
+        if (originalSfx) {
+            // Create a new, independent Audio object for this specific playback
+            const sfxInstance = new Audio(originalSfx.src);
+            sfxInstance.volume = this.sfxVolume;
+            sfxInstance.play().catch(e => console.warn(`SFX instance for ${soundId} failed to play.`, e));
+        } else {
+            console.warn(`Sound with ID "${soundId}" not found.`);
         }
     },
 
@@ -92,7 +101,7 @@ export const AudioManager = {
 
     // --- MUSIC SYSTEM ---
     _fade(audioElement, startVol, endVol, duration, onComplete) {
-        if (this.isFading && endVol > 0) return; // Don't start a new fade-in if already fading
+        if (this.isFading && endVol > 0) return;
         this.isFading = true;
 
         let currentVol = startVol;
@@ -106,6 +115,8 @@ export const AudioManager = {
                 currentVol = endVol;
             }
 
+            // Ensure volume is not muted by the master toggle during a fade
+            audioElement.muted = false; 
             audioElement.volume = currentVol;
 
             if (currentVol === endVol) {
@@ -118,9 +129,12 @@ export const AudioManager = {
 
     fadeOutMusic(duration = 2000) {
         if (this.currentMusic && !this.isFading) {
-            this._fade(this.currentMusic, this.musicVolume, 0, duration, () => {
-                this.currentMusic.pause();
-                this.currentMusic = null;
+            const trackToFade = this.currentMusic;
+            this._fade(trackToFade, trackToFade.volume, 0, duration, () => {
+                trackToFade.pause();
+                if (this.currentMusic === trackToFade) {
+                    this.currentMusic = null;
+                }
             });
         }
     },
@@ -128,7 +142,6 @@ export const AudioManager = {
     crossfadeToNextTrack(duration = 3000) {
         if (this.isFading || this.userMuted) return;
 
-        // Fade out current track if one is playing
         if (this.currentMusic) {
              this.fadeOutMusic(duration);
         }
@@ -145,6 +158,6 @@ export const AudioManager = {
     
     playMusic() {
         if (this.currentMusic || this.musicPlaylist.length === 0 || this.userMuted) return;
-        this.crossfadeToNextTrack(1000); // Initial gentle fade-in
+        this.crossfadeToNextTrack(1000); 
     }
 };
