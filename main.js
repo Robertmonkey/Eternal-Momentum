@@ -130,9 +130,12 @@ window.addEventListener('load', (event) => {
         document.getElementById('slot-off-0').addEventListener('click', useOffensivePower);
         document.getElementById('slot-def-0').addEventListener('click', useDefensivePower);
 
+        // --- CHANGE: Added visibilitychange listener for iPad background audio bug ---
+        document.addEventListener('visibilitychange', () => AudioManager.handleVisibilityChange());
+
         soundBtn.addEventListener("click", () => AudioManager.toggleMute());
         
-        // --- UI SOUND IMPLEMENTATION ---
+        // --- CHANGE: Generic UI sound listeners for all buttons ---
         document.querySelectorAll('button, .stage-select-item').forEach(button => {
             button.addEventListener('mouseenter', () => AudioManager.playSfx('uiHoverSound'));
             button.addEventListener('click', () => AudioManager.playSfx('uiClickSound'));
