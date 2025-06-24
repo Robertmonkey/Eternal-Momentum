@@ -10,19 +10,17 @@ import { AudioManager } from './audio.js';
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
+// --- CHANGE: Simplified play functions to use new AudioManager ---
 function play(soundId) {
-    const soundElement = document.getElementById(soundId + "Sound");
-    if (soundElement) AudioManager.playSfx(soundElement);
+    AudioManager.playSfx(soundId);
 }
 
 function playLooping(soundId) {
-    const soundElement = document.getElementById(soundId + "Sound");
-    if (soundElement) AudioManager.playLoopingSfx(soundElement);
+    AudioManager.playLoopingSfx(soundId);
 }
 
 function stopLoopingSfx(soundId) {
-    const soundElement = document.getElementById(soundId + "Sound");
-    if (soundElement) AudioManager.stopLoopingSfx(soundElement);
+    AudioManager.stopLoopingSfx(soundId);
 }
 
 const gameHelpers = { addStatusEffect, spawnEnemy, spawnPickup, play, stopLoopingSfx, playLooping, addEssence };
@@ -158,8 +156,11 @@ export function spawnEnemy(isBoss = false, bossId = null, location = null) {
         state.enemies.push(e);
         if (bd.init) bd.init(e, state, spawnEnemy, canvas);
         
+        // --- CHANGE: Music and sound triggers for boss spawn ---
         if (!state.bossActive) {
             showBossBanner(e);
+            AudioManager.playSfx('bossSpawnSound');
+            AudioManager.crossfadeToNextTrack();
         }
         state.bossActive = true;
 
@@ -209,7 +210,8 @@ export function gameTick(mx, my) {
                 spawnEnemy(true, null, {x: canvas.width/2, y: 100});
             }
         } else {
-            if (!state.bossActive && Date.now() > state.bossSpawnCooldownEnd) {
+            if (!state.bossActive && state.bossSpawnCooldownEnd > 0 && Date.now() > state.bossSpawnCooldownEnd) {
+                state.bossSpawnCooldownEnd = 0; // Prevent re-triggering
                 spawnBossesForStage(state.currentStage);
             }
         }
@@ -258,7 +260,6 @@ export function gameTick(mx, my) {
         playerSpeedMultiplier *= 0.5;
     }
     
-    // --- CACHE ARRAYS FOR EFFICIENCY ---
     const activeRepulsionFields = state.effects.filter(eff => eff.type === 'repulsion_field');
     const timeEater = state.enemies.find(e => e.id === 'time_eater');
     const slowZones = timeEater ? state.effects.filter(e => e.type === 'slow_zone') : [];
@@ -366,6 +367,10 @@ export function gameTick(mx, my) {
                 state.enemies.splice(i, 1);
                 if (!state.enemies.some(en => en.boss)) {
                     state.bossActive = false;
+                    // --- CHANGE: Music and sound triggers for boss defeat ---
+                    AudioManager.playSfx('bossDefeatSound');
+                    AudioManager.fadeOutMusic();
+                    
                     state.bossSpawnCooldownEnd = Date.now() + 4000;
                     if (state.currentStage > state.player.highestStageBeaten) {
                         state.player.highestStageBeaten = state.currentStage;
@@ -403,7 +408,6 @@ export function gameTick(mx, my) {
             }
         }
         
-        // --- KINETIC OVERLOAD FIX ---
         if (!e.boss && activeRepulsionFields.length > 0) {
             activeRepulsionFields.forEach(field => {
                 const dist = Math.hypot(e.x - field.x, e.y - field.y);
@@ -427,7 +431,6 @@ export function gameTick(mx, my) {
             });
         }
         
-        // --- TIME EATER BUG FIX (Part 1) ---
         if (timeEater && !e.boss && !e.eatenBy) {
             for (const zone of slowZones) {
                 if (Math.hypot(e.x - zone.x, e.y - zone.y) < zone.r) {
@@ -527,7 +530,7 @@ export function gameTick(mx, my) {
                     if(wouldBeFatal && state.player.purchasedTalents.has('contingency-protocol') && !state.player.contingencyUsed) {
                         state.player.contingencyUsed = true;
                         state.player.health = 1;
-                        addStatusEffect('Contingency Protocol', '💪', 3000);
+                        addStatusEffect('Contingency Protocol', '潮', 3000);
                         const invulnShieldEndTime = Date.now() + 3000;
                         state.player.shield = true;
                         state.player.shield_end_time = invulnShieldEndTime;
@@ -536,11 +539,12 @@ export function gameTick(mx, my) {
                     } else {
                         state.player.health -= damage; 
                     }
-                    play('hit'); 
+                    play('hitSound'); 
                     if(e.onDamage) e.onDamage(e, damage, state.player, state, spawnParticlesCallback); 
                     if(state.player.health<=0) state.gameOver=true; 
                 } else { 
                     state.player.shield=false; 
+                    play('shieldBreak'); // --- CHANGE: Play shield break sound
                     if(state.player.purchasedTalents.has('aegis-retaliation')) state.effects.push({ type: 'shockwave', caster: state.player, x: state.player.x, y: state.player.y, radius: 0, maxRadius: 250, speed: 1000, startTime: Date.now(), hitEnemies: new Set(), damage: 0, color: 'rgba(255, 255, 255, 0.5)' });
                 }
                 const overlap = (e.r + state.player.r) - pDist;
@@ -598,14 +602,14 @@ export function gameTick(mx, my) {
         ctx.textAlign = "left";
         const collectDist = Math.hypot(state.player.x - p.x, state.player.y - p.y);
         if(collectDist < state.player.r + p.r){
-            if (p.customApply) { p.customApply(); play('pickup'); state.pickups.splice(i,1); continue; }
+            play('pickupSound'); 
+            if (p.customApply) { p.customApply(); state.pickups.splice(i,1); continue; }
             const isOffensive = offensivePowers.includes(p.type);
             const targetInventory = isOffensive ? state.offensiveInventory : state.defensiveInventory;
             const maxSlots = isOffensive ? state.player.unlockedOffensiveSlots : state.player.unlockedDefensiveSlots;
             const idx = targetInventory.indexOf(null);
             if(idx !== -1 && idx < maxSlots){
                 targetInventory[idx]=p.type; 
-                play('pickup'); 
                 state.pickups.splice(i,1);
             } else {
                 if(state.player.purchasedTalents.has('overload-protocol')) {
@@ -613,7 +617,6 @@ export function gameTick(mx, my) {
                     if (power && power.apply) {
                         addStatusEffect('Auto-Used', p.emoji || powers[p.type]?.emoji || '?', 2000);
                         power.apply(utils, gameHelpers, mx, my);
-                        play('pickup');
                         state.pickups.splice(i, 1);
                     }
                 } else {
@@ -710,7 +713,7 @@ export function gameTick(mx, my) {
         } else if (effect.type === 'glitch_zone') {
             if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
             const alpha = (effect.endTime - Date.now()) / 5000 * 0.3; ctx.fillStyle = `rgba(253, 121, 168, ${alpha})`; utils.drawCircle(ctx, effect.x, effect.y, effect.r, ctx.fillStyle);
-            if (Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < effect.r + state.player.r) { if (!state.player.controlsInverted) { play('systemErrorSound'); addStatusEffect('Controls Inverted', '😵', 3000); } state.player.controlsInverted = true; setTimeout(() => state.player.controlsInverted = false, 3000); }
+            if (Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < effect.r + state.player.r) { if (!state.player.controlsInverted) { play('systemErrorSound'); addStatusEffect('Controls Inverted', '亰', 3000); } state.player.controlsInverted = true; setTimeout(() => state.player.controlsInverted = false, 3000); }
         } else if (effect.type === 'petrify_zone') {
             if (Date.now() > effect.startTime + 5000) { state.effects.splice(index, 1); return; }
             ctx.fillStyle = `rgba(0, 184, 148, 0.2)`; utils.drawCircle(ctx, effect.x, effect.y, effect.r, ctx.fillStyle);
@@ -718,7 +721,7 @@ export function gameTick(mx, my) {
                 if(!effect.playerInsideTime) effect.playerInsideTime = Date.now();
                 const stunProgress = (Date.now() - effect.playerInsideTime) / 1500;
                 ctx.fillStyle = `rgba(0, 184, 148, 0.4)`; ctx.beginPath(); ctx.moveTo(effect.x, effect.y); ctx.arc(effect.x, effect.y, effect.r, -Math.PI/2, -Math.PI/2 + (Math.PI*2) * stunProgress, false); ctx.lineTo(effect.x, effect.y); ctx.fill();
-                if (stunProgress >= 1) { play('stoneCracking'); addStatusEffect('Petrified', '🗿', 2000); state.player.stunnedUntil = Date.now() + 2000; state.effects.splice(index, 1); }
+                if (stunProgress >= 1) { play('stoneCrackingSound'); addStatusEffect('Petrified', '料', 2000); state.player.stunnedUntil = Date.now() + 2000; state.effects.splice(index, 1); }
             } else { effect.playerInsideTime = null; }
         } else if (effect.type === 'annihilator_beam') {
             if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
@@ -747,9 +750,8 @@ export function gameTick(mx, my) {
             if (L2 !== 0) {
                 let t = ((p3.x - p1.x) * (p2.x - p1.x) + (p3.y - p1.y) * (p2.y - p1.y)) / L2; t = Math.max(0, Math.min(1, t));
                 const closestX = p1.x + t * (p2.x - p1.x); const closestY = p1.y + t * (p2.y - p1.y);
-                if (Math.hypot(p3.x - closestX, p3.y - closestY) < p3.r + 5) { if (state.player.shield) { state.player.shield = false; } else { state.player.health -= 2; } }
+                if (Math.hypot(p3.x - closestX, p3.y - closestY) < p3.r + 5) { if (state.player.shield) { state.player.shield = false; play('shieldBreak'); } else { state.player.health -= 2; } }
             }
-        // --- SLOW ZONE ANIMATION RESTORED ---
         } else if (effect.type === 'slow_zone') {
             if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
             const alpha = (effect.endTime - Date.now()) / 6000 * 0.4;
