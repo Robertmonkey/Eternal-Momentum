@@ -30,7 +30,7 @@ export function addStatusEffect(name, emoji, duration) {
     
     if (name === 'Stunned' || name === 'Petrified' || name === 'Slowed') {
         const isBerserk = state.player.berserkUntil > now;
-        const hasTalent = state.player.purchasedTalents.has('havoc-berserk');
+        const hasTalent = state.player.purchasedTalents.has('unstoppable-frenzy');
         if (isBerserk && hasTalent) {
             return; 
         }
@@ -252,7 +252,7 @@ export function gameTick(mx, my) {
     
     let playerSpeedMultiplier = state.player.talent_states.phaseMomentum.active ? 1.10 : 1.0;
     
-    const isBerserkImmune = state.player.berserkUntil > Date.now() && state.player.purchasedTalents.has('havoc-berserk');
+    const isBerserkImmune = state.player.berserkUntil > Date.now() && state.player.purchasedTalents.has('unstoppable-frenzy');
     
     if (state.player.statusEffects.some(e => e.name === 'Slowed') && !isBerserkImmune) {
         playerSpeedMultiplier *= 0.5;
@@ -384,7 +384,7 @@ export function gameTick(mx, my) {
                 if (scavengerRank && Math.random() < [0.01, 0.025][scavengerRank-1]) {
                     state.pickups.push({ x: e.x, y: e.y, r: 12, type: 'score', vx: 0, vy: 0, lifeEnd: Date.now() + 10000 });
                 }
-                const cryoRank = state.player.purchasedTalents.get('aegis-freeze');
+                const cryoRank = state.player.purchasedTalents.get('cryo-shatter');
                 if (cryoRank && e.wasFrozen && Math.random() < [0.25, 0.5][cryoRank-1]) {
                     utils.spawnParticles(state.particles, e.x, e.y, '#ADD8E6', 40, 4, 30, 2);
                     state.effects.push({ type: 'shockwave', caster: state.player, x: e.x, y: e.y, radius: 0, maxRadius: 100, speed: 500, startTime: Date.now(), hitEnemies: new Set(), damage: 5 * state.player.talent_modifiers.damage_multiplier, color: 'rgba(0, 200, 255, 0.5)' });
@@ -526,7 +526,7 @@ export function gameTick(mx, my) {
                     if(wouldBeFatal && state.player.purchasedTalents.has('contingency-protocol') && !state.player.contingencyUsed) {
                         state.player.contingencyUsed = true;
                         state.player.health = 1;
-                        addStatusEffect('Contingency Protocol', '☥', 3000);
+                        addStatusEffect('Contingency Protocol', '🛡️', 3000);
                         const invulnShieldEndTime = Date.now() + 3000;
                         state.player.shield = true;
                         state.player.shield_end_time = invulnShieldEndTime;
@@ -692,7 +692,6 @@ export function gameTick(mx, my) {
                     if (Math.hypot(e.x-effect.x, e.y-effect.y) < explosionRadius) { 
                         let damage = ((state.player.berserkUntil > Date.now()) ? 50 : 25)  * state.player.talent_modifiers.damage_multiplier; 
                         e.hp -= e.boss ? damage : 1000; 
-                        // --- FIX: This was the last remaining broken call. ---
                         if(e.onDamage) e.onDamage(e, damage, effect.caster, state, spawnParticlesCallback, play); 
                     } 
                 }); 
