@@ -28,7 +28,7 @@ const spawnParticlesCallback = (x, y, c, n, spd, life, r) => utils.spawnParticle
 export function addStatusEffect(name, emoji, duration) {
     const now = Date.now();
     
-    // --- FIX: Checks for correct talent ID ---
+    // --- FIX: Corrected talent ID reference ---
     if (name === 'Stunned' || name === 'Petrified' || name === 'Slowed') {
         const isBerserk = state.player.berserkUntil > now;
         const hasTalent = state.player.purchasedTalents.has('unstoppable-frenzy');
@@ -340,12 +340,10 @@ export function gameTick(mx, my) {
                 }
             } else {
                 addEssence(10);
-                // --- FIX: Checks for correct, restored talent ID ---
                 const scavengerRank = state.player.purchasedTalents.get('power-scavenger');
                 if (scavengerRank && Math.random() < [0.01, 0.025][scavengerRank-1]) {
                     state.pickups.push({ x: e.x, y: e.y, r: 12, type: 'score', vx: 0, vy: 0, lifeEnd: Date.now() + 10000 });
                 }
-                // --- FIX: Checks for correct talent ID ---
                 const cryoRank = state.player.purchasedTalents.get('cryo-shatter');
                 if (cryoRank && e.wasFrozen && Math.random() < [0.25, 0.5][cryoRank-1]) {
                     utils.spawnParticles(state.particles, e.x, e.y, '#ADD8E6', 40, 4, 30, 2);
@@ -715,7 +713,7 @@ export function gameTick(mx, my) {
             if (L2 !== 0) {
                 let t = ((p3.x - p1.x) * (p2.x - p1.x) + (p3.y - p1.y) * (p2.y - p1.y)) / L2; t = Math.max(0, Math.min(1, t));
                 const closestX = p1.x + t * (p2.x - p1.x); const closestY = p1.y + t * (p2.y - p1.y);
-                if (Math.hypot(p3.x - closestX, p3.y - closestY) < p3.r + 5) { if (state.player.shield) { state.player.shield = false; play('shieldBreak'); } else { state.player.health -= 2; play('hitSound'); } }
+                if (Math.hypot(p3.x - closestX, p3.y - closestY) < p3.r + 5) { if (state.player.shield) { state.player.shield = false; play('shieldBreak'); } else { state.player.health -= 2; play('hitSound');} }
             }
         } else if (effect.type === 'slow_zone') {
             if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
