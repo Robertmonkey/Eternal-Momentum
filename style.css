@@ -608,20 +608,32 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     height: auto;
     border-radius: 8px;
 }
-#restartStageBtn {
+
+/* --- BUTTON THEMING START --- */
+#restartStageBtn { /* Aegis Theme */
     background-color: rgba(0, 255, 255, 0.2);
     border: 1px solid var(--border-color);
 }
 #restartStageBtn:hover {
     background-color: rgba(0, 255, 255, 0.4);
 }
-#ascensionMenuBtn, #levelSelectMenuBtn {
+
+#ascensionMenuBtn { /* Havoc Theme */
+    background-color: rgba(255, 136, 0, 0.2);
+    border-color: #ff8800;
+}
+#ascensionMenuBtn:hover {
+    background-color: rgba(255, 136, 0, 0.4);
+}
+
+#levelSelectMenuBtn { /* Flux Theme */
     background-color: rgba(155, 89, 182, 0.4);
     border-color: rgba(155, 89, 182, 1);
 }
-#ascensionMenuBtn:hover, #levelSelectMenuBtn:hover {
+#levelSelectMenuBtn:hover {
     background-color: rgba(155, 89, 182, 0.6);
 }
+/* --- BUTTON THEMING END --- */
 
 #custom-confirm {
     top: 0; left: 0; width: 100%; height: 100%;
