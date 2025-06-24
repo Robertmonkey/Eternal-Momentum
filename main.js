@@ -8,7 +8,6 @@ import { usePower } from './modules/powers.js';
 import * as utils from './modules/utils.js';
 import { renderAscensionGrid, applyAllTalentEffects } from './modules/ascension.js';
 
-// --- DEBUG FUNCTION FOR TESTING ---
 window.addAP = function(amount) {
     if (typeof amount !== 'number' || amount <= 0) {
         console.log("Please provide a positive number of AP to add.");
@@ -23,9 +22,6 @@ window.addAP = function(amount) {
         apDisplayAscGrid.innerText = state.player.ascensionPoints;
     }
     
-    // --- THIS IS THE FIX ---
-    // If the ascension grid is visible when AP is added, this forces a re-render,
-    // which updates all nodes to be clickable if you can afford them.
     if (document.getElementById('ascensionGridModal').style.display === 'flex') {
         renderAscensionGrid();
     }
@@ -51,25 +47,22 @@ function simulateProgress() {
 }
 
 window.addEventListener('load', (event) => {
-    // 1. Finalize the loading bar
     clearInterval(progressInterval);
     progressFill.style.width = '100%';
     statusText.innerText = 'Momentum Stabilized!';
 
-    // --- DOM & Canvas Setup ---
     const canvas = document.getElementById("gameCanvas");
     const uiContainer = document.getElementById("ui-container");
     const soundBtn = document.getElementById("soundToggle");
     const ascensionBtn = document.getElementById("ascensionBtn");
     const levelSelectBtn = document.getElementById("levelSelectBtn");
     
-    // Home Screen Elements
     const homeScreen = document.getElementById('home-screen');
+    const allHomeButtons = document.querySelectorAll('.home-btn');
     const newGameBtn = document.getElementById('new-game-btn');
     const continueGameBtn = document.getElementById('continue-game-btn');
     const eraseGameBtn = document.getElementById('erase-game-btn');
     
-    // Modals and other controls
     const levelSelectModal = document.getElementById("levelSelectModal");
     const closeLevelSelectBtn = document.getElementById("closeLevelSelectBtn");
     const arenaBtn = document.getElementById("arenaBtn");
@@ -85,9 +78,7 @@ window.addEventListener('load', (event) => {
 
     let mx = 0, my = 0;
     const allAudioElements = Array.from(document.querySelectorAll('audio'));
-    const music = document.getElementById("bgMusic");
 
-    // --- INITIALIZATION ---
     function initialize() {
         loadPlayerState();
         applyAllTalentEffects();
@@ -98,7 +89,7 @@ window.addEventListener('load', (event) => {
         window.addEventListener("resize", resize);
         resize();
 
-        AudioManager.setup(allAudioElements, music, soundBtn);
+        AudioManager.setup(allAudioElements, soundBtn);
         setupEventListeners();
         setupHomeScreen();
     }
@@ -116,7 +107,6 @@ window.addEventListener('load', (event) => {
         }
     }
 
-    // --- Event Listeners ---
     function setupEventListeners() {
         function setPlayerTarget(e) {
             const rect = canvas.getBoundingClientRect();
@@ -142,14 +132,22 @@ window.addEventListener('load', (event) => {
 
         soundBtn.addEventListener("click", () => AudioManager.toggleMute());
         
+        // --- UI SOUND IMPLEMENTATION ---
+        document.querySelectorAll('button, .stage-select-item').forEach(button => {
+            button.addEventListener('mouseenter', () => AudioManager.playSfx('uiHoverSound'));
+            button.addEventListener('click', () => AudioManager.playSfx('uiClickSound'));
+        });
+
         levelSelectBtn.addEventListener("click", () => { 
             state.isPaused = true; 
             populateLevelSelect(startSpecificLevel);
             levelSelectModal.style.display = 'flex'; 
+            AudioManager.playSfx('uiModalOpen');
         });
         closeLevelSelectBtn.addEventListener("click", () => { 
             state.isPaused = false; 
             levelSelectModal.style.display = 'none';
+            AudioManager.playSfx('uiModalClose');
         });
         
         ascensionBtn.addEventListener("click", () => {
@@ -157,10 +155,12 @@ window.addEventListener('load', (event) => {
             apDisplayAscGrid.innerText = state.player.ascensionPoints;
             renderAscensionGrid(); 
             ascensionGridModal.style.display = 'flex';
+            AudioManager.playSfx('uiModalOpen');
         });
         closeAscensionBtn.addEventListener("click", () => {
             state.isPaused = false;
             ascensionGridModal.style.display = 'none';
+            AudioManager.playSfx('uiModalClose');
         });
 
         arenaBtn.addEventListener("click", () => startNewGame(true));
@@ -189,29 +189,28 @@ window.addEventListener('load', (event) => {
             state.isPaused = true;
             populateLevelSelect(startSpecificLevel);
             levelSelectModal.style.display = 'flex';
+            AudioManager.playSfx('uiModalOpen');
         });
 
-        // --- Home Screen Button Listeners ---
         function startGameFromHome() {
-            AudioManager.unlockAudio(); // Unlocks audio context and starts music
+            AudioManager.unlockAudio();
             homeScreen.classList.remove('visible');
             homeScreen.addEventListener('transitionend', () => {
                 homeScreen.style.display = 'none';
             }, { once: true });
-            // Show the in-game UI now that the game is starting
             uiContainer.style.display = 'flex';
         }
 
-        newGameBtn.addEventListener('click', () => {
-            startGameFromHome();
-            startSpecificLevel(1);
-        });
+        allHomeButtons.forEach(btn => btn.addEventListener('click', () => {
+            if (btn.id !== 'erase-game-btn') startGameFromHome();
+        }));
 
         continueGameBtn.addEventListener('click', () => {
-            startGameFromHome();
             const startStage = state.player.highestStageBeaten > 0 ? state.player.highestStageBeaten + 1 : 1;
             startSpecificLevel(startStage);
         });
+        
+        newGameBtn.addEventListener('click', () => startSpecificLevel(1));
 
         eraseGameBtn.addEventListener('click', () => {
             AudioManager.unlockAudio(); 
@@ -226,7 +225,6 @@ window.addEventListener('load', (event) => {
         });
     }
 
-    // --- Game Flow ---
     function loop() {
         if (!gameTick(mx, my)) {
             if (state.gameLoopId) cancelAnimationFrame(state.gameLoopId);
@@ -250,7 +248,6 @@ window.addEventListener('load', (event) => {
         if (isArena) { 
             arenaLoop(); 
         } else { 
-            spawnBossesForStage(state.currentStage);
             loop(); 
         }
     };
@@ -265,28 +262,22 @@ window.addEventListener('load', (event) => {
         levelSelectModal.style.display = 'none';
         state.isPaused = false;
         
-        spawnBossesForStage(state.currentStage);
-
         updateUI();
         loop();
     };
     
-    // --- FADE OUT LOADING SCREEN AND START ---
     setTimeout(() => {
         loadingScreen.style.opacity = '0';
         loadingScreen.addEventListener('transitionend', () => {
             loadingScreen.style.display = 'none';
-            // Show the home screen *after* the loading screen has faded
             homeScreen.style.display = 'flex';
             requestAnimationFrame(() => {
                  homeScreen.classList.add('visible');
             });
         }, { once: true });
 
-        // Initialize everything needed for the home screen and eventual game start
         initialize();
     }, 500);
 });
 
-// Start the simulated progress bar immediately
 simulateProgress();
