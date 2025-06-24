@@ -201,11 +201,20 @@ window.addEventListener('load', () => {
                 ascensionGridModal.style.display = 'flex';
                 AudioManager.playSfx('uiModalOpen');
             });
+
+            // --- BUG FIX STARTS HERE ---
             closeAscensionBtn.addEventListener("click", () => {
-                state.isPaused = false;
                 ascensionGridModal.style.display = 'none';
                 AudioManager.playSfx('uiModalClose');
+                // If the game is over, we need to show the game over menu again.
+                // Otherwise, we unpause the game.
+                if (state.gameOver) {
+                    gameOverMenu.style.display = 'flex';
+                } else {
+                    state.isPaused = false;
+                }
             });
+            // --- BUG FIX ENDS HERE ---
 
             arenaBtn.addEventListener("click", () => startNewGame(true));
             jumpToFrontierBtn.addEventListener("click", () => {
@@ -225,6 +234,7 @@ window.addEventListener('load', () => {
             });
 
             restartStageBtn.addEventListener("click", () => startSpecificLevel(state.currentStage));
+            
             levelSelectMenuBtn.addEventListener("click", () => {
                 gameOverMenu.style.display = 'none';
                 state.isPaused = true;
@@ -233,12 +243,16 @@ window.addEventListener('load', () => {
                 AudioManager.playSfx('uiModalOpen');
             });
 
+            // --- BUG FIX STARTS HERE ---
             ascensionMenuBtn.addEventListener("click", () => {
+                // Hide the game over menu so it doesn't appear behind the Ascension grid
+                gameOverMenu.style.display = 'none'; 
                 apDisplayAscGrid.innerText = state.player.ascensionPoints;
                 renderAscensionGrid();
                 ascensionGridModal.style.display = 'flex';
                 AudioManager.playSfx('uiModalOpen');
             });
+            // --- BUG FIX ENDS HERE ---
 
             function startGameFromHome() {
                 AudioManager.unlockAudio();
