@@ -28,10 +28,9 @@ const spawnParticlesCallback = (x, y, c, n, spd, life, r) => utils.spawnParticle
 export function addStatusEffect(name, emoji, duration) {
     const now = Date.now();
     
-    // --- FIX: Corrected talent ID reference ---
     if (name === 'Stunned' || name === 'Petrified' || name === 'Slowed') {
         const isBerserk = state.player.berserkUntil > now;
-        const hasTalent = state.player.purchasedTalents.has('unstoppable-frenzy');
+        const hasTalent = state.player.purchasedTalents.has('havoc-berserk');
         if (isBerserk && hasTalent) {
             return; 
         }
@@ -90,10 +89,22 @@ function getSafeSpawnLocation() {
     let x, y;
     const side = Math.floor(Math.random() * 4);
     switch (side) {
-        case 0: x = Math.random() * canvas.width; y = edgeMargin; break;
-        case 1: x = Math.random() * canvas.width; y = canvas.height - edgeMargin; break;
-        case 2: x = edgeMargin; y = Math.random() * canvas.height; break;
-        case 3: x = canvas.width - edgeMargin; y = Math.random() * canvas.height; break;
+        case 0: // Top
+            x = Math.random() * canvas.width;
+            y = edgeMargin;
+            break;
+        case 1: // Bottom
+            x = Math.random() * canvas.width;
+            y = canvas.height - edgeMargin;
+            break;
+        case 2: // Left
+            x = edgeMargin;
+            y = Math.random() * canvas.height;
+            break;
+        case 3: // Right
+            x = canvas.width - edgeMargin;
+            y = Math.random() * canvas.height;
+            break;
     }
     return { x, y };
 }
@@ -112,8 +123,16 @@ export function spawnBossesForStage(stageNum) {
         const bossId1 = bossData[bossNum1 - 1]?.id;
         const bossId2 = bossData[bossNum2 - 1]?.id;
         
-        if (bossId1) for (let i = 0; i < count1; i++) spawnEnemy(true, bossId1, getSafeSpawnLocation());
-        if (bossId2 && count2 > 0) for (let i = 0; i < count2; i++) spawnEnemy(true, bossId2, getSafeSpawnLocation());
+        if (bossId1) {
+            for (let i = 0; i < count1; i++) {
+                spawnEnemy(true, bossId1, getSafeSpawnLocation());
+            }
+        }
+        if (bossId2 && count2 > 0) {
+            for (let i = 0; i < count2; i++) {
+                spawnEnemy(true, bossId2, getSafeSpawnLocation());
+            }
+        }
     }
 }
 
@@ -166,7 +185,15 @@ export function spawnPickup() {
         life *= (1 + [0.25, 0.5][anomalyRank - 1]);
     }
 
-    state.pickups.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, r: 12, type, vx: 0, vy: 0, lifeEnd: Date.now() + life });
+    state.pickups.push({ 
+        x: Math.random() * canvas.width, 
+        y: Math.random() * canvas.height, 
+        r: 12, 
+        type, 
+        vx: 0, 
+        vy: 0,
+        lifeEnd: Date.now() + life
+    });
 }
 
 export function gameTick(mx, my) {
@@ -186,14 +213,20 @@ export function gameTick(mx, my) {
                 spawnBossesForStage(state.currentStage);
             }
         }
-        if (state.bossActive && Math.random() < (0.007 + state.player.level * 0.001)) spawnEnemy(false);
-        if (Math.random() < (0.02 + state.player.level * 0.0002)) spawnPickup();
+        if (state.bossActive && Math.random() < (0.007 + state.player.level * 0.001)) {
+            spawnEnemy(false);
+        }
+        if (Math.random() < (0.02 + state.player.level * 0.0002)) {
+            spawnPickup();
+        }
     }
     
     if (state.gameOver) {
         stopLoopingSfx("beamHumSound");
         const gameOverMenu = document.getElementById('gameOverMenu');
-        if (gameOverMenu.style.display !== 'flex') gameOverMenu.style.display = 'flex';
+        if (gameOverMenu.style.display !== 'flex') {
+            gameOverMenu.style.display = 'flex';
+        }
         return false;
     }
 
@@ -208,15 +241,22 @@ export function gameTick(mx, my) {
         finalMy = state.player.y - (my - state.player.y);
     }
     
-    if (state.player.purchasedTalents.get('phase-momentum')) {
-        state.player.talent_states.phaseMomentum.active = Date.now() - state.player.talent_states.phaseMomentum.lastDamageTime > 8000;
+    const phaseMomentumTalent = state.player.purchasedTalents.get('phase-momentum');
+    if (phaseMomentumTalent) {
+        if (Date.now() - state.player.talent_states.phaseMomentum.lastDamageTime > 8000) {
+            state.player.talent_states.phaseMomentum.active = true;
+        }
     } else {
         state.player.talent_states.phaseMomentum.active = false;
     }
     
     let playerSpeedMultiplier = state.player.talent_states.phaseMomentum.active ? 1.10 : 1.0;
-    const isBerserkImmune = state.player.berserkUntil > Date.now() && state.player.purchasedTalents.has('unstoppable-frenzy');
-    if (state.player.statusEffects.some(e => e.name === 'Slowed') && !isBerserkImmune) playerSpeedMultiplier *= 0.5;
+    
+    const isBerserkImmune = state.player.berserkUntil > Date.now() && state.player.purchasedTalents.has('havoc-berserk');
+    
+    if (state.player.statusEffects.some(e => e.name === 'Slowed') && !isBerserkImmune) {
+        playerSpeedMultiplier *= 0.5;
+    }
     
     const activeRepulsionFields = state.effects.filter(eff => eff.type === 'repulsion_field');
     const timeEater = state.enemies.find(e => e.id === 'time_eater');
@@ -344,7 +384,7 @@ export function gameTick(mx, my) {
                 if (scavengerRank && Math.random() < [0.01, 0.025][scavengerRank-1]) {
                     state.pickups.push({ x: e.x, y: e.y, r: 12, type: 'score', vx: 0, vy: 0, lifeEnd: Date.now() + 10000 });
                 }
-                const cryoRank = state.player.purchasedTalents.get('cryo-shatter');
+                const cryoRank = state.player.purchasedTalents.get('aegis-freeze');
                 if (cryoRank && e.wasFrozen && Math.random() < [0.25, 0.5][cryoRank-1]) {
                     utils.spawnParticles(state.particles, e.x, e.y, '#ADD8E6', 40, 4, 30, 2);
                     state.effects.push({ type: 'shockwave', caster: state.player, x: e.x, y: e.y, radius: 0, maxRadius: 100, speed: 500, startTime: Date.now(), hitEnemies: new Set(), damage: 5 * state.player.talent_modifiers.damage_multiplier, color: 'rgba(0, 200, 255, 0.5)' });
@@ -416,8 +456,14 @@ export function gameTick(mx, my) {
             e.y += e.knockbackDy;
             e.knockbackDx *= 0.98;
             e.knockbackDy *= 0.98;
-            if (e.x < e.r || e.x > canvas.width - e.r) { e.x = Math.max(e.r, Math.min(canvas.width - e.r, e.x)); e.knockbackDx *= -0.8; }
-            if (e.y < e.r || e.y > canvas.height - e.r) { e.y = Math.max(e.r, Math.min(canvas.height - e.r, e.y)); e.knockbackDy *= -0.8; }
+            if (e.x < e.r || e.x > canvas.width - e.r) {
+                e.x = Math.max(e.r, Math.min(canvas.width - e.r, e.x));
+                e.knockbackDx *= -0.8;
+            }
+            if (e.y < e.r || e.y > canvas.height - e.r) {
+                e.y = Math.max(e.r, Math.min(canvas.height - e.r, e.y));
+                e.knockbackDy *= -0.8;
+            }
         } else if(!e.frozen && !e.hasCustomMovement){ 
             let tgt = state.decoy ? state.decoy : state.player;
             let enemySpeedMultiplier = 1;
@@ -490,7 +536,8 @@ export function gameTick(mx, my) {
                         state.player.health -= damage; 
                     }
                     play('hitSound'); 
-                    if(e.onDamage) e.onDamage(e, damage, state.player, state, spawnParticlesCallback, play);
+                    // --- FIX: Pass the 'play' function to onDamage call ---
+                    if(e.onDamage) e.onDamage(e, damage, state.player, state, spawnParticlesCallback, play); 
                     if(state.player.health<=0) state.gameOver=true; 
                 } else { 
                     state.player.shield=false; 
@@ -588,6 +635,7 @@ export function gameTick(mx, my) {
                     if (effect.damage > 0) {
                         let dmg = (target.boss || target === state.player) ? effect.damage : 1000;
                         if(target.health) target.health -= dmg; else target.hp -= dmg;
+                        // --- FIX: Pass the 'play' function to onDamage call ---
                         if (target.onDamage) target.onDamage(target, dmg, effect.caster, state, spawnParticlesCallback, play);
                     }
                     effect.hitEnemies.add(target);
@@ -604,6 +652,7 @@ export function gameTick(mx, my) {
                     utils.spawnParticles(state.particles, to.x, to.y, '#ffffff', 30, 5, 20);
                     let dmg = (to.boss ? effect.damage : 50) * state.player.talent_modifiers.damage_multiplier;
                     to.hp -= dmg; 
+                    // --- FIX: Pass the 'play' function to onDamage call ---
                     if (to.onDamage) to.onDamage(to, dmg, effect.caster, state, spawnParticlesCallback, play);
                     effect.links.push(to);
                     if (state.player.purchasedTalents.has('volatile-finish') && i === effect.targets.length - 1) {
@@ -639,19 +688,7 @@ export function gameTick(mx, my) {
             const hasTracking = state.player.purchasedTalents.has('targeting-algorithm');
             if(hasTracking && effect.target && effect.target.hp > 0) { effect.x = effect.target.x; effect.y = effect.target.y; }
             const duration = 1500; const progress = (Date.now() - effect.startTime) / duration; 
-            if (progress >= 1) { 
-                spawnParticlesCallback(effect.x, effect.y, '#e67e22', 100, 8, 40); 
-                const explosionRadius = 150; 
-                state.enemies.forEach(e => { 
-                    if (Math.hypot(e.x-effect.x, e.y-effect.y) < explosionRadius) { 
-                        let damage = ((state.player.berserkUntil > Date.now()) ? 50 : 25)  * state.player.talent_modifiers.damage_multiplier; 
-                        e.hp -= e.boss ? damage : 1000; 
-                        if(e.onDamage) e.onDamage(e, damage, effect.caster, state, spawnParticlesCallback, play); 
-                    } 
-                }); 
-                state.effects.splice(index, 1); 
-                return; 
-            } 
+            if (progress >= 1) { spawnParticlesCallback(effect.x, effect.y, '#e67e22', 100, 8, 40); const explosionRadius = 150; state.enemies.forEach(e => { if (Math.hypot(e.x-effect.x, e.y-effect.y) < explosionRadius) { let damage = ((state.player.berserkUntil > Date.now()) ? 50 : 25)  * state.player.talent_modifiers.damage_multiplier; e.hp -= e.boss ? damage : 1000; if(e.onDamage) e.onDamage(e, damage, effect.caster, state, spawnParticlesCallback, play); } }); state.effects.splice(index, 1); return; } 
             ctx.strokeStyle = 'rgba(230, 126, 34, 0.8)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(effect.x, effect.y, 50 * (1-progress), 0, Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(effect.x-10, effect.y); ctx.lineTo(effect.x+10, effect.y); ctx.moveTo(effect.x, effect.y-10); ctx.lineTo(effect.x, effect.y+10); ctx.stroke(); 
         } else if (effect.type === 'black_hole') { 
             if (Date.now() > effect.endTime) { if (state.player.purchasedTalents.has('unstable-singularity')) { state.effects.push({ type: 'shockwave', caster: state.player, x: effect.x, y: effect.y, radius: 0, maxRadius: effect.maxRadius, speed: 800, startTime: Date.now(), hitEnemies: new Set(), damage: 25 * state.player.talent_modifiers.damage_multiplier }); } state.effects.splice(index, 1); return; } 
@@ -713,7 +750,7 @@ export function gameTick(mx, my) {
             if (L2 !== 0) {
                 let t = ((p3.x - p1.x) * (p2.x - p1.x) + (p3.y - p1.y) * (p2.y - p1.y)) / L2; t = Math.max(0, Math.min(1, t));
                 const closestX = p1.x + t * (p2.x - p1.x); const closestY = p1.y + t * (p2.y - p1.y);
-                if (Math.hypot(p3.x - closestX, p3.y - closestY) < p3.r + 5) { if (state.player.shield) { state.player.shield = false; play('shieldBreak'); } else { state.player.health -= 2; play('hitSound');} }
+                if (Math.hypot(p3.x - closestX, p3.y - closestY) < p3.r + 5) { if (state.player.shield) { state.player.shield = false; play('shieldBreak'); } else { state.player.health -= 2; } }
             }
         } else if (effect.type === 'slow_zone') {
             if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
