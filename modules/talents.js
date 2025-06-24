@@ -51,7 +51,7 @@ export const TALENT_GRID_CONFIG = {
             position: { x: 20, y: 40 },
             prerequisites: ['exo-weave-plating'],
         },
-        'aegis-retaliation': { // RESTORED TALENT
+        'aegis-retaliation': {
             id: 'aegis-retaliation',
             name: 'Aegis Retaliation',
             powerPrerequisite: 'shield',
@@ -66,7 +66,7 @@ export const TALENT_GRID_CONFIG = {
             id: 'cryo-shatter',
             name: 'Cryo-Shatter',
             powerPrerequisite: 'freeze',
-            description: (rank, maxed) => `Enemies defeated while Frozen have a ${maxed ? '50%' : '25%'} chance to shatter, releasing a freezing pulse that damages nearby enemies.`,
+            description: (rank, maxed) => `Enemies defeated while Frozen have a ${maxed ? '50%' : '25%'} chance to shatter, damaging nearby enemies.`,
             icon: '❄️',
             maxRanks: 2,
             costPerRank: [2, 3],
@@ -83,7 +83,7 @@ export const TALENT_GRID_CONFIG = {
             position: { x: 40, y: 45 },
             prerequisites: ['exo-weave-plating'],
         },
-        'kinetic-overload': { // RESTORED TALENT
+        'kinetic-overload': {
             id: 'kinetic-overload',
             name: 'Kinetic Overload',
             powerPrerequisite: 'repulsion',
@@ -149,10 +149,10 @@ export const TALENT_GRID_CONFIG = {
             icon: '⛓️',
             maxRanks: 2,
             costPerRank: [1, 1],
-            position: { x: 70, y: 65 },
+            position: { x: 65, y: 70 },
             prerequisites: ['homing-shrapnel'],
         },
-        'volatile-finish': { // RESTORED TALENT
+        'volatile-finish': {
             id: 'volatile-finish',
             name: 'Volatile Finish',
             powerPrerequisite: 'chain',
@@ -160,8 +160,30 @@ export const TALENT_GRID_CONFIG = {
             icon: '💣',
             maxRanks: 1,
             costPerRank: [3],
-            position: { x: 75, y: 78 },
+            position: { x: 70, y: 85 },
             prerequisites: ['arc-cascade'],
+        },
+        'targeting-algorithm': {
+            id: 'targeting-algorithm',
+            name: 'Targeting Algorithm',
+            powerPrerequisite: 'orbitalStrike',
+            description: () => 'The Orbital Strike power now locks on to and tracks its target.',
+            icon: '🛰️',
+            maxRanks: 1,
+            costPerRank: [2],
+            position: { x: 80, y: 40 },
+            prerequisites: ['high-frequency-emitters'],
+        },
+        'unstable-payload': {
+            id: 'unstable-payload',
+            name: 'Unstable Payload',
+            powerPrerequisite: 'ricochetShot',
+            description: () => 'Ricochet Shot projectiles grow larger and more damaging with each bounce.',
+            icon: '🔄',
+            maxRanks: 1,
+            costPerRank: [3],
+            position: { x: 85, y: 55 },
+            prerequisites: ['targeting-algorithm'],
         },
         'unstoppable-frenzy': {
             id: 'unstoppable-frenzy',
@@ -171,18 +193,19 @@ export const TALENT_GRID_CONFIG = {
             icon: '💢',
             maxRanks: 1,
             costPerRank: [3],
-            position: { x: 90, y: 40 },
+            position: { x: 90, y: 25 },
             prerequisites: ['high-frequency-emitters'],
         },
-        'overcharged-capacitors': {
-            id: 'overcharged-capacitors',
-            name: 'Overcharged Capacitors',
-            description: () => 'Increases all damage dealt by 15%, but also increases all damage received by 15%.',
-            icon: '⚠️',
+        'nova-pulsar': {
+            id: 'nova-pulsar',
+            name: 'Nova Pulsar',
+            powerPrerequisite: 'bulletNova',
+            description: () => 'The Bullet Nova power now fires three spiraling waves instead of one.',
+            icon: '💫',
             maxRanks: 1,
             costPerRank: [3],
-            position: { x: 85, y: 55 },
-            prerequisites: ['unstoppable-frenzy'],
+            position: { x: 90, y: 70 },
+            prerequisites: ['unstable-payload'],
         },
         'unstable-singularity': {
             id: 'unstable-singularity',
@@ -192,8 +215,8 @@ export const TALENT_GRID_CONFIG = {
             icon: '⚫',
             maxRanks: 1,
             costPerRank: [4],
-            position: { x: 70, y: 90 },
-            prerequisites: ['volatile-finish', 'overcharged-capacitors'],
+            position: { x: 70, y: 92 },
+            prerequisites: ['volatile-finish', 'nova-pulsar'],
         },
     },
 
@@ -240,7 +263,7 @@ export const TALENT_GRID_CONFIG = {
             position: { x: 35, y: 70 },
             prerequisites: ['temporal-anomaly'],
         },
-        'power-scavenger': { // RESTORED TALENT
+        'power-scavenger': {
             id: 'power-scavenger',
             name: 'Power Scavenger',
             description: (rank, maxed) => `Non-boss enemies have a ${maxed ? '2.5%' : '1%'} chance to drop a valuable Essence pickup on death.`,
@@ -250,6 +273,17 @@ export const TALENT_GRID_CONFIG = {
             position: { x: 60, y: 55 },
             prerequisites: ['resonance-magnet'],
         },
+        'quantum-duplicate': {
+            id: 'quantum-duplicate',
+            name: 'Quantum Duplicate',
+            powerPrerequisite: 'decoy',
+            description: () => `Your Decoy now actively moves away from your position, drawing enemy aggression more effectively.`,
+            icon: '👥',
+            maxRanks: 1,
+            costPerRank: [2],
+            position: { x: 65, y: 70 },
+            prerequisites: ['power-scavenger'],
+        },
         'energetic-recycling': {
             id: 'energetic-recycling',
             name: 'Capstone: Energetic Recycling',
@@ -258,7 +292,7 @@ export const TALENT_GRID_CONFIG = {
             maxRanks: 1,
             costPerRank: [4],
             position: { x: 50, y: 85 },
-            prerequisites: ['preordinance', 'power-scavenger'],
+            prerequisites: ['preordinance', 'quantum-duplicate'],
         },
     }
 };
