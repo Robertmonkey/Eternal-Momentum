@@ -122,6 +122,7 @@ window.addEventListener('load', () => {
         const gameOverMenu = document.getElementById('gameOverMenu');
         const restartStageBtn = document.getElementById('restartStageBtn');
         const levelSelectMenuBtn = document.getElementById('levelSelectMenuBtn');
+        const ascensionMenuBtn = document.getElementById('ascensionMenuBtn');
 
         let mx = 0, my = 0;
         const allAudioElements = Array.from(document.querySelectorAll('audio'));
@@ -229,6 +230,13 @@ window.addEventListener('load', () => {
                 state.isPaused = true;
                 populateLevelSelect(startSpecificLevel);
                 levelSelectModal.style.display = 'flex';
+                AudioManager.playSfx('uiModalOpen');
+            });
+
+            ascensionMenuBtn.addEventListener("click", () => {
+                apDisplayAscGrid.innerText = state.player.ascensionPoints;
+                renderAscensionGrid();
+                ascensionGridModal.style.display = 'flex';
                 AudioManager.playSfx('uiModalOpen');
             });
 
