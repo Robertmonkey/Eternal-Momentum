@@ -3,8 +3,8 @@
 export const AudioManager = {
     unlocked: false,
     userMuted: false,
-    sfxVolume: 0.85, // Was 0.8
-    musicVolume: 0.35, // Was 0.4
+    sfxVolume: 0.85,
+    musicVolume: 0.35,
     soundElements: {},
     musicPlaylist: [],
     currentTrackIndex: -1,
@@ -99,7 +99,7 @@ export const AudioManager = {
     },
 
     _fade(audioElement, startVol, endVol, duration, onComplete) {
-        if (this.isFading && endVol > 0) return;
+        // if (this.isFading && endVol > 0) return; // --- BUG FIX: This line was removed.
         this.isFading = true;
         let currentVol = startVol;
         audioElement.volume = currentVol;
