@@ -3,8 +3,8 @@
 export const AudioManager = {
     unlocked: false,
     userMuted: false,
-    sfxVolume: 0.8,
-    musicVolume: 0.5,
+    sfxVolume: 0.85, // Was 0.8
+    musicVolume: 0.35, // Was 0.4
     soundElements: {},
     musicPlaylist: [],
     currentTrackIndex: -1,
@@ -83,19 +83,15 @@ export const AudioManager = {
         }
     },
     
-    // --- CHANGE: New function to handle audio when tab is hidden/closed ---
     handleVisibilityChange() {
-        if (!this.unlocked) return; // Don't do anything if audio isn't active
+        if (!this.unlocked) return;
         
         if (document.hidden) {
-            // Pause current music if it's playing
             if (this.currentMusic && !this.currentMusic.paused) {
                 this.currentMusic.pause();
             }
-            // Stop any other looping sounds
             this.stopLoopingSfx('beamHumSound');
         } else {
-            // If not muted by the user, resume music when tab becomes visible
             if (!this.userMuted && this.currentMusic && this.currentMusic.paused) {
                 this.currentMusic.play().catch(e => {});
             }
