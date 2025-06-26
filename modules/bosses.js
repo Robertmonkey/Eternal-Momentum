@@ -507,27 +507,44 @@ export const bossData = [{
         }
     }
 }, {
+    // --- BASILISK REDESIGN ---
     id: "basilisk",
     name: "The Basilisk",
     color: "#00b894",
     maxHP: 384,
-    init: b => {
-        b.lastPetrifyZone = Date.now();
+    init: (b, state, spawnEnemy, canvas) => {
+        b.petrifyZones = [];
+        const w = canvas.width;
+        const h = canvas.height;
+        const centers = [
+            { x: w / 4, y: h / 4 }, { x: w * 3 / 4, y: h / 4 },
+            { x: w / 4, y: h * 3 / 4 }, { x: w * 3 / 4, y: h * 3 / 4 }
+        ];
+        centers.forEach(center => {
+            b.petrifyZones.push({
+                x: center.x,
+                y: center.y,
+                size: 0,
+                playerInsideTime: null
+            });
+        });
     },
     logic: (b, ctx, state) => {
         const canvas = ctx.canvas;
-        if (Date.now() - b.lastPetrifyZone > 7000) {
-            b.lastPetrifyZone = Date.now();
-            for (let i = 0; i < 4; i++) {
-                state.effects.push({
-                    type: 'petrify_zone',
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height,
-                    r: 120,
-                    startTime: Date.now()
-                });
-            }
-        }
+        const hpPercent = Math.max(0, b.hp / b.maxHP);
+        const growthRange = 1.0 - 0.3; // Grows from 100% HP down to 30% HP
+        const currentGrowthProgress = 1.0 - hpPercent;
+        const scaledGrowth = Math.min(1.0, currentGrowthProgress / growthRange);
+
+        const w = canvas.width;
+        const h = canvas.height;
+        const maxSizeW = w / 2;
+        const maxSizeH = h / 2;
+        
+        b.petrifyZones.forEach(zone => {
+            zone.sizeW = maxSizeW * scaledGrowth;
+            zone.sizeH = maxSizeH * scaledGrowth;
+        });
     }
 }, {
     id: "annihilator",
@@ -575,6 +592,7 @@ export const bossData = [{
         if (!p.infected) addStatusEffect('Infected', '☣️', 10000);
         p.infected = true;
         p.infectionEnd = Date.now() + 10000;
+        p.lastSpore = Date.now(); // Initialize spore timer on infection
     },
     logic: (b, ctx, state) => {
         state.enemies.forEach(e => {
@@ -690,13 +708,20 @@ export const bossData = [{
         b.phase = 1;
         b.lastAction = 0;
         b.wells = [];
-        b.beamTarget = null;
+        b.beamTarget = null; // --- SINGULARITY FIX ---
         b.teleportingAt = null;
         b.teleportTarget = null;
     },
     logic: (b, ctx, state, utils, gameHelpers) => {
         const canvas = ctx.canvas;
         const hpPercent = b.hp / b.maxHP;
+
+        // --- SINGULARITY FIX ---
+        // Clear the beam target after a short duration
+        if (b.beamTarget && Date.now() > b.lastAction + 1000) {
+            b.beamTarget = null;
+        }
+
         if (hpPercent <= 0.33 && b.phase < 3) {
             b.phase = 3;
             gameHelpers.play('finalBossPhaseSound');
@@ -712,6 +737,7 @@ export const bossData = [{
             b.lastAction = Date.now();
             b.wells = [];
         }
+        
         switch (b.phase) {
             case 1:
                 if (Date.now() - b.lastAction > 5000) {
@@ -748,8 +774,8 @@ export const bossData = [{
                         r: 100,
                         endTime: Date.now() + 3000
                     });
-                    const beamTarget = { x: Math.random() * canvas.width, y: Math.random() * canvas.height };
-                    state.effects.push({ type: 'singularity_beam', source: b, target: beamTarget, endTime: Date.now() + 500 });
+                    // --- SINGULARITY FIX ---
+                    b.beamTarget = { x: Math.random() * canvas.width, y: Math.random() * canvas.height };
                 }
                 break;
             case 3:
@@ -782,6 +808,25 @@ export const bossData = [{
                     }
                 }
                 break;
+        }
+
+        // --- SINGULARITY FIX ---
+        // Draw the beam if the target exists
+        if (b.beamTarget) {
+            utils.drawLightning(ctx, b.x, b.y, b.beamTarget.x, b.beamTarget.y, '#fd79a8', 8);
+            const p1 = b, p2 = b.beamTarget, p3 = state.player; const L2 = Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2);
+            if (L2 !== 0) {
+                let t = ((p3.x - p1.x) * (p2.x - p1.x) + (p3.y - p1.y) * (p2.y - p1.y)) / L2; t = Math.max(0, Math.min(1, t));
+                const closestX = p1.x + t * (p2.x - p1.x); const closestY = p1.y + t * (p2.y - p1.y);
+                if (Math.hypot(p3.x - closestX, p3.y - closestY) < p3.r + 5) { 
+                    if (state.player.shield) { 
+                        state.player.shield = false; 
+                        gameHelpers.play('shieldBreak'); 
+                    } else { 
+                        state.player.health -= 2; 
+                    } 
+                }
+            }
         }
     }
 }];
