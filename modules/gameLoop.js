@@ -404,8 +404,6 @@ export function gameTick(mx, my) {
             }
         }
         
-        // --- PARASITE FIX ---
-        // Added logic for infected non-boss enemies to spawn spores.
         if (e.isInfected && !e.boss) {
             if (Date.now() > e.infectionEnd) {
                 e.isInfected = false;
@@ -529,19 +527,20 @@ export function gameTick(mx, my) {
         if(!e.hasCustomDraw) utils.drawCircle(ctx, e.x,e.y,e.r, color);
         if(e.enraged) { ctx.strokeStyle = "yellow"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(e.x,e.y,e.r+5,0,2*Math.PI); ctx.stroke(); }
         
-        // --- BASILISK REDESIGN ---
-        // Drawing and collision logic for the new petrify squares
+        // --- BASILISK COOLDOWN FIX ---
         if (e.id === 'basilisk' && e.petrifyZones) {
             e.petrifyZones.forEach(zone => {
                 const zoneX = zone.x - zone.sizeW / 2;
                 const zoneY = zone.y - zone.sizeH / 2;
-                ctx.fillStyle = `rgba(0, 184, 148, 0.2)`;
+                const onCooldown = Date.now() < (zone.cooldownUntil || 0);
+
+                ctx.fillStyle = onCooldown ? `rgba(0, 184, 148, 0.05)` : `rgba(0, 184, 148, 0.2)`;
                 ctx.fillRect(zoneX, zoneY, zone.sizeW, zone.sizeH);
 
                 const player = state.player;
                 const isPlayerInside = player.x > zoneX && player.x < zoneX + zone.sizeW && player.y > zoneY && player.y < zoneY + zone.sizeH;
 
-                if (isPlayerInside) {
+                if (isPlayerInside && !onCooldown) {
                     if (!zone.playerInsideTime) zone.playerInsideTime = Date.now();
                     const stunProgress = (Date.now() - zone.playerInsideTime) / 1500;
                     ctx.fillStyle = `rgba(0, 184, 148, 0.4)`;
@@ -551,7 +550,8 @@ export function gameTick(mx, my) {
                         play('stoneCrackingSound');
                         addStatusEffect('Petrified', '🗿', 2000);
                         player.stunnedUntil = Date.now() + 2000;
-                        zone.playerInsideTime = null; // Reset after petrify
+                        zone.playerInsideTime = null; 
+                        zone.cooldownUntil = Date.now() + 2000; // Put the zone on cooldown
                     }
                 } else {
                     zone.playerInsideTime = null;
@@ -771,15 +771,6 @@ export function gameTick(mx, my) {
             if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
             const alpha = (effect.endTime - Date.now()) / 5000 * 0.3; ctx.fillStyle = `rgba(253, 121, 168, ${alpha})`; utils.drawCircle(ctx, effect.x, effect.y, effect.r, ctx.fillStyle);
             if (Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < effect.r + state.player.r) { if (!state.player.controlsInverted) { play('systemErrorSound'); addStatusEffect('Controls Inverted', '🔀', 3000); } state.player.controlsInverted = true; setTimeout(() => state.player.controlsInverted = false, 3000); }
-        } else if (effect.type === 'petrify_zone') { // This logic is now deprecated by the Basilisk redesign
-            if (Date.now() > effect.startTime + 5000) { state.effects.splice(index, 1); return; }
-            ctx.fillStyle = `rgba(0, 184, 148, 0.2)`; utils.drawCircle(ctx, effect.x, effect.y, effect.r, ctx.fillStyle);
-            if (Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < effect.r) {
-                if(!effect.playerInsideTime) effect.playerInsideTime = Date.now();
-                const stunProgress = (Date.now() - effect.playerInsideTime) / 1500;
-                ctx.fillStyle = `rgba(0, 184, 148, 0.4)`; ctx.beginPath(); ctx.moveTo(effect.x, effect.y); ctx.arc(effect.x, effect.y, effect.r, -Math.PI/2, -Math.PI/2 + (Math.PI*2) * stunProgress, false); ctx.lineTo(effect.x, effect.y); ctx.fill();
-                if (stunProgress >= 1) { play('stoneCrackingSound'); addStatusEffect('Petrified', '🗿', 2000); state.player.stunnedUntil = Date.now() + 2000; state.effects.splice(index, 1); }
-            } else { effect.playerInsideTime = null; }
         } else if (effect.type === 'annihilator_beam') {
             if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
             const { source, pillar } = effect; if(!source || !pillar || source.hp <= 0) { state.effects.splice(index, 1); return; }
