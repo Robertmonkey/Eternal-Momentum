@@ -42,28 +42,32 @@ export function addStatusEffect(name, emoji, duration) {
 
 export function handleThematicUnlock(stageJustCleared) {
     const unlockLevel = stageJustCleared + 1;
-    const unlock = THEMATIC_UNLOCKS[unlockLevel];
-    if (!unlock) return;
+    const unlockData = THEMATIC_UNLOCKS[unlockLevel];
+    if (!unlockData) return;
 
-    const isAlreadyUnlocked = unlock.type === 'power' && state.player.unlockedPowers.has(unlock.id);
-    if (isAlreadyUnlocked) return;
-    
-    if (unlock.type === 'power') {
-        state.player.unlockedPowers.add(unlock.id);
-        const powerName = powers[unlock.id]?.desc || unlock.id;
-        showUnlockNotification(`Power Unlocked: ${powers[unlock.id].emoji} ${powerName}`);
-    } else if (unlock.type === 'slot') {
-        if (unlock.id === 'queueSlot1') {
-            if (state.player.unlockedOffensiveSlots < 2) state.player.unlockedOffensiveSlots++;
-            if (state.player.unlockedDefensiveSlots < 2) state.player.unlockedDefensiveSlots++;
-        } else if (unlock.id === 'queueSlot2') {
-            if (state.player.unlockedOffensiveSlots < 3) state.player.unlockedOffensiveSlots++;
-            if (state.player.unlockedDefensiveSlots < 3) state.player.unlockedDefensiveSlots++;
+    const unlocks = Array.isArray(unlockData) ? unlockData : [unlockData];
+
+    for (const unlock of unlocks) {
+        const isAlreadyUnlocked = unlock.type === 'power' && state.player.unlockedPowers.has(unlock.id);
+        if (isAlreadyUnlocked) continue;
+        
+        if (unlock.type === 'power') {
+            state.player.unlockedPowers.add(unlock.id);
+            const powerName = powers[unlock.id]?.desc || unlock.id;
+            showUnlockNotification(`Power Unlocked: ${powers[unlock.id].emoji} ${powerName}`);
+        } else if (unlock.type === 'slot') {
+            if (unlock.id === 'queueSlot1') {
+                if (state.player.unlockedOffensiveSlots < 2) state.player.unlockedOffensiveSlots++;
+                if (state.player.unlockedDefensiveSlots < 2) state.player.unlockedDefensiveSlots++;
+            } else if (unlock.id === 'queueSlot2') {
+                if (state.player.unlockedOffensiveSlots < 3) state.player.unlockedOffensiveSlots++;
+                if (state.player.unlockedDefensiveSlots < 3) state.player.unlockedDefensiveSlots++;
+            }
+            showUnlockNotification(`Inventory Slot Unlocked!`);
+        } else if (unlock.type === 'bonus') {
+            state.player.ascensionPoints += unlock.value;
+            showUnlockNotification(`Bonus: +${unlock.value} Ascension Points!`);
         }
-        showUnlockNotification(`Inventory Slot Unlocked!`);
-    } else if (unlock.type === 'bonus') {
-        state.player.ascensionPoints += unlock.value;
-        showUnlockNotification(`Bonus: +${unlock.value} Ascension Points!`);
     }
 }
 
@@ -110,30 +114,36 @@ function getSafeSpawnLocation() {
 }
 
 export function spawnBossesForStage(stageNum) {
+    const bossIdsToSpawn = [];
+
     if (stageNum <= 20) {
         const bossIndex = stageNum - 1;
-        if (bossIndex < bossData.length) {
-            spawnEnemy(true, bossData[bossIndex].id, getSafeSpawnLocation());
+        if (bossData[bossIndex]) {
+            bossIdsToSpawn.push(bossData[bossIndex].id);
         }
+    } else if (stageNum <= 30) {
+        const bossIndex1 = (stageNum - 1) % 10;
+        const bossIndex2 = bossIndex1 + 10;
+
+        if (bossData[bossIndex1]) bossIdsToSpawn.push(bossData[bossIndex1].id);
+        if (bossData[bossIndex2]) bossIdsToSpawn.push(bossData[bossIndex2].id);
     } else {
-        const bossNum1 = ((stageNum - 1) % 10) + 1;
-        const bossNum2 = bossNum1 + 10;
-        const count1 = 1 + Math.floor((stageNum - 11) / 20);
-        const count2 = 1 + Math.floor((stageNum - 21) / 20);
-        const bossId1 = bossData[bossNum1 - 1]?.id;
-        const bossId2 = bossData[bossNum2 - 1]?.id;
+        const bossIndex1 = (stageNum - 1) % 10;
+        const bossIndex2 = bossIndex1 + 10;
         
-        if (bossId1) {
-            for (let i = 0; i < count1; i++) {
-                spawnEnemy(true, bossId1, getSafeSpawnLocation());
-            }
+        let bossIndex3 = (bossIndex1 + 5) % 20;
+        while (bossIndex3 === bossIndex1 || bossIndex3 === bossIndex2) {
+            bossIndex3 = (bossIndex3 + 1) % 20;
         }
-        if (bossId2 && count2 > 0) {
-            for (let i = 0; i < count2; i++) {
-                spawnEnemy(true, bossId2, getSafeSpawnLocation());
-            }
-        }
+
+        if (bossData[bossIndex1]) bossIdsToSpawn.push(bossData[bossIndex1].id);
+        if (bossData[bossIndex2]) bossIdsToSpawn.push(bossData[bossIndex2].id);
+        if (bossData[bossIndex3]) bossIdsToSpawn.push(bossData[bossIndex3].id);
     }
+
+    bossIdsToSpawn.forEach(bossId => {
+        spawnEnemy(true, bossId, getSafeSpawnLocation());
+    });
 }
 
 export function spawnEnemy(isBoss = false, bossId = null, location = null) {
@@ -404,6 +414,22 @@ export function gameTick(mx, my) {
             }
         }
         
+        if (e.isInfected && !e.boss) {
+            if (Date.now() > e.infectionEnd) {
+                e.isInfected = false;
+            } else if (Date.now() - (e.lastSpore || 0) > 3000) {
+                e.lastSpore = Date.now();
+                const spore = spawnEnemy(false, null, { x: e.x, y: e.y });
+                if (spore) {
+                    spore.r = 6;
+                    spore.hp = 1;
+                    spore.dx = (Math.random() - 0.5) * 8;
+                    spore.dy = (Math.random() - 0.5) * 8;
+                    spore.ignoresPlayer = true;
+                }
+            }
+        }
+
         if (!e.boss && activeRepulsionFields.length > 0) {
             activeRepulsionFields.forEach(field => {
                 const dist = Math.hypot(e.x - field.x, e.y - field.y);
@@ -446,7 +472,7 @@ export function gameTick(mx, my) {
             e.y += e.dy;
             e.r *= 0.95;
             if (e.r < 2) {
-                if (timeEater) timeEater.hp -= 10; // Changed from - 5 to - 10
+                if (timeEater) timeEater.hp -= 10;
                 utils.spawnParticles(state.particles, e.x, e.y, "#d63031", 10, 2, 15);
                 state.enemies.splice(i, 1);
                 continue;
@@ -510,6 +536,37 @@ export function gameTick(mx, my) {
         let color = e.customColor || (e.boss ? e.color : "#c0392b"); if(e.isInfected) color = '#55efc4'; if(e.frozen) color = '#add8e6';
         if(!e.hasCustomDraw) utils.drawCircle(ctx, e.x,e.y,e.r, color);
         if(e.enraged) { ctx.strokeStyle = "yellow"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(e.x,e.y,e.r+5,0,2*Math.PI); ctx.stroke(); }
+        
+        if (e.id === 'basilisk' && e.petrifyZones) {
+            e.petrifyZones.forEach(zone => {
+                const zoneX = zone.x - zone.sizeW / 2;
+                const zoneY = zone.y - zone.sizeH / 2;
+                const onCooldown = Date.now() < (zone.cooldownUntil || 0);
+
+                ctx.fillStyle = onCooldown ? `rgba(0, 184, 148, 0.05)` : `rgba(0, 184, 148, 0.2)`;
+                ctx.fillRect(zoneX, zoneY, zone.sizeW, zone.sizeH);
+
+                const player = state.player;
+                const isPlayerInside = player.x > zoneX && player.x < zoneX + zone.sizeW && player.y > zoneY && player.y < zoneY + zone.sizeH;
+
+                if (isPlayerInside && !onCooldown) {
+                    if (!zone.playerInsideTime) zone.playerInsideTime = Date.now();
+                    const stunProgress = (Date.now() - zone.playerInsideTime) / 1500;
+                    ctx.fillStyle = `rgba(0, 184, 148, 0.4)`;
+                    ctx.fillRect(zoneX, zoneY, zone.sizeW * stunProgress, zone.sizeH);
+
+                    if (stunProgress >= 1) {
+                        play('stoneCrackingSound');
+                        addStatusEffect('Petrified', '🗿', 2000);
+                        player.stunnedUntil = Date.now() + 2000;
+                        zone.playerInsideTime = null; 
+                        zone.cooldownUntil = Date.now() + 2000;
+                    }
+                } else {
+                    zone.playerInsideTime = null;
+                }
+            });
+        }
         
         const pDist = Math.hypot(state.player.x-e.x,state.player.y-e.y);
         if(pDist < e.r+state.player.r){
@@ -723,15 +780,6 @@ export function gameTick(mx, my) {
             if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
             const alpha = (effect.endTime - Date.now()) / 5000 * 0.3; ctx.fillStyle = `rgba(253, 121, 168, ${alpha})`; utils.drawCircle(ctx, effect.x, effect.y, effect.r, ctx.fillStyle);
             if (Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < effect.r + state.player.r) { if (!state.player.controlsInverted) { play('systemErrorSound'); addStatusEffect('Controls Inverted', '🔀', 3000); } state.player.controlsInverted = true; setTimeout(() => state.player.controlsInverted = false, 3000); }
-        } else if (effect.type === 'petrify_zone') {
-            if (Date.now() > effect.startTime + 5000) { state.effects.splice(index, 1); return; }
-            ctx.fillStyle = `rgba(0, 184, 148, 0.2)`; utils.drawCircle(ctx, effect.x, effect.y, effect.r, ctx.fillStyle);
-            if (Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < effect.r) {
-                if(!effect.playerInsideTime) effect.playerInsideTime = Date.now();
-                const stunProgress = (Date.now() - effect.playerInsideTime) / 1500;
-                ctx.fillStyle = `rgba(0, 184, 148, 0.4)`; ctx.beginPath(); ctx.moveTo(effect.x, effect.y); ctx.arc(effect.x, effect.y, effect.r, -Math.PI/2, -Math.PI/2 + (Math.PI*2) * stunProgress, false); ctx.lineTo(effect.x, effect.y); ctx.fill();
-                if (stunProgress >= 1) { play('stoneCrackingSound'); addStatusEffect('Petrified', '🗿', 2000); state.player.stunnedUntil = Date.now() + 2000; state.effects.splice(index, 1); }
-            } else { effect.playerInsideTime = null; }
         } else if (effect.type === 'annihilator_beam') {
             if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
             const { source, pillar } = effect; if(!source || !pillar || source.hp <= 0) { state.effects.splice(index, 1); return; }
@@ -751,16 +799,6 @@ export function gameTick(mx, my) {
             if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
             const progress = 1 - ((effect.endTime - Date.now()) / 1000);
             ctx.strokeStyle = `rgba(255, 0, 0, ${1 - progress})`; ctx.lineWidth = 5 + (10 * progress); ctx.beginPath(); ctx.arc(effect.x, effect.y, effect.r * (1.5 - progress), 0, 2 * Math.PI); ctx.stroke();
-        } else if (effect.type === 'singularity_beam') {
-            if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
-            const { source, target } = effect; if (!source || !target) { state.effects.splice(index, 1); return; }
-            utils.drawLightning(ctx, source.x, source.y, target.x, target.y, '#fd79a8', 8);
-            const p1 = source, p2 = target, p3 = state.player; const L2 = Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2);
-            if (L2 !== 0) {
-                let t = ((p3.x - p1.x) * (p2.x - p1.x) + (p3.y - p1.y) * (p2.y - p1.y)) / L2; t = Math.max(0, Math.min(1, t));
-                const closestX = p1.x + t * (p2.x - p1.x); const closestY = p1.y + t * (p2.y - p1.y);
-                if (Math.hypot(p3.x - closestX, p3.y - closestY) < p3.r + 5) { if (state.player.shield) { state.player.shield = false; play('shieldBreak'); } else { state.player.health -= 2; } }
-            }
         } else if (effect.type === 'slow_zone') {
             if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
             const alpha = (effect.endTime - Date.now()) / 6000 * 0.4;
@@ -774,14 +812,8 @@ export function gameTick(mx, my) {
         }
     });
     
-    updateParticles();
+    utils.updateParticles(ctx, state.particles);
     updateUI();
     ctx.restore();
     return true;
 }
-
-// this comment is a test to see what happens when it is here
-
-  </script>
-</body>
-</html>
