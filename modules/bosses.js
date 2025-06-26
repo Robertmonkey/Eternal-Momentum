@@ -371,7 +371,7 @@ export const bossData = [{
                 farthestEnemy.customColor = b.color;
                 farthestEnemy.r *= 1.5;
                 // --- PUPPETEER CHANGE ---
-                farthestEnemy.hp = 25; // Was 10
+                farthestEnemy.hp = 35; // Was 25
                 farthestEnemy.dx *= 2;
                 farthestEnemy.dy *= 2;
                 utils.drawLightning(ctx, b.x, b.y, farthestEnemy.x, farthestEnemy.y, b.color, 5);
@@ -624,31 +624,26 @@ export const bossData = [{
     },
     logic: (b, ctx, state, utils, gameHelpers) => {
         const canvas = ctx.canvas;
-        // --- QUANTUM SHADOW CHANGE ---
         if (b.phase === 'seeking' && Date.now() - b.lastPhaseChange > 7000) {
             b.phase = 'superposition';
             b.lastPhaseChange = Date.now();
             b.invulnerable = true;
             gameHelpers.play('phaseShiftSound');
 
-            // Scaling echo count
             const missingHealthPercent = 1 - (b.hp / b.maxHP);
             const extraEchoes = Math.floor(missingHealthPercent * 10);
             const totalEchoes = 3 + extraEchoes;
             b.echoes = [];
             
-            // New placement logic to spread echoes out
             const placedEchoes = [];
             for (let i = 0; i < totalEchoes; i++) {
                 let bestCandidate = null;
                 let maxMinDist = -1;
 
                 if (placedEchoes.length === 0) {
-                    // First echo is purely random
                     bestCandidate = { x: Math.random() * canvas.width, y: Math.random() * canvas.height, r: b.r };
                 } else {
-                    // Find the best spot for subsequent echoes
-                    for (let j = 0; j < 10; j++) { // 10 candidates
+                    for (let j = 0; j < 10; j++) {
                         const candidate = { x: Math.random() * canvas.width, y: Math.random() * canvas.height, r: b.r };
                         let minDistanceToPlaced = Infinity;
 
@@ -696,7 +691,8 @@ export const bossData = [{
                         speed: 600,
                         startTime: Date.now(),
                         hitEnemies: new Set(),
-                        damage: 10
+                        // --- QUANTUM SHADOW CHANGE ---
+                        damage: 60 // Was 10
                     });
                 });
                 b.echoes = [];
