@@ -109,32 +109,45 @@ function getSafeSpawnLocation() {
     return { x, y };
 }
 
+// --- NEW BOSS SELECTION LOGIC ---
 export function spawnBossesForStage(stageNum) {
+    const bossIdsToSpawn = [];
+
     if (stageNum <= 20) {
+        // Stages 1-20: A single, unique boss
         const bossIndex = stageNum - 1;
-        if (bossIndex < bossData.length) {
-            spawnEnemy(true, bossData[bossIndex].id, getSafeSpawnLocation());
+        if (bossData[bossIndex]) {
+            bossIdsToSpawn.push(bossData[bossIndex].id);
         }
+    } else if (stageNum <= 30) {
+        // Stages 21-30: A deterministic pair of bosses
+        const bossIndex1 = (stageNum - 1) % 10;
+        const bossIndex2 = bossIndex1 + 10;
+
+        if (bossData[bossIndex1]) bossIdsToSpawn.push(bossData[bossIndex1].id);
+        if (bossData[bossIndex2]) bossIdsToSpawn.push(bossData[bossIndex2].id);
     } else {
-        const bossNum1 = ((stageNum - 1) % 10) + 1;
-        const bossNum2 = bossNum1 + 10;
-        const count1 = 1 + Math.floor((stageNum - 11) / 20);
-        const count2 = 1 + Math.floor((stageNum - 21) / 20);
-        const bossId1 = bossData[bossNum1 - 1]?.id;
-        const bossId2 = bossData[bossNum2 - 1]?.id;
+        // Stages 31+: A deterministic trio of bosses
+        const bossIndex1 = (stageNum - 1) % 10;
+        const bossIndex2 = bossIndex1 + 10;
         
-        if (bossId1) {
-            for (let i = 0; i < count1; i++) {
-                spawnEnemy(true, bossId1, getSafeSpawnLocation());
-            }
+        // Deterministically select a third boss, ensuring it's unique
+        let bossIndex3 = (bossIndex1 + 5) % 20; // Use a simple but fixed offset
+        while (bossIndex3 === bossIndex1 || bossIndex3 === bossIndex2) {
+            bossIndex3 = (bossIndex3 + 1) % 20;
         }
-        if (bossId2 && count2 > 0) {
-            for (let i = 0; i < count2; i++) {
-                spawnEnemy(true, bossId2, getSafeSpawnLocation());
-            }
-        }
+
+        if (bossData[bossIndex1]) bossIdsToSpawn.push(bossData[bossIndex1].id);
+        if (bossData[bossIndex2]) bossIdsToSpawn.push(bossData[bossIndex2].id);
+        if (bossData[bossIndex3]) bossIdsToSpawn.push(bossData[bossIndex3].id);
     }
+
+    // Spawn all selected bosses
+    bossIdsToSpawn.forEach(bossId => {
+        spawnEnemy(true, bossId, getSafeSpawnLocation());
+    });
 }
+// --- END NEW BOSS SELECTION LOGIC ---
 
 export function spawnEnemy(isBoss = false, bossId = null, location = null) {
     const e = { x: location ? location.x : Math.random() * canvas.width, y: location ? location.y : Math.random() * canvas.height, dx: (Math.random() - 0.5) * 0.75, dy: (Math.random() - 0.5) * 0.75, r: isBoss ? 50 : 15, hp: isBoss ? 200 : 1, maxHP: isBoss ? 200 : 1, boss: isBoss, frozen: false, targetBosses: false };
@@ -527,7 +540,6 @@ export function gameTick(mx, my) {
         if(!e.hasCustomDraw) utils.drawCircle(ctx, e.x,e.y,e.r, color);
         if(e.enraged) { ctx.strokeStyle = "yellow"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(e.x,e.y,e.r+5,0,2*Math.PI); ctx.stroke(); }
         
-        // --- BASILISK COOLDOWN FIX ---
         if (e.id === 'basilisk' && e.petrifyZones) {
             e.petrifyZones.forEach(zone => {
                 const zoneX = zone.x - zone.sizeW / 2;
@@ -551,7 +563,7 @@ export function gameTick(mx, my) {
                         addStatusEffect('Petrified', '🗿', 2000);
                         player.stunnedUntil = Date.now() + 2000;
                         zone.playerInsideTime = null; 
-                        zone.cooldownUntil = Date.now() + 2000; // Put the zone on cooldown
+                        zone.cooldownUntil = Date.now() + 2000;
                     }
                 } else {
                     zone.playerInsideTime = null;
