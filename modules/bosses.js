@@ -370,7 +370,8 @@ export const bossData = [{
                 farthestEnemy.isPuppet = true;
                 farthestEnemy.customColor = b.color;
                 farthestEnemy.r *= 1.5;
-                farthestEnemy.hp = 10;
+                // --- PUPPETEER CHANGE ---
+                farthestEnemy.hp = 25; // Was 10
                 farthestEnemy.dx *= 2;
                 farthestEnemy.dy *= 2;
                 utils.drawLightning(ctx, b.x, b.y, farthestEnemy.x, farthestEnemy.y, b.color, 5);
@@ -507,7 +508,6 @@ export const bossData = [{
         }
     }
 }, {
-    // --- BASILISK REDESIGN ---
     id: "basilisk",
     name: "The Basilisk",
     color: "#00b894",
@@ -524,7 +524,8 @@ export const bossData = [{
             b.petrifyZones.push({
                 x: center.x,
                 y: center.y,
-                size: 0,
+                sizeW: 0,
+                sizeH: 0,
                 playerInsideTime: null
             });
         });
@@ -532,7 +533,7 @@ export const bossData = [{
     logic: (b, ctx, state) => {
         const canvas = ctx.canvas;
         const hpPercent = Math.max(0, b.hp / b.maxHP);
-        const growthRange = 1.0 - 0.3; // Grows from 100% HP down to 30% HP
+        const growthRange = 1.0 - 0.3; 
         const currentGrowthProgress = 1.0 - hpPercent;
         const scaledGrowth = Math.min(1.0, currentGrowthProgress / growthRange);
 
@@ -592,7 +593,7 @@ export const bossData = [{
         if (!p.infected) addStatusEffect('Infected', '☣️', 10000);
         p.infected = true;
         p.infectionEnd = Date.now() + 10000;
-        p.lastSpore = Date.now(); // Initialize spore timer on infection
+        p.lastSpore = Date.now();
     },
     logic: (b, ctx, state) => {
         state.enemies.forEach(e => {
@@ -623,17 +624,49 @@ export const bossData = [{
     },
     logic: (b, ctx, state, utils, gameHelpers) => {
         const canvas = ctx.canvas;
+        // --- QUANTUM SHADOW CHANGE ---
         if (b.phase === 'seeking' && Date.now() - b.lastPhaseChange > 7000) {
             b.phase = 'superposition';
             b.lastPhaseChange = Date.now();
             b.invulnerable = true;
             gameHelpers.play('phaseShiftSound');
-            for (let i = 0; i < 3; i++) {
-                b.echoes.push({
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height,
-                    r: b.r
-                });
+
+            // Scaling echo count
+            const missingHealthPercent = 1 - (b.hp / b.maxHP);
+            const extraEchoes = Math.floor(missingHealthPercent * 10);
+            const totalEchoes = 3 + extraEchoes;
+            b.echoes = [];
+            
+            // New placement logic to spread echoes out
+            const placedEchoes = [];
+            for (let i = 0; i < totalEchoes; i++) {
+                let bestCandidate = null;
+                let maxMinDist = -1;
+
+                if (placedEchoes.length === 0) {
+                    // First echo is purely random
+                    bestCandidate = { x: Math.random() * canvas.width, y: Math.random() * canvas.height, r: b.r };
+                } else {
+                    // Find the best spot for subsequent echoes
+                    for (let j = 0; j < 10; j++) { // 10 candidates
+                        const candidate = { x: Math.random() * canvas.width, y: Math.random() * canvas.height, r: b.r };
+                        let minDistanceToPlaced = Infinity;
+
+                        placedEchoes.forEach(placed => {
+                            const dist = Math.hypot(candidate.x - placed.x, candidate.y - placed.y);
+                            if (dist < minDistanceToPlaced) {
+                                minDistanceToPlaced = dist;
+                            }
+                        });
+                        
+                        if (minDistanceToPlaced > maxMinDist) {
+                            maxMinDist = minDistanceToPlaced;
+                            bestCandidate = candidate;
+                        }
+                    }
+                }
+                placedEchoes.push(bestCandidate);
+                b.echoes.push(bestCandidate);
             }
         } else if (b.phase === 'superposition') {
             ctx.globalAlpha = 0.5;
@@ -708,7 +741,7 @@ export const bossData = [{
         b.phase = 1;
         b.lastAction = 0;
         b.wells = [];
-        b.beamTarget = null; // --- SINGULARITY FIX ---
+        b.beamTarget = null;
         b.teleportingAt = null;
         b.teleportTarget = null;
     },
@@ -716,8 +749,6 @@ export const bossData = [{
         const canvas = ctx.canvas;
         const hpPercent = b.hp / b.maxHP;
 
-        // --- SINGULARITY FIX ---
-        // Clear the beam target after a short duration
         if (b.beamTarget && Date.now() > b.lastAction + 1000) {
             b.beamTarget = null;
         }
@@ -774,7 +805,6 @@ export const bossData = [{
                         r: 100,
                         endTime: Date.now() + 3000
                     });
-                    // --- SINGULARITY FIX ---
                     b.beamTarget = { x: Math.random() * canvas.width, y: Math.random() * canvas.height };
                 }
                 break;
@@ -810,8 +840,6 @@ export const bossData = [{
                 break;
         }
 
-        // --- SINGULARITY FIX ---
-        // Draw the beam if the target exists
         if (b.beamTarget) {
             utils.drawLightning(ctx, b.x, b.y, b.beamTarget.x, b.beamTarget.y, '#fd79a8', 8);
             const p1 = b, p2 = b.beamTarget, p3 = state.player; const L2 = Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2);
