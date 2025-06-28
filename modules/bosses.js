@@ -832,10 +832,12 @@ export const bossData = [{
     hasCustomDraw: true,
     logic: (b, ctx, state, utils, gameHelpers) => {
         const speed = 0.005;
-        const vx = (state.player.x - b.x) * speed;
-        const vy = (state.player.y - b.y) * speed;
-        b.x += vx;
-        b.y += vy;
+        if (state.player) {
+            const vx = (state.player.x - b.x) * speed;
+            const vy = (state.player.y - b.y) * speed;
+            b.x += vx;
+            b.y += vy;
+        }
         
         const pulsatingSize = b.r + Math.sin(Date.now() / 300) * 5;
         utils.drawCircle(ctx, b.x, b.y, pulsatingSize, b.isGasActive ? '#6ab04c' : '#a4b0be');
@@ -1017,7 +1019,7 @@ export const bossData = [{
     onDamage: (b, dmg) => { if(b.invulnerable) b.hp += dmg; },
     onDeath: (b, state, sE, sP, play, stopLoopingSfx) => {
         stopLoopingSfx('obeliskHum');
-        b.conduits.forEach(c => { if(c) c.hp = 0; });
+        state.enemies.forEach(e => { if (e.parentObelisk === b) e.hp = 0; });
     }
 }, {
     id: "obelisk_conduit",
@@ -1041,7 +1043,7 @@ export const bossData = [{
     onDeath: (b, state, sE, sP, play) => {
         play('conduitShatter');
         if (b.parentObelisk) {
-            const remainingConduits = state.enemies.filter(e => e.id === 'obelisk_conduit' && e.hp > 0 && e.parentObelisk === b.parentObelisk);
+            const remainingConduits = state.enemies.filter(e => e.id === 'obelisk_conduit' && e.hp > 0 && e.parentObelisk === b.parentObelisk && e !== b);
             if (remainingConduits.length === 0) {
                 b.parentObelisk.invulnerable = false;
                 b.parentObelisk.vulnerableUntil = Date.now() + 8000;
