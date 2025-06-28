@@ -259,6 +259,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     display: flex;
     justify-content: space-between;
     align-items: center;
+    overflow: hidden; /* Added for marquee effect */
 }
 .stage-select-item:hover {
     background: rgba(0, 255, 255, 0.2);
@@ -275,6 +276,11 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     opacity: 0.8;
     text-align: right;
     margin-left: 15px;
+    white-space: nowrap; /* Added for marquee effect */
+    overflow: hidden; /* Added for marquee effect */
+    text-overflow: ellipsis; /* Added for marquee effect */
+    flex-shrink: 1; /* Allow this element to shrink */
+    min-width: 0; /* Allow shrinking below content size */
 }
 #level-select-list-container::-webkit-scrollbar {
     width: 8px;
@@ -830,4 +836,18 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
 
 #gameOverMenu {
     background: rgba(0,0,0,0.7); /* Darken game over screen slightly for readability */
+}
+
+/* --- NEW STYLES FOR SCROLLING MARQUEE --- */
+@keyframes scroll-left {
+    from {
+        transform: translateX(0%);
+    }
+    to {
+        transform: translateX(-100%);
+    }
+}
+.stage-select-bosses.is-scrolling {
+    text-overflow: clip; /* Disable ellipsis during scroll */
+    animation: scroll-left 10s linear infinite; /* Adjust duration as needed */
 }
