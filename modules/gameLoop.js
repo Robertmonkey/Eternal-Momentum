@@ -724,13 +724,15 @@ export function gameTick(mx, my) {
         } else if (effect.type === 'chain_lightning') {
             const linkIndex = Math.floor((Date.now() - effect.startTime) / effect.durationPerLink); if (linkIndex >= effect.targets.length) { state.effects.splice(index, 1); return; }
             for (let i = 0; i <= linkIndex; i++) {
-                const from = i === 0 ? effect.caster : effect.targets[i - 1]; const to = effect.targets[i];
-                if (!from || !to) continue;
-                utils.drawLightning(ctx, from.x, from.y, to.x, to.y, effect.color || '#00ffff', 4); // --- CHANGE: Use effect color ---
+                const from = i === 0 ? effect.caster : effect.targets[i - 1];
+                const to = effect.targets[i];
+                // --- FIX: Add robust check to prevent crash if a target disappears ---
+                if (!from || typeof from.x !== 'number' || !to || typeof to.x !== 'number') continue;
+                utils.drawLightning(ctx, from.x, from.y, to.x, to.y, effect.color || '#00ffff', 4);
                 if (!effect.links.includes(to)) {
                     utils.spawnParticles(state.particles, to.x, to.y, '#ffffff', 30, 5, 20);
                     let dmg = (to.boss ? effect.damage : 50) * state.player.talent_modifiers.damage_multiplier;
-                    if (effect.caster !== state.player) dmg = effect.damage; // --- CHANGE: Use raw damage for non-player casters
+                    if (effect.caster !== state.player) dmg = effect.damage;
                     to.hp -= dmg; 
                     if (to.onDamage) to.onDamage(to, dmg, effect.caster, state, spawnParticlesCallback, play);
                     effect.links.push(to);
@@ -743,7 +745,7 @@ export function gameTick(mx, my) {
             const hasPayload = state.player.purchasedTalents.has('unstable-payload');
             if(hasPayload) { const bouncesSoFar = effect.initialBounces - effect.bounces; effect.r = 8 + bouncesSoFar * 2; effect.damage = 10 + bouncesSoFar * 5; }
             // Movement handled above
-            utils.drawCircle(ctx, effect.x, effect.y, effect.r, effect.color || '#f1c40f'); // --- CHANGE: Use effect color ---
+            utils.drawCircle(ctx, effect.x, effect.y, effect.r, effect.color || '#f1c40f'); 
             if(effect.x < effect.r || effect.x > canvas.width - effect.r) { effect.dx *= -1; effect.bounces--; } 
             if(effect.y < effect.r || effect.y > canvas.height - effect.r) { effect.dy *= -1; effect.bounces--; } 
             state.enemies.forEach(e => { if (!effect.hitEnemies.has(e) && Math.hypot(e.x - effect.x, e.y - effect.y) < e.r + effect.r) { let damage = (state.player.berserkUntil > Date.now()) ? effect.damage * 2 : effect.damage; e.hp -= damage; effect.bounces--; const angle = Math.atan2(e.y - effect.y, e.x - effect.x); effect.dx = -Math.cos(angle) * 10; effect.dy = -Math.sin(angle) * 10; effect.hitEnemies.add(e); setTimeout(()=>effect.hitEnemies.delete(e), 200); } }); 
@@ -752,11 +754,11 @@ export function gameTick(mx, my) {
             if (Date.now() > effect.startTime + effect.duration) { state.effects.splice(index, 1); return; } 
             if(Date.now() - effect.lastShot > 50) { 
                 effect.lastShot = Date.now(); const speed = 5; 
-                if (state.player.purchasedTalents.has('nova-pulsar') && effect.caster === state.player) { // --- CHANGE: Check caster ---
+                if (state.player.purchasedTalents.has('nova-pulsar') && effect.caster === state.player) {
                     const angles = [effect.angle, effect.angle + (2 * Math.PI / 3), effect.angle - (2 * Math.PI / 3)];
-                    angles.forEach(angle => { state.effects.push({ type: 'nova_bullet', x: effect.caster.x, y: effect.caster.y, r: effect.r || 4, dx: Math.cos(angle) * speed, dy: Math.sin(angle) * speed, color: effect.color }); }); // --- CHANGE: Pass properties ---
+                    angles.forEach(angle => { state.effects.push({ type: 'nova_bullet', x: effect.caster.x, y: effect.caster.y, r: effect.r || 4, dx: Math.cos(angle) * speed, dy: Math.sin(angle) * speed, color: effect.color }); });
                 } else {
-                    state.effects.push({ type: 'nova_bullet', x: effect.caster.x, y: effect.caster.y, r: effect.r || 4, dx: Math.cos(effect.angle) * speed, dy: Math.sin(effect.angle) * speed, color: effect.color }); // --- CHANGE: Pass properties ---
+                    state.effects.push({ type: 'nova_bullet', x: effect.caster.x, y: effect.caster.y, r: effect.r || 4, dx: Math.cos(effect.angle) * speed, dy: Math.sin(effect.angle) * speed, color: effect.color }); 
                 }
                 effect.angle += 0.5; 
             }
@@ -771,12 +773,12 @@ export function gameTick(mx, my) {
             const duration = 1500; const progress = (Date.now() - effect.startTime) / duration; 
             if (progress >= 1) { 
                 spawnParticlesCallback(effect.x, effect.y, '#e67e22', 100, 8, 40); 
-                const explosionRadius = effect.radius || 150; // --- CHANGE: Use effect radius ---
-                const targets = (effect.caster === state.player) ? state.enemies : [state.player]; // --- CHANGE: Target player if boss casts it ---
+                const explosionRadius = effect.radius || 150; 
+                const targets = (effect.caster === state.player) ? state.enemies : [state.player];
                 targets.forEach(e => { 
                     if (Math.hypot(e.x-effect.x, e.y-effect.y) < explosionRadius) { 
-                        let damage = ((state.player.berserkUntil > Date.now() && effect.caster === state.player) ? 50 : 25)  * state.player.talent_modifiers.damage_multiplier;
-                        if(effect.caster !== state.player) damage = effect.damage; // --- CHANGE: Use raw damage for non-player ---
+                        let damage = ((state.player.berserkUntil > Date.now() && effect.caster === state.player) ? 50 : 25)  * state.player.talent_modifiers.damage_multiplier; 
+                        if(effect.caster !== state.player) damage = effect.damage;
                         
                         if(e.health) e.health -= damage; else e.hp -= damage; 
 
@@ -790,7 +792,7 @@ export function gameTick(mx, my) {
         } else if (effect.type === 'black_hole') { 
             if (Date.now() > effect.endTime) { if (state.player.purchasedTalents.has('unstable-singularity')) { state.effects.push({ type: 'shockwave', caster: state.player, x: effect.x, y: effect.y, radius: 0, maxRadius: effect.maxRadius, speed: 800, startTime: Date.now(), hitEnemies: new Set(), damage: 25 * state.player.talent_modifiers.damage_multiplier }); } state.effects.splice(index, 1); return; } 
             const progress = 1 - (effect.endTime - Date.now()) / 4000; const currentPullRadius = effect.maxRadius * progress; 
-            utils.drawCircle(ctx, effect.x, effect.y, effect.radius, effect.color || "#000"); // --- CHANGE: Use effect color ---
+            utils.drawCircle(ctx, effect.x, effect.y, effect.radius, effect.color || "#000"); 
             ctx.strokeStyle = effect.color ? `rgba(${effect.color.slice(1).match(/.{1,2}/g).map(v => parseInt(v, 16)).join(',')}, ${0.6 * progress})` : `rgba(155, 89, 182, ${0.6 * progress})`;
             ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(effect.x, effect.y, currentPullRadius, 0, 2*Math.PI); ctx.stroke();
         } else if (effect.type === 'seeking_shrapnel') {
@@ -850,7 +852,7 @@ export function gameTick(mx, my) {
             ctx.fillStyle = '#6ab04c';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.globalAlpha = 1.0;
-            // --- CHANGE: Apply damage and check for game over ---
+            // Apply damage to player if not shielded
             if (!state.player.shield) {
                 state.player.health -= 0.25; 
                 if (state.player.health <= 0) state.gameOver = true;
@@ -881,7 +883,6 @@ export function gameTick(mx, my) {
                 ctx.fillStyle = `rgba(231, 76, 60, 0.7)`;
                 ctx.fillRect(p.x-5, p.y-5, 10, 10);
                 if (Math.hypot(state.player.x - p.x, state.player.y - p.y) < state.player.r + 5) {
-                    // --- CHANGE: Instant death damage ---
                      if (!state.player.shield) {
                         state.player.health = 0;
                         if(state.player.health <= 0) state.gameOver = true;
@@ -922,7 +923,7 @@ export function gameTick(mx, my) {
                         state.offensiveInventory.shift();
                         state.offensiveInventory.push(null);
                         
-                        // --- CHANGE: Expanded logic for all stolen offensive powers ---
+                        // Boss uses the stolen power
                         switch (stolenPower) {
                             case 'missile':
                                 state.effects.push({ type: 'shockwave', caster: source, x: state.player.x, y: state.player.y, radius: 0, maxRadius: 400, speed: 1000, startTime: Date.now(), hitEnemies: new Set(), damage: 25, color: 'rgba(155, 89, 182, 0.7)' });
@@ -972,7 +973,6 @@ export function gameTick(mx, my) {
 
             ctx.fillStyle = 'rgba(211, 84, 0, 0.5)';
             
-            // --- CHANGE: Draw walls with a gap ---
             const gapStart = effect.gapPosition * (currentSize - gapSize);
 
             // Top wall (0)
