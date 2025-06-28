@@ -116,29 +116,28 @@ function getSafeSpawnLocation() {
 export function spawnBossesForStage(stageNum) {
     const bossIdsToSpawn = [];
 
-    if (stageNum <= 20) {
+    // This section needs to be replaced with the "Threat Point & Synergy Tag" algorithm for stages 31+.
+    // For now, it will handle stages 1-30 as per the new boss list.
+    if (stageNum <= 30) { // Stage 1-20 are original bosses, 21-30 are new hard bosses
         const bossIndex = stageNum - 1;
         if (bossData[bossIndex]) {
             bossIdsToSpawn.push(bossData[bossIndex].id);
+        } else {
+             console.error(`No boss defined for stage ${stageNum}`);
         }
-    } else if (stageNum <= 30) {
-        const bossIndex1 = (stageNum - 1) % 10;
-        const bossIndex2 = bossIndex1 + 10;
-
-        if (bossData[bossIndex1]) bossIdsToSpawn.push(bossData[bossIndex1].id);
-        if (bossData[bossIndex2]) bossIdsToSpawn.push(bossData[bossIndex2].id);
     } else {
-        const bossIndex1 = (stageNum - 1) % 10;
-        const bossIndex2 = bossIndex1 + 10;
-        
-        let bossIndex3 = (bossIndex1 + 5) % 20;
-        while (bossIndex3 === bossIndex1 || bossIndex3 === bossIndex2) {
-            bossIndex3 = (bossIndex3 + 1) % 20;
+        // --- Placeholder for the intelligent infinite scaling algorithm ---
+        // 1. Determine "Threat Budget" for the stage.
+        // 2. Select a "Keystone" boss.
+        // 3. Select "Complementary" bosses based on Synergy Tags and remaining Threat Budget.
+        // For now, we'll spawn a random combination of 3 hard bosses as a placeholder.
+        const hardBosses = bossData.slice(20, 30);
+        for(let i=0; i < 3; i++) {
+            const randomBoss = hardBosses[Math.floor(Math.random() * hardBosses.length)];
+            if (!bossIdsToSpawn.includes(randomBoss.id)) {
+                bossIdsToSpawn.push(randomBoss.id);
+            }
         }
-
-        if (bossData[bossIndex1]) bossIdsToSpawn.push(bossData[bossIndex1].id);
-        if (bossData[bossIndex2]) bossIdsToSpawn.push(bossData[bossIndex2].id);
-        if (bossData[bossIndex3]) bossIdsToSpawn.push(bossData[bossIndex3].id);
     }
 
     bossIdsToSpawn.forEach(bossId => {
@@ -680,7 +679,15 @@ export function gameTick(mx, my) {
         }
     }
 
+    // This is the main effects loop. All new boss effect logic goes here.
     state.effects.forEach((effect, index) => {
+        if (Date.now() > (effect.endTime || Infinity)) {
+            // Handle effect cleanup
+            if (effect.type === 'paradox_echo') stopLoopingSfx('paradoxTrailHum');
+            state.effects.splice(index, 1);
+            return;
+        }
+
         if (effect.type === 'shockwave') {
             const elapsed = (Date.now() - effect.startTime) / 1000; effect.radius = elapsed * effect.speed;
             ctx.strokeStyle = effect.color || `rgba(255, 255, 255, ${1-(effect.radius/effect.maxRadius)})`; ctx.lineWidth = 10;
@@ -808,6 +815,85 @@ export function gameTick(mx, my) {
                 ctx.beginPath();
                 ctx.arc(effect.x, effect.y, effect.r * (0.6 + i*0.2), 0, Math.PI*2);
                 ctx.stroke();
+            }
+        }
+        // --- NEW EFFECT HANDLERS START HERE ---
+        else if (effect.type === 'transient_lightning') {
+            utils.drawLightning(ctx, effect.x1, effect.y1, effect.x2, effect.y2, effect.color, 5);
+        }
+        else if (effect.type === 'miasma_gas') {
+            ctx.globalAlpha = 0.25;
+            ctx.fillStyle = '#6ab04c';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.globalAlpha = 1.0;
+        }
+        else if (effect.type === 'charge_indicator') {
+            const progress = (Date.now() - effect.startTime) / effect.duration;
+            ctx.fillStyle = effect.color || 'rgba(255, 255, 255, 0.2)';
+            ctx.beginPath();
+            ctx.arc(effect.source.x, effect.source.y, effect.radius * progress, 0, 2 * Math.PI);
+            ctx.fill();
+        }
+        else if (effect.type === 'paradox_echo') {
+            const elapsed = Date.now() - effect.startTime;
+            const progress = elapsed / 5000;
+            if (progress >= 1) {
+                stopLoopingSfx('paradoxTrailHum');
+                effect.endTime = Date.now(); // Mark for deletion
+            }
+            const currentIndex = Math.floor(effect.history.length * progress);
+            const currentPos = effect.history[currentIndex];
+            
+            if (currentPos) {
+                // Add to trail and draw trail
+                effect.trail.push({x: currentPos.x, y: currentPos.y, alpha: 1.0});
+                utils.drawCircle(ctx, currentPos.x, currentPos.y, state.player.r, 'rgba(255, 255, 255, 0.5)');
+                // Check collision
+                if (Math.hypot(state.player.x - currentPos.x, state.player.y - currentPos.y) < state.player.r * 2) {
+                     if (!state.player.shield) state.player.health -= 1;
+                }
+            }
+            // Draw fading trail
+            for(let j = effect.trail.length - 1; j >= 0; j--) {
+                const p = effect.trail[j];
+                p.alpha -= 0.05;
+                if (p.alpha <= 0) {
+                    effect.trail.splice(j, 1);
+                } else {
+                    ctx.fillStyle = `rgba(231, 76, 60, ${p.alpha})`;
+                    ctx.fillRect(p.x-5, p.y-5, 10, 10);
+                }
+            }
+        }
+        else if (effect.type === 'syphon_cone') {
+            const { source, angle } = effect;
+            const coneAngle = Math.PI / 4; // 45 degree cone
+            const coneLength = canvas.height;
+            const progress = 1 - (effect.endTime - Date.now()) / 2500;
+            ctx.globalAlpha = 0.5 * progress;
+            ctx.fillStyle = '#9b59b6';
+            ctx.beginPath();
+            ctx.moveTo(source.x, source.y);
+            ctx.arc(source.x, source.y, coneLength, angle - coneAngle / 2, angle + coneAngle / 2);
+            ctx.lineTo(source.x, source.y);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+            
+            // On expiration, check for steal
+            if (Date.now() >= effect.endTime && !effect.hasFired) {
+                effect.hasFired = true;
+                play('syphonFire');
+                const playerAngle = Math.atan2(state.player.y - source.y, state.player.x - source.x);
+                const angleDiff = Math.abs(angle - playerAngle);
+                if (angleDiff < coneAngle / 2) {
+                    const stolenPower = state.offensiveInventory[0];
+                    if (stolenPower) {
+                        play('powerAbsorb');
+                        state.offensiveInventory.shift();
+                        state.offensiveInventory.push(null);
+                        // Here you could add logic for the boss to use the stolen power
+                    }
+                }
             }
         }
     });
