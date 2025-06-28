@@ -118,7 +118,7 @@ export function spawnBossesForStage(stageNum) {
 
     // This section needs to be replaced with the "Threat Point & Synergy Tag" algorithm for stages 31+.
     // For now, it will handle stages 1-30 as per the new boss list.
-    if (stageNum <= 30) { // Stage 1-20 are original bosses, 21-30 are new hard bosses
+    if (stageNum <= 30) {
         const bossIndex = stageNum - 1;
         if (bossData[bossIndex]) {
             bossIdsToSpawn.push(bossData[bossIndex].id);
@@ -126,15 +126,11 @@ export function spawnBossesForStage(stageNum) {
              console.error(`No boss defined for stage ${stageNum}`);
         }
     } else {
-        // --- Placeholder for the intelligent infinite scaling algorithm ---
-        // 1. Determine "Threat Budget" for the stage.
-        // 2. Select a "Keystone" boss.
-        // 3. Select "Complementary" bosses based on Synergy Tags and remaining Threat Budget.
-        // For now, we'll spawn a random combination of 3 hard bosses as a placeholder.
-        const hardBosses = bossData.slice(20, 30);
+        // Placeholder for the intelligent infinite scaling algorithm
+        const hardBosses = bossData.slice(20, 31); // All hard bosses
         for(let i=0; i < 3; i++) {
             const randomBoss = hardBosses[Math.floor(Math.random() * hardBosses.length)];
-            if (!bossIdsToSpawn.includes(randomBoss.id)) {
+            if (!bossIdsToSpawn.includes(randomBoss.id) && randomBoss.id !== 'obelisk_conduit') {
                 bossIdsToSpawn.push(randomBoss.id);
             }
         }
@@ -288,7 +284,7 @@ export function gameTick(mx, my) {
         state.decoy.x += Math.cos(angle) * decoySpeed;
         state.decoy.y += Math.sin(angle) * decoySpeed;
         state.decoy.x = Math.max(state.decoy.r, Math.min(canvas.width - state.decoy.r, state.decoy.x));
-        state.decoy.y = Math.max(state.decoy.r, Math.min(canvas.height - state.decoy.r, state.decoy.y));
+        state.decoy.y = Math.max(state.decoy.r, Math.min(canvas.height - state.decoy.y, state.decoy.y));
     }
 
     if (state.gravityActive && Date.now() > state.gravityEnd) {
@@ -679,13 +675,23 @@ export function gameTick(mx, my) {
         }
     }
 
-    // This is the main effects loop. All new boss effect logic goes here.
     state.effects.forEach((effect, index) => {
         if (Date.now() > (effect.endTime || Infinity)) {
-            // Handle effect cleanup
             if (effect.type === 'paradox_echo') stopLoopingSfx('paradoxTrailHum');
+            if (effect.type === 'shrinking_box') stopLoopingSfx('wallShrink');
             state.effects.splice(index, 1);
             return;
+        }
+
+        if (effect.type === 'nova_bullet' || effect.type === 'ricochet_projectile') {
+            let speedMultiplier = 1.0;
+            state.effects.forEach(eff => {
+                if (eff.type === 'dilation_field' && Math.hypot(effect.x - eff.x, effect.y - eff.y) < eff.r) {
+                    speedMultiplier = 0.2;
+                }
+            });
+            effect.x += effect.dx * speedMultiplier;
+            effect.y += effect.dy * speedMultiplier;
         }
 
         if (effect.type === 'shockwave') {
@@ -724,7 +730,8 @@ export function gameTick(mx, my) {
         } else if (effect.type === 'ricochet_projectile') { 
             const hasPayload = state.player.purchasedTalents.has('unstable-payload');
             if(hasPayload) { const bouncesSoFar = effect.initialBounces - effect.bounces; effect.r = 8 + bouncesSoFar * 2; effect.damage = 10 + bouncesSoFar * 5; }
-            effect.x += effect.dx; effect.y += effect.dy; utils.drawCircle(ctx, effect.x, effect.y, effect.r, '#f1c40f'); 
+            // Movement handled above
+            utils.drawCircle(ctx, effect.x, effect.y, effect.r, '#f1c40f'); 
             if(effect.x < effect.r || effect.x > canvas.width - effect.r) { effect.dx *= -1; effect.bounces--; } 
             if(effect.y < effect.r || effect.y > canvas.height - effect.r) { effect.dy *= -1; effect.bounces--; } 
             state.enemies.forEach(e => { if (!effect.hitEnemies.has(e) && Math.hypot(e.x - effect.x, e.y - effect.y) < e.r + effect.r) { let damage = (state.player.berserkUntil > Date.now()) ? effect.damage * 2 : effect.damage; e.hp -= damage; effect.bounces--; const angle = Math.atan2(e.y - effect.y, e.x - effect.x); effect.dx = -Math.cos(angle) * 10; effect.dy = -Math.sin(angle) * 10; effect.hitEnemies.add(e); setTimeout(()=>effect.hitEnemies.delete(e), 200); } }); 
@@ -742,7 +749,8 @@ export function gameTick(mx, my) {
                 effect.angle += 0.5; 
             }
         } else if (effect.type === 'nova_bullet') { 
-            effect.x += effect.dx; effect.y += effect.dy; utils.drawCircle(ctx, effect.x, effect.y, effect.r, '#fff'); 
+            // Movement handled above
+            utils.drawCircle(ctx, effect.x, effect.y, effect.r, effect.color || '#fff'); 
             if(effect.x < 0 || effect.x > canvas.width || effect.y < 0 || effect.y > canvas.height) state.effects.splice(index, 1); 
             state.enemies.forEach(e => { if (Math.hypot(e.x-effect.x, e.y-effect.y) < e.r + effect.r) { let damage = ((state.player.berserkUntil > Date.now()) ? 6 : 3) * state.player.talent_modifiers.damage_multiplier; e.hp -= damage; state.effects.splice(index, 1); } }); 
         } else if (effect.type === 'orbital_target') {
@@ -817,7 +825,6 @@ export function gameTick(mx, my) {
                 ctx.stroke();
             }
         }
-        // --- NEW EFFECT HANDLERS START HERE ---
         else if (effect.type === 'transient_lightning') {
             utils.drawLightning(ctx, effect.x1, effect.y1, effect.x2, effect.y2, effect.color, 5);
         }
@@ -826,6 +833,10 @@ export function gameTick(mx, my) {
             ctx.fillStyle = '#6ab04c';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.globalAlpha = 1.0;
+            // Apply damage to player if not shielded
+            if (!state.player.shield) {
+                state.player.health -= 0.2; // ~8 seconds to die from full health
+            }
         }
         else if (effect.type === 'charge_indicator') {
             const progress = (Date.now() - effect.startTime) / effect.duration;
@@ -839,61 +850,154 @@ export function gameTick(mx, my) {
             const progress = elapsed / 5000;
             if (progress >= 1) {
                 stopLoopingSfx('paradoxTrailHum');
-                effect.endTime = Date.now(); // Mark for deletion
+                effect.endTime = Date.now();
+                return;
             }
             const currentIndex = Math.floor(effect.history.length * progress);
             const currentPos = effect.history[currentIndex];
-            
             if (currentPos) {
-                // Add to trail and draw trail
-                effect.trail.push({x: currentPos.x, y: currentPos.y, alpha: 1.0});
+                effect.trail.push({x: currentPos.x, y: currentPos.y});
                 utils.drawCircle(ctx, currentPos.x, currentPos.y, state.player.r, 'rgba(255, 255, 255, 0.5)');
-                // Check collision
-                if (Math.hypot(state.player.x - currentPos.x, state.player.y - currentPos.y) < state.player.r * 2) {
+            }
+            effect.trail.forEach(p => {
+                ctx.fillStyle = `rgba(231, 76, 60, 0.7)`;
+                ctx.fillRect(p.x-5, p.y-5, 10, 10);
+                if (Math.hypot(state.player.x - p.x, state.player.y - p.y) < state.player.r + 5) {
                      if (!state.player.shield) state.player.health -= 1;
                 }
-            }
-            // Draw fading trail
-            for(let j = effect.trail.length - 1; j >= 0; j--) {
-                const p = effect.trail[j];
-                p.alpha -= 0.05;
-                if (p.alpha <= 0) {
-                    effect.trail.splice(j, 1);
-                } else {
-                    ctx.fillStyle = `rgba(231, 76, 60, ${p.alpha})`;
-                    ctx.fillRect(p.x-5, p.y-5, 10, 10);
-                }
-            }
+            });
         }
         else if (effect.type === 'syphon_cone') {
-            const { source, angle } = effect;
-            const coneAngle = Math.PI / 4; // 45 degree cone
+            const { source, endTime } = effect;
+            const remainingTime = endTime - Date.now();
+            if (remainingTime > 250) {
+                effect.angle = Math.atan2(state.player.y - source.y, state.player.x - source.x);
+            }
+            
+            const coneAngle = Math.PI / 4;
             const coneLength = canvas.height;
-            const progress = 1 - (effect.endTime - Date.now()) / 2500;
+            const progress = 1 - (remainingTime) / 2500;
             ctx.globalAlpha = 0.5 * progress;
             ctx.fillStyle = '#9b59b6';
             ctx.beginPath();
             ctx.moveTo(source.x, source.y);
-            ctx.arc(source.x, source.y, coneLength, angle - coneAngle / 2, angle + coneAngle / 2);
+            ctx.arc(source.x, source.y, coneLength, effect.angle - coneAngle / 2, effect.angle + coneAngle / 2);
             ctx.lineTo(source.x, source.y);
             ctx.fill();
             ctx.globalAlpha = 1.0;
             
-            // On expiration, check for steal
-            if (Date.now() >= effect.endTime && !effect.hasFired) {
+            if (remainingTime <= 0 && !effect.hasFired) {
                 effect.hasFired = true;
                 play('syphonFire');
                 const playerAngle = Math.atan2(state.player.y - source.y, state.player.x - source.x);
-                const angleDiff = Math.abs(angle - playerAngle);
+                let angleDiff = Math.abs(effect.angle - playerAngle);
+                if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
+                
                 if (angleDiff < coneAngle / 2) {
                     const stolenPower = state.offensiveInventory[0];
                     if (stolenPower) {
                         play('powerAbsorb');
                         state.offensiveInventory.shift();
                         state.offensiveInventory.push(null);
-                        // Here you could add logic for the boss to use the stolen power
+                        
+                        // Boss uses the stolen power
+                        switch (stolenPower) {
+                            case 'missile':
+                                state.effects.push({ type: 'shockwave', caster: source, x: state.player.x, y: state.player.y, radius: 0, maxRadius: 350, speed: 800, startTime: Date.now(), hitEnemies: new Set(), damage: 20 });
+                                break;
+                            case 'chain':
+                                state.effects.push({ type: 'chain_lightning', targets: [state.player], links: [], startTime: Date.now(), durationPerLink: 80, damage: 25, caster: source });
+                                break;
+                            case 'shockwave':
+                                state.effects.push({ type: 'shockwave', caster: source, x: source.x, y: source.y, radius: 0, maxRadius: canvas.width, speed: 1000, startTime: Date.now(), hitEnemies: new Set(), damage: 20 });
+                                break;
+                        }
                     }
                 }
+            }
+        }
+        else if (effect.type === 'shrinking_box') {
+            playLooping('wallShrink');
+            const progress = (Date.now() - effect.startTime) / effect.duration;
+            const currentSize = effect.initialSize * (1 - progress);
+            if(currentSize <= 0) {
+                stopLoopingSfx('wallShrink');
+                effect.endTime = Date.now();
+                return;
+            }
+            const halfSize = currentSize / 2;
+            const left = effect.x - halfSize;
+            const right = effect.x + halfSize;
+            const top = effect.y - halfSize;
+            const bottom = effect.y + halfSize;
+
+            ctx.fillStyle = 'rgba(211, 84, 0, 0.5)';
+            ctx.fillRect(left, top, currentSize, 5); // Top wall
+            ctx.fillRect(left, bottom - 5, currentSize, 5); // Bottom wall
+            ctx.fillRect(left, top, 5, currentSize); // Left wall
+            ctx.fillRect(right - 5, top, 5, currentSize); // Right wall
+
+            // Collision
+            if(state.player.x - state.player.r < left) state.player.x = left + state.player.r;
+            if(state.player.x + state.player.r > right) state.player.x = right - state.player.r;
+            if(state.player.y - state.player.r < top) state.player.y = top + state.player.r;
+            if(state.player.y + state.player.r > bottom) state.player.y = bottom - state.player.r;
+        }
+        else if (effect.type === 'dilation_field') {
+            effect.x += effect.dx;
+            effect.y += effect.dy;
+            if (effect.x < effect.r || effect.x > canvas.width - effect.r) effect.dx *= -1;
+            if (effect.y < effect.r || effect.y > canvas.height - effect.r) effect.dy *= -1;
+
+            ctx.globalAlpha = 0.2;
+            ctx.fillStyle = '#bdc3c7';
+            utils.drawCircle(ctx, effect.x, effect.y, effect.r, ctx.fillStyle);
+            ctx.globalAlpha = 1.0;
+        }
+        else if (effect.type === 'shaper_zone') {
+            const colors = {
+                reckoning: 'rgba(231, 76, 60, 0.3)',
+                alacrity: 'rgba(52, 152, 219, 0.3)',
+                ruin: 'rgba(142, 68, 173, 0.3)'
+            };
+            utils.drawCircle(ctx, effect.x, effect.y, effect.r, colors[effect.zoneType]);
+            
+            const dist = Math.hypot(state.player.x - effect.x, state.player.y - effect.y);
+            if (dist < effect.r) {
+                if (effect.playerInsideTime === null) effect.playerInsideTime = Date.now();
+                
+                const timeInside = Date.now() - effect.playerInsideTime;
+                const attuneProgress = timeInside / effect.attuneTime;
+
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(effect.x, effect.y, effect.r, -Math.PI/2, -Math.PI/2 + (Math.PI * 2 * attuneProgress));
+                ctx.stroke();
+
+                if (attuneProgress >= 1) {
+                    play('shaperAttune');
+                    switch(effect.zoneType) {
+                        case 'reckoning':
+                            addStatusEffect('Reckoning', '⚔️', 8000);
+                            state.player.berserkUntil = Date.now() + 8000;
+                            break;
+                        case 'alacrity':
+                            addStatusEffect('Alacrity', '🚀', 8000);
+                            state.player.speed *= 1.5;
+                            setTimeout(() => state.player.speed /= 1.5, 8000);
+                            break;
+                        case 'ruin':
+                            if(effect.boss && effect.boss.hp > 0) effect.boss.hp -= effect.boss.maxHP * 0.15;
+                            state.player.health -= 30;
+                            break;
+                    }
+                    // Remove all shaper zones
+                    state.effects = state.effects.filter(e => e.type !== 'shaper_zone');
+                    effect.boss.zonesActive = false;
+                }
+            } else {
+                effect.playerInsideTime = null;
             }
         }
     });
