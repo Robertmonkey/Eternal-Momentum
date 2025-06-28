@@ -510,10 +510,10 @@ export function gameTick(mx, my) {
             state.effects.forEach(effect => { 
                 if(effect.type === 'slow_zone' && Math.hypot(e.x - effect.x, e.y - effect.y) < effect.r) enemySpeedMultiplier = 0.5;
                 if (effect.type === 'black_hole') {
-                    const dist = Math.hypot(e.x - effect.x, e.y - effect.y);
                     const elapsed = Date.now() - effect.startTime;
                     const progress = Math.min(1, elapsed / effect.duration);
                     const currentPullRadius = effect.maxRadius * progress;
+                    const dist = Math.hypot(e.x - effect.x, e.y - effect.y);
                     if (dist < currentPullRadius) {
                         let pullStrength = e.boss ? 0.03 : 0.1;
                         e.x += (effect.x - e.x) * pullStrength;
@@ -767,7 +767,7 @@ export function gameTick(mx, my) {
             utils.drawCircle(ctx, effect.x, effect.y, effect.r, effect.color || '#fff'); 
             if(effect.x < 0 || effect.x > canvas.width || effect.y < 0 || effect.y > canvas.height) state.effects.splice(index, 1); 
             if (effect.caster === state.player) {
-                state.enemies.forEach(e => { if (Math.hypot(e.x-effect.x, e.y-effect.y) < e.r + effect.r) { let damage = ((state.player.berserkUntil > Date.now()) ? 6 : 3) * state.player.talent_modifiers.damage_multiplier; e.hp -= damage; state.effects.splice(index, 1); } }); 
+                state.enemies.forEach(e => { if (e !== effect.caster && Math.hypot(e.x-effect.x, e.y-effect.y) < e.r + effect.r) { let damage = ((state.player.berserkUntil > Date.now()) ? 6 : 3) * state.player.talent_modifiers.damage_multiplier; e.hp -= damage; state.effects.splice(index, 1); } }); 
             } else {
                 if (Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < state.player.r + effect.r) {
                     if (!state.player.shield) state.player.health -= 40;
@@ -896,17 +896,16 @@ export function gameTick(mx, my) {
                 }
                 const lifeProgress = (p.lifeEnd - Date.now()) / 3000;
                 
-                // Draw persistent damaging circle for area denial
                 ctx.fillStyle = `rgba(231, 76, 60, ${0.4 * lifeProgress})`;
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, 10, 0, 2 * Math.PI);
                 ctx.fill();
 
-                // Spawn particles for visual flair
                 if(Math.random() < 0.2) spawnParticlesCallback(p.x, p.y, 'rgba(231, 76, 60, 0.7)', 1, 1, 15, Math.random() * 3 + 1);
 
                 if (Math.hypot(state.player.x - p.x, state.player.y - p.y) < state.player.r + 10) {
                      if (!state.player.shield) {
+                        play('magicDispelSound');
                         state.player.health = 0;
                         if(state.player.health <= 0) state.gameOver = true;
                      }
@@ -996,28 +995,23 @@ export function gameTick(mx, my) {
             ctx.fillStyle = 'rgba(211, 84, 0, 0.5)';
             const gapStart = effect.gapPosition * (currentSize - gapSize);
             
-            const playerIsInsideBounds = state.player.x > left && state.player.x < right && state.player.y > top && state.player.y < bottom;
+            const playerIsInsideBounds = state.player.x >= left && state.player.x <= right && state.player.y >= top && state.player.y <= bottom;
 
             if (playerIsInsideBounds) {
-                // Top wall
                 if (state.player.y - state.player.r < top && (effect.gapSide !== 0 || state.player.x < left + gapStart || state.player.x > left + gapStart + gapSize)) {
                     state.player.y = top + state.player.r;
                 }
-                // Bottom wall
                 if (state.player.y + state.player.r > bottom && (effect.gapSide !== 2 || state.player.x < left + gapStart || state.player.x > left + gapStart + gapSize)) {
                     state.player.y = bottom - state.player.r;
                 }
-                // Left wall
                 if (state.player.x - state.player.r < left && (effect.gapSide !== 3 || state.player.y < top + gapStart || state.player.y > top + gapStart + gapSize)) {
                     state.player.x = left + state.player.r;
                 }
-                // Right wall
                 if (state.player.x + state.player.r > right && (effect.gapSide !== 1 || state.player.y < top + gapStart || state.player.y > top + gapStart + gapSize)) {
                     state.player.x = right - state.player.r;
                 }
             }
 
-            // Drawing logic
             if (effect.gapSide === 0) {
                 ctx.fillRect(left, top, gapStart, wallThickness);
                 ctx.fillRect(left + gapStart + gapSize, top, currentSize - gapStart - gapSize, wallThickness);
