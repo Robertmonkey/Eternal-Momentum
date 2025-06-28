@@ -1007,6 +1007,286 @@ export const bossData = [{
         }
     }
 },
-// ... The other 7 bosses would be added here in the same format. Due to response length limits, I have included the first 3 new bosses. The pattern for the remaining 7 is identical.
-// The full implementation for all 10 would follow this structure.
-];
+{
+    id: "centurion",
+    name: "The Centurion",
+    color: "#d35400",
+    maxHP: 480,
+    init: (b) => {
+        b.lastWallSummon = 0;
+    },
+    logic: (b, ctx, state, utils, gameHelpers) => {
+        if (Date.now() - b.lastWallSummon > 12000) {
+            b.lastWallSummon = Date.now();
+            gameHelpers.play('wallSummon');
+            const boxSize = Math.min(canvas.width, canvas.height) * 0.8;
+            state.effects.push({
+                type: 'shrinking_box',
+                startTime: Date.now(),
+                duration: 8000, // Walls last for 8 seconds
+                x: state.player.x,
+                y: state.player.y,
+                initialSize: boxSize,
+            });
+        }
+    }
+},
+{
+    id: "fractal_horror",
+    name: "The Fractal Horror",
+    color: "#1abc9c",
+    maxHP: 500, // High initial HP, but it's split among children
+    init: (b) => {
+        b.generation = 1;
+        b.damageThreshold = b.maxHP / 2;
+        b.damageCounter = 0;
+    },
+    onDamage: (b, dmg, source, state, spawnParticles, play, stopLoopingSfx, gameHelpers) => {
+        b.damageCounter += dmg;
+        if (b.damageCounter >= b.damageThreshold && b.generation < 3) {
+            b.hp = 0; // The parent is "destroyed" and replaced by children
+            play('fractalSplit');
+            for (let i = 0; i < 2; i++) {
+                const child = gameHelpers.spawnEnemy(true, 'fractal_horror', { x: b.x + (Math.random() - 0.5) * 50, y: b.y + (Math.random() - 0.5) * 50 });
+                if (child) {
+                    child.generation = b.generation + 1;
+                    child.maxHP = b.maxHP / 2;
+                    child.hp = child.maxHP;
+                    child.r = b.r * 0.75;
+                    child.damageThreshold = child.maxHP / 2;
+                }
+            }
+        }
+    }
+},
+{
+    id: "obelisk",
+    name: "The Obelisk",
+    color: "#2c3e50",
+    maxHP: 800,
+    hasCustomMovement: true, // It's immobile
+    init: (b, state, spawnEnemy, canvas) => {
+        b.x = canvas.width / 2;
+        b.y = canvas.height / 2;
+        b.invulnerable = true;
+        b.conduits = [];
+        b.vulnerableUntil = 0;
+        
+        for (let i = 0; i < 3; i++) {
+            const angle = (i / 3) * 2 * Math.PI;
+            const conduit = spawnEnemy(true, 'obelisk_conduit', {x: b.x + Math.cos(angle) * 200, y: b.y + Math.sin(angle) * 200});
+            if (conduit) {
+                conduit.parentObelisk = b;
+                b.conduits.push(conduit);
+            }
+        }
+    },
+    logic: (b, ctx, state, utils, gameHelpers) => {
+        b.dx = 0; b.dy = 0; // Ensure it's immobile
+        if (Date.now() > b.vulnerableUntil) {
+            b.invulnerable = true;
+        }
+        // Visuals
+        const color = b.invulnerable ? b.color : '#ecf0f1';
+        utils.drawCircle(ctx, b.x, b.y, b.r, color);
+        if(!b.invulnerable) utils.spawnParticles(state.particles, b.x, b.y, '#fff', 3, 1, 10);
+        else gameHelpers.playLooping('obeliskHum');
+
+        // Firing logic would be added here
+    },
+    onDamage: (b, dmg) => { if(b.invulnerable) b.hp += dmg; },
+    onDeath: (b, state, sE, sP, play, stopLoopingSfx) => {
+        stopLoopingSfx('obeliskHum');
+        b.conduits.forEach(c => { if(c) c.hp = 0; }); // Destroy remaining conduits
+    }
+},
+{
+    id: "obelisk_conduit",
+    name: "Obelisk Conduit",
+    color: "#8e44ad",
+    maxHP: 150,
+    hasCustomMovement: true,
+    init: (b) => {
+        b.angle = Math.random() * Math.PI * 2;
+        b.distance = 250 + Math.random() * 50;
+    },
+    logic: (b, ctx, state) => {
+        if(b.parentObelisk && b.parentObelisk.hp > 0) {
+            b.angle += 0.01;
+            b.x = b.parentObelisk.x + Math.cos(b.angle) * b.distance;
+            b.y = b.parentObelisk.y + Math.sin(b.angle) * b.distance;
+        } else {
+            b.hp = 0; // If parent is dead, conduit dies
+        }
+    },
+    onDeath: (b, state, sE, sP, play) => {
+        play('conduitShatter');
+        if (b.parentObelisk) {
+            // Check if this is the last conduit
+            const remainingConduits = state.enemies.filter(e => e.id === 'obelisk_conduit' && e.hp > 0 && e.parentObelisk === b.parentObelisk);
+            if (remainingConduits.length === 0) {
+                b.parentObelisk.invulnerable = false;
+                b.parentObelisk.vulnerableUntil = Date.now() + 8000; // 8 second damage window
+            }
+        }
+    }
+},
+{
+    id: "helix_weaver",
+    name: "The Helix Weaver",
+    color: "#e74c3c",
+    maxHP: 500,
+    hasCustomMovement: true, // Stays in the center
+    init: (b, state, spawnEnemy, canvas) => {
+        b.x = canvas.width / 2;
+        b.y = canvas.height / 2;
+        b.angle = 0;
+        b.lastShot = 0;
+    },
+    logic: (b, ctx, state, utils, gameHelpers) => {
+        b.dx = 0; b.dy = 0;
+        if (Date.now() - b.lastShot > 100) {
+            b.lastShot = Date.now();
+            gameHelpers.play('weaverCast');
+            const speed = 4;
+            const arms = 4; // Number of spirals
+            for (let i = 0; i < arms; i++) {
+                const angle = b.angle + (i * (2 * Math.PI / arms));
+                state.effects.push({ type: 'nova_bullet', x: b.x, y: b.y, r: 5, dx: Math.cos(angle) * speed, dy: Math.sin(angle) * speed, color: '#e74c3c' });
+            }
+            b.angle += 0.2; // Controls rotation speed
+        }
+    }
+},
+{
+    id: "epoch_ender",
+    name: "The Epoch-Ender",
+    color: "#bdc3c7",
+    maxHP: 550,
+    init: (b) => {
+        b.lastDilation = Date.now();
+        b.damageWindow = 0;
+        b.lastKnownState = { x: b.x, y: b.y, hp: b.hp };
+    },
+    logic: (b, ctx, state, utils, gameHelpers) => {
+        if (Date.now() - b.lastDilation > 8000) {
+            b.lastDilation = Date.now();
+            gameHelpers.play('dilationField');
+            state.effects.push({
+                type: 'dilation_field',
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                dx: (Math.random() - 0.5) * 2,
+                dy: (Math.random() - 0.5) * 2,
+                r: 150,
+                endTime: Date.now() + 6000
+            });
+        }
+    },
+    onDamage: (b, dmg, source, state, sP, play) => {
+        const now = Date.now();
+        if (!b.rewindCooldownUntil || now > b.rewindCooldownUntil) {
+            b.damageWindow += dmg;
+            if (b.damageWindow > 100) { // If it takes 100 damage quickly
+                play('timeRewind');
+                b.hp = b.lastKnownState.hp; // Revert health
+                b.x = b.lastKnownState.x;
+                b.y = b.lastKnownState.y;
+                b.rewindCooldownUntil = now + 15000; // 15s cooldown
+                b.damageWindow = 0;
+            }
+        }
+        // Update last known state every few seconds
+        if (!b.lastStateUpdate || now > b.lastStateUpdate + 2000) {
+            b.lastStateUpdate = now;
+            b.lastKnownState = { x: b.x, y: b.y, hp: b.hp };
+        }
+    }
+},
+{
+    id: "shaper_of_fate",
+    name: "The Shaper of Fate",
+    color: "#f1c40f",
+    maxHP: 600,
+    init: (b) => {
+        b.lastZoneSpawn = 0;
+        b.zonesActive = false;
+    },
+    logic: (b, ctx, state, utils, gameHelpers) => {
+        if (!b.zonesActive && Date.now() - b.lastZoneSpawn > 10000) {
+            b.zonesActive = true;
+            b.lastZoneSpawn = Date.now();
+            gameHelpers.play('shaperAppear');
+            const zonePositions = [{x: 0.2, y: 0.5}, {x: 0.5, y: 0.2}, {x: 0.8, y: 0.8}];
+            const types = ['reckoning', 'alacrity', 'ruin'];
+            zonePositions.forEach((pos, i) => {
+                state.effects.push({
+                    type: 'shaper_zone',
+                    zoneType: types[i],
+                    x: canvas.width * pos.x,
+                    y: canvas.height * pos.y,
+                    r: 100,
+                    attuneTime: 3000,
+                    playerInsideTime: null,
+                    boss: b,
+                    endTime: Date.now() + 8000 // Zones fade after 8s
+                });
+            });
+        }
+    }
+},
+{
+    id: "pantheon",
+    name: "The Pantheon",
+    color: "#ecf0f1",
+    maxHP: 1000,
+    hasCustomMovement: true,
+    init: (b, state, spawnEnemy, canvas) => {
+        b.x = canvas.width / 2;
+        b.y = canvas.height / 2;
+        b.invulnerable = true;
+        b.lastSummon = 0;
+        b.activeAspects = [];
+        b.hardBosses = ["miasma", "temporal_paradox", "syphon", "centurion", "fractal_horror", "obelisk", "helix_weaver", "epoch_ender", "shaper_of_fate"];
+    },
+    logic: (b, ctx, state, utils, gameHelpers) => {
+        b.dx = 0; b.dy = 0;
+        b.activeAspects = b.activeAspects.filter(aspect => aspect.hp > 0);
+        if (b.activeAspects.length === 0) {
+            b.invulnerable = false;
+        }
+
+        if (b.invulnerable && Date.now() - b.lastSummon > 5000) {
+            b.lastSummon = Date.now() + 15000; // Cooldown for next summon
+            gameHelpers.play('pantheonSummon');
+            // Summon two different random hard bosses as aspects
+            let boss1_id = b.hardBosses[Math.floor(Math.random() * b.hardBosses.length)];
+            let boss2_id = b.hardBosses[Math.floor(Math.random() * b.hardBosses.length)];
+            while(boss1_id === boss2_id) {
+                boss2_id = b.hardBosses[Math.floor(Math.random() * b.hardBosses.length)];
+            }
+            [boss1_id, boss2_id].forEach(id => {
+                const aspect = gameHelpers.spawnEnemy(true, id);
+                if (aspect) {
+                    aspect.name = `Aspect of ${aspect.name}`;
+                    aspect.hp = aspect.maxHP * 0.5; // Reduced health
+                    aspect.maxHP = aspect.maxHP * 0.5;
+                    aspect.isAspect = true;
+                    aspect.parentPantheon = b;
+                    b.activeAspects.push(aspect);
+                }
+            });
+        }
+        
+        // When all aspects are dead, become vulnerable
+        if (b.activeAspects.length === 0 && b.invulnerable) {
+            b.invulnerable = false;
+        }
+        
+        // If vulnerable and takes damage, or after a time, become invulnerable and resummon
+        if (!b.invulnerable && Date.now() > b.lastSummon) { // Simplified check to resummon after a delay
+            b.invulnerable = true;
+        }
+    },
+    onDamage: (b, dmg) => { if(b.invulnerable) b.hp += dmg; }
+}];
