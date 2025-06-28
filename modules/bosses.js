@@ -251,21 +251,56 @@ export const bossData = [{
         b.pillars.forEach(p => utils.drawCircle(ctx, p.x, p.y, p.r, "#444"));
     }
 }, {
-    id: "twins",
-    name: "Vortex Twins",
+    id: "aethel_and_umbra", // REWORKED from 'twins'
+    name: "Aethel & Umbra",
     color: "#f39c12",
     maxHP: 280,
     init: (b, state, spawnEnemy) => {
-        if (!state.enemies.find(e => e.id === 'twins' && e !== b)) {
-            spawnEnemy(true, 'twins');
+        const partner = state.enemies.find(e => e.id === 'aethel_and_umbra' && e !== b);
+        if (!partner) {
+            b.role = Math.random() < 0.5 ? 'Aethel' : 'Umbra';
+            const partnerBoss = spawnEnemy(true, 'aethel_and_umbra');
+            if (partnerBoss) {
+                partnerBoss.role = b.role === 'Aethel' ? 'Umbra' : 'Aethel';
+                b.partner = partnerBoss;
+                partnerBoss.partner = b;
+                if (partnerBoss.logic) partnerBoss.logic(partnerBoss, null, state, null, null);
+            }
+        }
+        if (b.role === 'Aethel') { // Speed role
+            b.r *= 0.75;
+            b.dx = (b.dx || (Math.random() - 0.5)) * 2.5;
+            b.dy = (b.dy || (Math.random() - 0.5)) * 2.5;
+        } else { // 'Umbra' - Health role
+            b.r *= 1.25;
+            b.maxHP *= 1.5;
+            b.hp = b.maxHP;
+        }
+        b.enraged = false;
+    },
+    logic: (b, ctx) => {
+        if (b.enraged && ctx) {
+            const absorbedColor = b.role === 'Aethel' ? '#e74c3c' : '#3498db'; // Umbra absorbed Aethel (gets speed - blue) / Aethel absorbed Umbra (gets might - red)
+            ctx.strokeStyle = absorbedColor;
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.r + 8, 0, 2 * Math.PI);
+            ctx.stroke();
         }
     },
     onDeath: (b, state) => {
-        const remainingTwins = state.enemies.filter(e => e.id === 'twins' && e.hp > 0 && e !== b);
-        if (remainingTwins.length > 0) {
-            remainingTwins.forEach(twin => {
-                twin.enraged = true;
-            });
+        const partner = state.enemies.find(e => e.id === 'aethel_and_umbra' && e !== b && e.hp > 0);
+        if (partner && !partner.enraged) {
+            partner.enraged = true;
+            if (b.role === 'Aethel') { // Partner is Umbra, absorbs Aethel's speed
+                partner.dx = (partner.dx || (Math.random() - 0.5)) * 2.5;
+                partner.dy = (partner.dy || (Math.random() - 0.5)) * 2.5;
+            } else { // Partner is Aethel, absorbs Umbra's might
+                partner.r *= 1.25;
+                const healthBonus = partner.maxHP * 1.5;
+                partner.maxHP += healthBonus;
+                partner.hp += healthBonus;
+            }
         }
     }
 }, {
@@ -316,6 +351,7 @@ export const bossData = [{
                 });
                 gameHelpers.play('chargeUpSound');
                 setTimeout(() => {
+                    if (b.hp <= 0) return;
                     const target = (state.arenaMode && b.target) ? b.target : state.player;
                     const angle = Math.atan2(target.y - b.y, target.x - b.x);
                     b.dx = Math.cos(angle) * 15;
@@ -344,7 +380,7 @@ export const bossData = [{
         }
     }
 }, {
-    id: "puppeteer",
+    id: "puppeteer", // UPDATED Puppeteer
     name: "The Puppeteer",
     color: "#a29bfe",
     maxHP: 320,
@@ -352,7 +388,7 @@ export const bossData = [{
         b.lastConvert = Date.now();
     },
     logic: (b, ctx, state, utils, gameHelpers) => {
-        if (Date.now() - b.lastConvert > 1000) {
+        if (Date.now() - b.lastConvert > 1500) { // Slightly increased interval
             let farthestEnemy = null;
             let maxDist = 0;
             state.enemies.forEach(e => {
@@ -370,11 +406,17 @@ export const bossData = [{
                 farthestEnemy.isPuppet = true;
                 farthestEnemy.customColor = b.color;
                 farthestEnemy.r *= 1.5;
-                // --- PUPPETEER CHANGE ---
-                farthestEnemy.hp = 35; // Was 25
+                farthestEnemy.hp = 80; // Increased health
                 farthestEnemy.dx *= 2;
                 farthestEnemy.dy *= 2;
-                utils.drawLightning(ctx, b.x, b.y, farthestEnemy.x, farthestEnemy.y, b.color, 5);
+                // Add a persistent lightning effect to make it more visible
+                state.effects.push({
+                    type: 'transient_lightning',
+                    x1: b.x, y1: b.y,
+                    x2: farthestEnemy.x, y2: farthestEnemy.y,
+                    color: b.color,
+                    endTime: Date.now() + 200 // Lasts for 200ms
+                });
             }
         }
     },
@@ -566,6 +608,7 @@ export const bossData = [{
             b.isChargingBeam = true;
             gameHelpers.play('powerSirenSound');
             setTimeout(() => {
+                if(b.hp <= 0) return;
                 gameHelpers.play('annihilatorBeamSound');
                 state.effects.push({
                     type: 'annihilator_beam',
@@ -691,8 +734,7 @@ export const bossData = [{
                         speed: 600,
                         startTime: Date.now(),
                         hitEnemies: new Set(),
-                        // --- QUANTUM SHADOW CHANGE ---
-                        damage: 60 // Was 10
+                        damage: 60
                     });
                 });
                 b.echoes = [];
@@ -853,4 +895,10 @@ export const bossData = [{
             }
         }
     }
-}];
+},
+
+// --- STAGES 21-30: NEW HARD MODE BOSSES ---
+// Placeholders for the 10 new bosses will go here.
+// I will add the full code for them one by one as we confirm their implementation.
+
+];
