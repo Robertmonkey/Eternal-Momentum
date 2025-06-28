@@ -251,7 +251,7 @@ export const bossData = [{
         b.pillars.forEach(p => utils.drawCircle(ctx, p.x, p.y, p.r, "#444"));
     }
 }, {
-    id: "aethel_and_umbra", // REWORKED from 'twins'
+    id: "aethel_and_umbra",
     name: "Aethel & Umbra",
     color: "#f39c12",
     maxHP: 280,
@@ -280,7 +280,7 @@ export const bossData = [{
     },
     logic: (b, ctx) => {
         if (b.enraged && ctx) {
-            const absorbedColor = b.role === 'Aethel' ? '#e74c3c' : '#3498db'; // Aethel absorbs Umbra (gets might - red) / Umbra absorbs Aethel (gets speed - blue)
+            const absorbedColor = b.role === 'Aethel' ? '#e74c3c' : '#3498db';
             ctx.strokeStyle = absorbedColor;
             ctx.lineWidth = 5;
             ctx.beginPath();
@@ -292,10 +292,10 @@ export const bossData = [{
         const partner = state.enemies.find(e => e.id === 'aethel_and_umbra' && e !== b && e.hp > 0);
         if (partner && !partner.enraged) {
             partner.enraged = true;
-            if (b.role === 'Aethel') { // Partner is Umbra, absorbs Aethel's speed
+            if (b.role === 'Aethel') {
                 partner.dx = (partner.dx || (Math.random() - 0.5)) * 2.5;
                 partner.dy = (partner.dy || (Math.random() - 0.5)) * 2.5;
-            } else { // Partner is Aethel, absorbs Umbra's might
+            } else {
                 partner.r *= 1.25;
                 const healthBonus = partner.maxHP * 1.5;
                 partner.maxHP += healthBonus;
@@ -380,7 +380,7 @@ export const bossData = [{
         }
     }
 }, {
-    id: "puppeteer", // UPDATED Puppeteer
+    id: "puppeteer",
     name: "The Puppeteer",
     color: "#a29bfe",
     maxHP: 320,
@@ -406,7 +406,7 @@ export const bossData = [{
                 farthestEnemy.isPuppet = true;
                 farthestEnemy.customColor = b.color;
                 farthestEnemy.r *= 1.5;
-                farthestEnemy.hp = 80; // Increased health
+                farthestEnemy.hp = 80;
                 farthestEnemy.dx *= 2;
                 farthestEnemy.dy *= 2;
                 state.effects.push({
@@ -914,7 +914,6 @@ export const bossData = [{
             utils.drawCircle(ctx, v.x, v.y, 30, '#7f8c8d');
         });
         ctx.globalAlpha = 1.0;
-
         if (!b.isGasActive && Date.now() - b.lastGasAttack > 10000) {
             b.isGasActive = true;
             state.effects.push({ type: 'miasma_gas', endTime: Date.now() + 99999, id: b.id });
@@ -925,11 +924,7 @@ export const bossData = [{
             state.effects.push({ type: 'charge_indicator', source: b, duration: 2000, radius: 120, color: 'rgba(106, 176, 76, 0.5)' });
             gameHelpers.play('chargeUpSound');
             setTimeout(() => {
-                // --- ROBUST FIX IS HERE ---
-                // First, check if this boss object is still in the active enemies list.
-                // If not, it means the game was reset, so do nothing.
                 if (!state.enemies.includes(b)) return;
-
                 if (b.hp <= 0) return;
                 gameHelpers.play('miasmaSlam');
                 utils.spawnParticles(state.particles, b.x, b.y, '#6ab04c', 50, 4, 30);
@@ -1269,7 +1264,7 @@ export const bossData = [{
         if(b.invulnerable) b.hp += dmg; 
         else {
             const defeatedAspects = b.activeAspects.filter(a => a.hp <= 0).length;
-            if (defeatedAspects > 0) { // Check if aspects were defeated this cycle
+            if (defeatedAspects > 0) {
                  play('aspectDefeated');
                  b.activeAspects = b.activeAspects.filter(a => a.hp > 0);
             }
