@@ -919,10 +919,24 @@ export const bossData = [{
         
         const pulsatingSize = b.r + Math.sin(Date.now() / 300) * 5;
         utils.drawCircle(ctx, b.x, b.y, pulsatingSize, b.isGasActive ? '#6ab04c' : '#a4b0be');
+        
+        // --- CHANGE: Draw vents as crystals and add pulsing indicator ---
         b.vents.forEach(v => {
-            ctx.globalAlpha = Date.now() < v.cooldownUntil ? 0.3 : 1.0;
-            utils.drawCircle(ctx, v.x, v.y, 30, '#7f8c8d');
+            const isOnCooldown = Date.now() < v.cooldownUntil;
+            const color = isOnCooldown ? 'rgba(127, 140, 141, 0.4)' : '#7f8c8d';
+            
+            // Pulsing indicator when gas is active and vent is usable
+            if (b.isGasActive && !isOnCooldown) {
+                const pulse = Math.abs(Math.sin(Date.now() / 200));
+                ctx.fillStyle = `rgba(255, 255, 255, ${pulse * 0.3})`;
+                ctx.beginPath();
+                ctx.arc(v.x, v.y, 30 + pulse * 10, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+            
+            utils.drawCrystal(ctx, v.x, v.y, 30, color);
         });
+        
         ctx.globalAlpha = 1.0;
         if (!b.isGasActive && Date.now() - b.lastGasAttack > 10000) {
             b.isGasActive = true;
@@ -1025,7 +1039,7 @@ export const bossData = [{
             state.effects.push({
                 type: 'shrinking_box',
                 startTime: Date.now(),
-                duration: 6000, // --- CHANGE: Shrinks faster (was 8000) ---
+                duration: 6000,
                 x: state.player.x,
                 y: state.player.y,
                 initialSize: boxSize,
@@ -1034,7 +1048,6 @@ export const bossData = [{
             });
         }
     },
-    // --- CHANGE: Added onDeath handler to clean up effects and sound ---
     onDeath: (b, state, sE, sP, play, stopLoopingSfx) => {
         stopLoopingSfx('wallShrink');
         state.effects = state.effects.filter(e => e.type !== 'shrinking_box');
