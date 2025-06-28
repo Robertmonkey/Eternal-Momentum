@@ -151,20 +151,15 @@ export function populateLevelSelect(startSpecificLevel) {
         item.className = 'stage-select-item';
         
         let bossNames = '';
-        if (stage <= 20) {
+        if (stage <= 30) {
             bossNames = bossData[stage - 1]?.name || 'Unknown Anomaly';
         } else {
-            const bossNum1 = ((stage - 1) % 10) + 1;
-            const bossNum2 = bossNum1 + 10;
-            const count1 = 1 + Math.floor((stage - 11) / 20);
-            const count2 = 1 + Math.floor((stage - 21) / 20);
-
-            const name1 = bossData[bossNum1 - 1]?.name || '???';
-            const name2 = bossData[bossNum2 - 1]?.name || '???';
-            
+            // Placeholder logic for post-stage 30, to be replaced by the intelligent algorithm's output
+            const hardBosses = bossData.slice(20, 30);
             let names = [];
-            if(count1 > 0) names.push(`${count1 > 1 ? count1 + 'x ' : ''}${name1}`);
-            if(count2 > 0) names.push(`${count2 > 1 ? count2 + 'x ' : ''}${name2}`);
+            for (let j = 0; j < 3; j++) {
+                names.push(hardBosses[Math.floor(Math.random() * hardBosses.length)].name);
+            }
             bossNames = names.join(', ');
         }
         
@@ -176,6 +171,19 @@ export function populateLevelSelect(startSpecificLevel) {
         item.onclick = () => {
             startSpecificLevel(stage);
         };
+
+        // --- NEW --- Logic for scrolling marquee on long text
+        const bossNameElement = item.querySelector('.stage-select-bosses');
+        item.addEventListener('mouseenter', () => {
+            if (bossNameElement.scrollWidth > bossNameElement.clientWidth) {
+                bossNameElement.classList.add('is-scrolling');
+            }
+        });
+        item.addEventListener('mouseleave', () => {
+            bossNameElement.classList.remove('is-scrolling');
+        });
+        // --- END NEW ---
+
         levelSelectList.appendChild(item);
     }
     levelSelectList.parentElement.scrollTop = levelSelectList.parentElement.scrollHeight;
