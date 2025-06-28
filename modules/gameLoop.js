@@ -273,7 +273,8 @@ export function gameTick(mx, my) {
         }
         if (effect.type === 'black_hole' && effect.caster !== state.player) {
             const dist = Math.hypot(state.player.x - effect.x, state.player.y - effect.y);
-            const progress = 1 - (effect.endTime - Date.now()) / 4000;
+            const elapsed = Date.now() - effect.startTime;
+            const progress = Math.min(1, elapsed / effect.duration);
             const currentPullRadius = effect.maxRadius * progress;
             if (dist < currentPullRadius) {
                 let pullStrength = 0.08;
@@ -510,7 +511,8 @@ export function gameTick(mx, my) {
                 if(effect.type === 'slow_zone' && Math.hypot(e.x - effect.x, e.y - effect.y) < effect.r) enemySpeedMultiplier = 0.5;
                 if (effect.type === 'black_hole') {
                     const dist = Math.hypot(e.x - effect.x, e.y - effect.y);
-                    const progress = 1 - (effect.endTime - Date.now()) / 4000; 
+                    const elapsed = Date.now() - effect.startTime;
+                    const progress = Math.min(1, elapsed / effect.duration);
                     const currentPullRadius = effect.maxRadius * progress;
                     if (dist < currentPullRadius) {
                         let pullStrength = e.boss ? 0.03 : 0.1;
@@ -764,12 +766,11 @@ export function gameTick(mx, my) {
         } else if (effect.type === 'nova_bullet') { 
             utils.drawCircle(ctx, effect.x, effect.y, effect.r, effect.color || '#fff'); 
             if(effect.x < 0 || effect.x > canvas.width || effect.y < 0 || effect.y > canvas.height) state.effects.splice(index, 1); 
-            // --- CHANGE: Logic to damage either enemies or the player based on caster ---
             if (effect.caster === state.player) {
                 state.enemies.forEach(e => { if (Math.hypot(e.x-effect.x, e.y-effect.y) < e.r + effect.r) { let damage = ((state.player.berserkUntil > Date.now()) ? 6 : 3) * state.player.talent_modifiers.damage_multiplier; e.hp -= damage; state.effects.splice(index, 1); } }); 
-            } else { // Fired by an enemy
+            } else {
                 if (Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < state.player.r + effect.r) {
-                    if (!state.player.shield) state.player.health -= 40; // High damage
+                    if (!state.player.shield) state.player.health -= 40;
                     else state.player.shield = false;
                     state.effects.splice(index, 1);
                 }
@@ -798,7 +799,9 @@ export function gameTick(mx, my) {
             ctx.strokeStyle = effect.color || 'rgba(230, 126, 34, 0.8)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(effect.x, effect.y, 50 * (1-progress), 0, Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(effect.x-10, effect.y); ctx.lineTo(effect.x+10, effect.y); ctx.moveTo(effect.x, effect.y-10); ctx.lineTo(effect.x, effect.y+10); ctx.stroke(); 
         } else if (effect.type === 'black_hole') { 
             if (Date.now() > effect.endTime) { if (state.player.purchasedTalents.has('unstable-singularity')) { state.effects.push({ type: 'shockwave', caster: state.player, x: effect.x, y: effect.y, radius: 0, maxRadius: effect.maxRadius, speed: 800, startTime: Date.now(), hitEnemies: new Set(), damage: 25 * state.player.talent_modifiers.damage_multiplier }); } state.effects.splice(index, 1); return; } 
-            const progress = 1 - (effect.endTime - Date.now()) / 4000; const currentPullRadius = effect.maxRadius * progress; 
+            const elapsed = Date.now() - effect.startTime;
+            const progress = Math.min(1, elapsed / effect.duration);
+            const currentPullRadius = effect.maxRadius * progress; 
             utils.drawCircle(ctx, effect.x, effect.y, effect.radius, effect.color || "#000"); 
             ctx.strokeStyle = effect.color ? `rgba(${effect.color.slice(1).match(/.{1,2}/g).map(v => parseInt(v, 16)).join(',')}, ${0.6 * progress})` : `rgba(155, 89, 182, ${0.6 * progress})`;
             ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(effect.x, effect.y, currentPullRadius, 0, 2*Math.PI); ctx.stroke();
@@ -882,21 +885,32 @@ export function gameTick(mx, my) {
             }
             const currentIndex = Math.floor(effect.history.length * progress);
             const currentPos = effect.history[currentIndex];
-            if (currentPos) {
-                effect.trail.push({x: currentPos.x, y: currentPos.y, life: 20});
-                utils.drawCircle(ctx, currentPos.x, currentPos.y, state.player.r, 'rgba(255, 255, 255, 0.5)');
+            if (currentPos && Math.random() < 0.7) {
+                effect.trail.push({x: currentPos.x, y: currentPos.y, lifeEnd: Date.now() + 3000});
             }
-            // --- CHANGE: New visual for the trail using particles ---
+            
             effect.trail.forEach((p, i) => {
-                p.life--;
-                if(Math.random() < 0.5) spawnParticlesCallback(p.x, p.y, 'rgba(231, 76, 60, 0.7)', 1, 2, 20, Math.random() * 5 + 2);
-                if (Math.hypot(state.player.x - p.x, state.player.y - p.y) < state.player.r + 5) {
+                if (Date.now() > p.lifeEnd) {
+                    effect.trail.splice(i, 1);
+                    return;
+                }
+                const lifeProgress = (p.lifeEnd - Date.now()) / 3000;
+                
+                // Draw persistent damaging circle for area denial
+                ctx.fillStyle = `rgba(231, 76, 60, ${0.4 * lifeProgress})`;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 10, 0, 2 * Math.PI);
+                ctx.fill();
+
+                // Spawn particles for visual flair
+                if(Math.random() < 0.2) spawnParticlesCallback(p.x, p.y, 'rgba(231, 76, 60, 0.7)', 1, 1, 15, Math.random() * 3 + 1);
+
+                if (Math.hypot(state.player.x - p.x, state.player.y - p.y) < state.player.r + 10) {
                      if (!state.player.shield) {
                         state.player.health = 0;
                         if(state.player.health <= 0) state.gameOver = true;
                      }
                 }
-                if(p.life <= 0) effect.trail.splice(i, 1);
             });
         }
         else if (effect.type === 'syphon_cone') {
@@ -932,7 +946,6 @@ export function gameTick(mx, my) {
                         state.offensiveInventory.shift();
                         state.offensiveInventory.push(null);
                         
-                        // --- CHANGE: Buffed damage values for all stolen powers ---
                         switch (stolenPower) {
                             case 'missile':
                                 state.effects.push({ type: 'shockwave', caster: source, x: state.player.x, y: state.player.y, radius: 0, maxRadius: 400, speed: 1000, startTime: Date.now(), hitEnemies: new Set(), damage: 70, color: 'rgba(155, 89, 182, 0.7)' });
@@ -944,7 +957,7 @@ export function gameTick(mx, my) {
                                 state.effects.push({ type: 'shockwave', caster: source, x: source.x, y: source.y, radius: 0, maxRadius: canvas.width, speed: 1000, startTime: Date.now(), hitEnemies: new Set(), damage: 60, color: 'rgba(155, 89, 182, 0.7)' });
                                 break;
                             case 'black_hole':
-                                state.effects.push({ type: 'black_hole', x: source.x, y: source.y, radius: 30, maxRadius: 400, damageRate: 200, lastDamage: new Map(), endTime: Date.now() + 5000, damage: 65, caster: source, color: '#9b59b6' });
+                                state.effects.push({ type: 'black_hole', x: source.x, y: source.y, radius: 30, maxRadius: 400, damageRate: 200, lastDamage: new Map(), startTime: Date.now(), duration: 5000, endTime: Date.now() + 5000, damage: 65, caster: source, color: '#9b59b6' });
                                 break;
                              case 'orbitalStrike':
                                 state.effects.push({ type: 'orbital_target', x: state.player.x, y: state.player.y, startTime: Date.now(), caster: source, damage: 80, radius: 200, color: 'rgba(155, 89, 182, 0.8)' });
@@ -982,34 +995,29 @@ export function gameTick(mx, my) {
 
             ctx.fillStyle = 'rgba(211, 84, 0, 0.5)';
             const gapStart = effect.gapPosition * (currentSize - gapSize);
+            
+            const playerIsInsideBounds = state.player.x > left && state.player.x < right && state.player.y > top && state.player.y < bottom;
 
-            // --- CHANGE: New collision logic for the Centurion's box to fix teleport bug ---
-            // Top wall (0)
-            if (state.player.y - state.player.r < top + wallThickness && state.player.y > top) {
-                if (effect.gapSide !== 0 || state.player.x < left + gapStart || state.player.x > left + gapStart + gapSize) {
-                    state.player.y = top + wallThickness + state.player.r;
+            if (playerIsInsideBounds) {
+                // Top wall
+                if (state.player.y - state.player.r < top && (effect.gapSide !== 0 || state.player.x < left + gapStart || state.player.x > left + gapStart + gapSize)) {
+                    state.player.y = top + state.player.r;
                 }
-            }
-            // Bottom wall (2)
-            if (state.player.y + state.player.r > bottom - wallThickness && state.player.y < bottom) {
-                if (effect.gapSide !== 2 || state.player.x < left + gapStart || state.player.x > left + gapStart + gapSize) {
-                    state.player.y = bottom - wallThickness - state.player.r;
+                // Bottom wall
+                if (state.player.y + state.player.r > bottom && (effect.gapSide !== 2 || state.player.x < left + gapStart || state.player.x > left + gapStart + gapSize)) {
+                    state.player.y = bottom - state.player.r;
                 }
-            }
-            // Left wall (3)
-            if (state.player.x - state.player.r < left + wallThickness && state.player.x > left) {
-                if (effect.gapSide !== 3 || state.player.y < top + gapStart || state.player.y > top + gapStart + gapSize) {
-                    state.player.x = left + wallThickness + state.player.r;
+                // Left wall
+                if (state.player.x - state.player.r < left && (effect.gapSide !== 3 || state.player.y < top + gapStart || state.player.y > top + gapStart + gapSize)) {
+                    state.player.x = left + state.player.r;
                 }
-            }
-            // Right wall (1)
-            if (state.player.x + state.player.r > right - wallThickness && state.player.x < right) {
-                if (effect.gapSide !== 1 || state.player.y < top + gapStart || state.player.y > top + gapStart + gapSize) {
-                    state.player.x = right - wallThickness - state.player.r;
+                // Right wall
+                if (state.player.x + state.player.r > right && (effect.gapSide !== 1 || state.player.y < top + gapStart || state.player.y > top + gapStart + gapSize)) {
+                    state.player.x = right - state.player.r;
                 }
             }
 
-            // --- Drawing logic remains the same ---
+            // Drawing logic
             if (effect.gapSide === 0) {
                 ctx.fillRect(left, top, gapStart, wallThickness);
                 ctx.fillRect(left + gapStart + gapSize, top, currentSize - gapStart - gapSize, wallThickness);
