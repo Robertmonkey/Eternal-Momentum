@@ -752,7 +752,7 @@ export function gameTick(mx, my) {
             if (Date.now() > effect.startTime + effect.duration) { state.effects.splice(index, 1); return; } 
             if(Date.now() - effect.lastShot > 50) { 
                 effect.lastShot = Date.now(); const speed = 5;
-                const caster = effect.caster || state.player; // --- FIX: Default to player if caster is missing
+                const caster = effect.caster || state.player;
                 if (state.player.purchasedTalents.has('nova-pulsar') && caster === state.player) {
                     const angles = [effect.angle, effect.angle + (2 * Math.PI / 3), effect.angle - (2 * Math.PI / 3)];
                     angles.forEach(angle => { state.effects.push({ type: 'nova_bullet', x: caster.x, y: caster.y, r: effect.r || 4, dx: Math.cos(angle) * speed, dy: Math.sin(angle) * speed, color: effect.color }); });
@@ -768,7 +768,7 @@ export function gameTick(mx, my) {
             state.enemies.forEach(e => { if (Math.hypot(e.x-effect.x, e.y-effect.y) < e.r + effect.r) { let damage = ((state.player.berserkUntil > Date.now()) ? 6 : 3) * state.player.talent_modifiers.damage_multiplier; e.hp -= damage; state.effects.splice(index, 1); } }); 
         } else if (effect.type === 'orbital_target') {
             const hasTracking = state.player.purchasedTalents.has('targeting-algorithm');
-            if(hasTracking && effect.target && effect.target.hp > 0) { effect.x = effect.target.x; effect.y = effect.target.y; } // --- FIX: Corrected typo effect.y = effect.target.y
+            if(hasTracking && effect.target && effect.target.hp > 0) { effect.x = effect.target.x; effect.y = effect.target.y; }
             const duration = 1500; const progress = (Date.now() - effect.startTime) / duration; 
             if (progress >= 1) { 
                 spawnParticlesCallback(effect.x, effect.y, '#e67e22', 100, 8, 40); 
