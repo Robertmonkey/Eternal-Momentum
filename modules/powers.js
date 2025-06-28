@@ -182,7 +182,23 @@ export const powers={
             }
         }
     }},
-  black_hole: {emoji: "⚫", desc: "Pulls and damages enemies for 4s", apply: () => { let damage = ((state.player.berserkUntil > Date.now()) ? 6 : 3) * state.player.talent_modifiers.damage_multiplier; let radius = 350; state.effects.push({ type: 'black_hole', x: state.player.x, y: state.player.y, radius: 20, maxRadius: radius, damageRate: 200, lastDamage: new Map(), endTime: Date.now() + 4000, damage: damage, caster: state.player }); play('gravitySound'); }},
+  black_hole: {emoji: "⚫", desc: "Pulls and damages enemies for 4s", apply: () => { 
+      let damage = ((state.player.berserkUntil > Date.now()) ? 6 : 3) * state.player.talent_modifiers.damage_multiplier; 
+      let radius = 350; 
+      // --- CHANGE: Add startTime and duration for dynamic progress calculation ---
+      state.effects.push({ 
+          type: 'black_hole', 
+          x: state.player.x, y: state.player.y, 
+          radius: 20, maxRadius: radius, 
+          damageRate: 200, lastDamage: new Map(), 
+          startTime: Date.now(),
+          duration: 4000,
+          endTime: Date.now() + 4000, 
+          damage: damage, 
+          caster: state.player 
+      }); 
+      play('gravitySound'); 
+  }},
   berserk: {emoji: "💢", desc: "8s: Deal 2x damage, take 2x damage", apply:(utils, game)=>{ state.player.berserkUntil = Date.now() + 8000; game.addStatusEffect('Berserk', '💢', 8000); utils.spawnParticles(state.particles, state.player.x, state.player.y, "#e74c3c", 40, 3, 30); }},
   ricochetShot: {emoji: "🔄", desc: "Fires a shot that bounces 6 times", apply:(utils, game, mx, my) => {
       let bounceCount = 6;
