@@ -935,8 +935,17 @@ export const bossData = [{
                         b.lastGasAttack = Date.now();
                         gameHelpers.play('ventPurify');
                         utils.spawnParticles(state.particles, v.x, v.y, '#ffffff', 100, 6, 50, 5);
-                        state.effects.push({ type: 'shockwave', caster:b, x: v.x, y: v.y, radius: 0, maxRadius: 400, speed: 1200, startTime: Date.now(), damage: 0 });
+                        // --- FIX IS ON THE LINE BELOW ---
+                        state.effects.push({ type: 'shockwave', caster:b, x: v.x, y: v.y, radius: 0, maxRadius: 400, speed: 1200, startTime: Date.now(), damage: 0, hitEnemies: new Set() });
                     }
+                });
+                b.isChargingSlam = false;
+            }, 2000);
+        }
+    },
+    onDamage: (b, dmg) => { if (b.isGasActive) b.hp += dmg; },
+    onDeath: (b, state) => { state.effects = state.effects.filter(e => e.type !== 'miasma_gas' || e.id !== b.id); }
+},
                 });
                 b.isChargingSlam = false;
             }, 2000);
