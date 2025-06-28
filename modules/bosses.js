@@ -914,6 +914,7 @@ export const bossData = [{
             utils.drawCircle(ctx, v.x, v.y, 30, '#7f8c8d');
         });
         ctx.globalAlpha = 1.0;
+
         if (!b.isGasActive && Date.now() - b.lastGasAttack > 10000) {
             b.isGasActive = true;
             state.effects.push({ type: 'miasma_gas', endTime: Date.now() + 99999, id: b.id });
@@ -924,7 +925,12 @@ export const bossData = [{
             state.effects.push({ type: 'charge_indicator', source: b, duration: 2000, radius: 120, color: 'rgba(106, 176, 76, 0.5)' });
             gameHelpers.play('chargeUpSound');
             setTimeout(() => {
-                if(b.hp <= 0) return;
+                // --- ROBUST FIX IS HERE ---
+                // First, check if this boss object is still in the active enemies list.
+                // If not, it means the game was reset, so do nothing.
+                if (!state.enemies.includes(b)) return;
+
+                if (b.hp <= 0) return;
                 gameHelpers.play('miasmaSlam');
                 utils.spawnParticles(state.particles, b.x, b.y, '#6ab04c', 50, 4, 30);
                 b.vents.forEach(v => {
@@ -935,17 +941,8 @@ export const bossData = [{
                         b.lastGasAttack = Date.now();
                         gameHelpers.play('ventPurify');
                         utils.spawnParticles(state.particles, v.x, v.y, '#ffffff', 100, 6, 50, 5);
-                        // --- FIX IS ON THE LINE BELOW ---
                         state.effects.push({ type: 'shockwave', caster:b, x: v.x, y: v.y, radius: 0, maxRadius: 400, speed: 1200, startTime: Date.now(), damage: 0, hitEnemies: new Set() });
                     }
-                });
-                b.isChargingSlam = false;
-            }, 2000);
-        }
-    },
-    onDamage: (b, dmg) => { if (b.isGasActive) b.hp += dmg; },
-    onDeath: (b, state) => { state.effects = state.effects.filter(e => e.type !== 'miasma_gas' || e.id !== b.id); }
-},
                 });
                 b.isChargingSlam = false;
             }, 2000);
