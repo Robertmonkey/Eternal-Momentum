@@ -1004,14 +1004,14 @@ export const bossData = [{
     name: "The Centurion",
     color: "#d35400",
     maxHP: 480,
-    init: (b, state, spawnEnemy, canvas) => {
+    init: (b) => {
         b.lastWallSummon = 0;
     },
     logic: (b, ctx, state, utils, gameHelpers) => {
         if (Date.now() - b.lastWallSummon > 12000) {
             b.lastWallSummon = Date.now();
             gameHelpers.play('wallSummon');
-            const boxSize = Math.min(canvas.width, canvas.height) * 0.8;
+            const boxSize = Math.min(ctx.canvas.width, ctx.canvas.height) * 0.8;
             state.effects.push({
                 type: 'shrinking_box',
                 startTime: Date.now(),
@@ -1155,8 +1155,8 @@ export const bossData = [{
             b.lastDilation = Date.now();
             state.effects.push({
                 type: 'dilation_field',
-                x: Math.random() * canvas.width,
-                y: Math.random() * canvas.height,
+                x: Math.random() * ctx.canvas.width,
+                y: Math.random() * ctx.canvas.height,
                 dx: (Math.random() - 0.5) * 2,
                 dy: (Math.random() - 0.5) * 2,
                 r: 150,
@@ -1202,8 +1202,8 @@ export const bossData = [{
                 state.effects.push({
                     type: 'shaper_zone',
                     zoneType: types[i],
-                    x: canvas.width * pos.x,
-                    y: canvas.height * pos.y,
+                    x: ctx.canvas.width * pos.x,
+                    y: ctx.canvas.height * pos.y,
                     r: 100,
                     attuneTime: 3000,
                     playerInsideTime: null,
