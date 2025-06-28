@@ -836,6 +836,7 @@ export const bossData = [{
         const vy = (state.player.y - b.y) * speed;
         b.x += vx;
         b.y += vy;
+        
         const pulsatingSize = b.r + Math.sin(Date.now() / 300) * 5;
         utils.drawCircle(ctx, b.x, b.y, pulsatingSize, b.isGasActive ? '#6ab04c' : '#a4b0be');
         b.vents.forEach(v => {
