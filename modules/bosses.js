@@ -906,7 +906,17 @@ export const bossData = [{
         b.isChargingSlam = false;
     },
     hasCustomDraw: true,
+    hasCustomMovement: true,
     logic: (b, ctx, state, utils, gameHelpers) => {
+        // --- CHANGE: Always move towards the player, ignoring decoys ---
+        if (!b.frozen) {
+            const target = state.player;
+            const vx = (target.x - b.x) * 0.005;
+            const vy = (target.y - b.y) * 0.005;
+            b.x += vx;
+            b.y += vy;
+        }
+        
         const pulsatingSize = b.r + Math.sin(Date.now() / 300) * 5;
         utils.drawCircle(ctx, b.x, b.y, pulsatingSize, b.isGasActive ? '#6ab04c' : '#a4b0be');
         b.vents.forEach(v => {
@@ -1015,12 +1025,19 @@ export const bossData = [{
             state.effects.push({
                 type: 'shrinking_box',
                 startTime: Date.now(),
-                duration: 8000,
+                duration: 6000, // --- CHANGE: Shrinks faster (was 8000) ---
                 x: state.player.x,
                 y: state.player.y,
                 initialSize: boxSize,
+                gapSide: Math.floor(Math.random() * 4), // 0: top, 1: right, 2: bottom, 3: left
+                gapPosition: Math.random() // 0 to 1 position along the wall
             });
         }
+    },
+    // --- CHANGE: Added onDeath handler to clean up effects and sound ---
+    onDeath: (b, state, sE, sP, play, stopLoopingSfx) => {
+        stopLoopingSfx('wallShrink');
+        state.effects = state.effects.filter(e => e.type !== 'shrinking_box');
     }
 }, {
     id: "fractal_horror",
