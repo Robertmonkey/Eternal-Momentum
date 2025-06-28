@@ -10,6 +10,23 @@ export function drawCircle(ctx, x, y, r, c) {
     ctx.fill();
 }
 
+// --- NEW: Function to draw a crystal shape ---
+export function drawCrystal(ctx, x, y, size, color) {
+    const sides = 6;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(x + size * Math.cos(0), y + size * Math.sin(0));
+    for (let i = 1; i <= sides; i++) {
+        const angle = i * 2 * Math.PI / sides;
+        // Alternate between a sharp and a slightly inset point for a more "crystalline" look
+        const modSize = (i % 2 === 0) ? size : size * 0.6;
+        ctx.lineTo(x + modSize * Math.cos(angle), y + modSize * Math.sin(angle));
+    }
+    ctx.closePath();
+    ctx.fill();
+}
+
+
 export function spawnParticles(particles, x, y, c, n, spd, life, r = 3) {
     for (let i = 0; i < n; i++) {
         const a = Math.random() * 2 * Math.PI;
