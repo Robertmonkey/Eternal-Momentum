@@ -671,25 +671,35 @@ export const bossData = [{
             b.lastPhaseChange = Date.now();
             b.invulnerable = true;
             gameHelpers.play('phaseShiftSound');
+
             const missingHealthPercent = 1 - (b.hp / b.maxHP);
             const extraEchoes = Math.floor(missingHealthPercent * 10);
             const totalEchoes = 3 + extraEchoes;
             b.echoes = [];
+            
             const placedEchoes = [];
             for (let i = 0; i < totalEchoes; i++) {
                 let bestCandidate = null;
                 let maxMinDist = -1;
+
                 if (placedEchoes.length === 0) {
                     bestCandidate = { x: Math.random() * canvas.width, y: Math.random() * canvas.height, r: b.r };
                 } else {
                     for (let j = 0; j < 10; j++) {
                         const candidate = { x: Math.random() * canvas.width, y: Math.random() * canvas.height, r: b.r };
                         let minDistanceToPlaced = Infinity;
+
                         placedEchoes.forEach(placed => {
                             const dist = Math.hypot(candidate.x - placed.x, candidate.y - placed.y);
-                            if (dist < minDistanceToPlaced) { minDistanceToPlaced = dist; }
+                            if (dist < minDistanceToPlaced) {
+                                minDistanceToPlaced = dist;
+                            }
                         });
-                        if (minDistanceToPlaced > maxMinDist) { maxMinDist = minDistanceToPlaced; bestCandidate = candidate; }
+                        
+                        if (minDistanceToPlaced > maxMinDist) {
+                            maxMinDist = minDistanceToPlaced;
+                            bestCandidate = candidate;
+                        }
                     }
                 }
                 placedEchoes.push(bestCandidate);
@@ -713,7 +723,18 @@ export const bossData = [{
                 b.y = targetEcho.y;
                 b.echoes.forEach(e => {
                     utils.spawnParticles(state.particles, e.x, e.y, '#ff4757', 50, 6, 40);
-                    state.effects.push({ type: 'shockwave', caster: b, x: e.x, y: e.y, radius: 0, maxRadius: 250, speed: 600, startTime: Date.now(), hitEnemies: new Set(), damage: 60 });
+                    state.effects.push({
+                        type: 'shockwave',
+                        caster: b,
+                        x: e.x,
+                        y: e.y,
+                        radius: 0,
+                        maxRadius: 250,
+                        speed: 600,
+                        startTime: Date.now(),
+                        hitEnemies: new Set(),
+                        damage: 60
+                    });
                 });
                 b.echoes = [];
             }
@@ -753,66 +774,122 @@ export const bossData = [{
     name: "The Singularity",
     color: "#000000",
     maxHP: 600,
-    init: (b, state, spawnEnemy, canvas) => {
-        b.phase = 1; b.lastAction = 0; b.wells = []; b.beamTarget = null; b.teleportingAt = null; b.teleportTarget = null;
+    init: (b, state, spawnEnemy) => {
+        b.phase = 1;
+        b.lastAction = 0;
+        b.wells = [];
+        b.beamTarget = null;
+        b.teleportingAt = null;
+        b.teleportTarget = null;
     },
     logic: (b, ctx, state, utils, gameHelpers) => {
         const canvas = ctx.canvas;
         const hpPercent = b.hp / b.maxHP;
-        if (b.beamTarget && Date.now() > b.lastAction + 1000) { b.beamTarget = null; }
-        if (hpPercent <= 0.33 && b.phase < 3) {
-            b.phase = 3; gameHelpers.play('finalBossPhaseSound'); utils.triggerScreenShake(500, 15); utils.spawnParticles(state.particles, b.x, b.y, "#d63031", 150, 8, 50); b.lastAction = Date.now(); b.wells = [];
-        } else if (hpPercent <= 0.66 && b.phase < 2) {
-            b.phase = 2; gameHelpers.play('finalBossPhaseSound'); utils.triggerScreenShake(500, 10); utils.spawnParticles(state.particles, b.x, b.y, "#6c5ce7", 150, 8, 50); b.lastAction = Date.now(); b.wells = [];
+
+        if (b.beamTarget && Date.now() > b.lastAction + 1000) {
+            b.beamTarget = null;
         }
+
+        if (hpPercent <= 0.33 && b.phase < 3) {
+            b.phase = 3;
+            gameHelpers.play('finalBossPhaseSound');
+            utils.triggerScreenShake(500, 15);
+            utils.spawnParticles(state.particles, b.x, b.y, "#d63031", 150, 8, 50);
+            b.lastAction = Date.now();
+            b.wells = [];
+        } else if (hpPercent <= 0.66 && b.phase < 2) {
+            b.phase = 2;
+            gameHelpers.play('finalBossPhaseSound');
+            utils.triggerScreenShake(500, 10);
+            utils.spawnParticles(state.particles, b.x, b.y, "#6c5ce7", 150, 8, 50);
+            b.lastAction = Date.now();
+            b.wells = [];
+        }
+        
         switch (b.phase) {
             case 1:
                 if (Date.now() - b.lastAction > 5000) {
-                    b.lastAction = Date.now(); b.wells = [];
-                    for (let i = 0; i < 4; i++) { b.wells.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, r: 40, endTime: Date.now() + 4000 }); }
+                    b.lastAction = Date.now();
+                    b.wells = [];
+                    for (let i = 0; i < 4; i++) {
+                        b.wells.push({
+                            x: Math.random() * canvas.width,
+                            y: Math.random() * canvas.height,
+                            r: 40,
+                            endTime: Date.now() + 4000
+                        });
+                    }
                 }
                 b.wells.forEach(w => {
                     if (Date.now() < w.endTime) {
                         utils.drawCircle(ctx, w.x, w.y, w.r, "rgba(155, 89, 182, 0.3)");
-                        const dx = state.player.x - w.x, dy = state.player.y - w.y;
-                        if (Math.hypot(dx, dy) < w.r + state.player.r) { state.player.x -= dx * 0.08; state.player.y -= dy * 0.08; }
+                        const dx = state.player.x - w.x,
+                            dy = state.player.y - w.y;
+                        if (Math.hypot(dx, dy) < w.r + state.player.r) {
+                            state.player.x -= dx * 0.08;
+                            state.player.y -= dy * 0.08;
+                        }
                     }
                 });
                 break;
             case 2:
                 if (Date.now() - b.lastAction > 4000) {
                     b.lastAction = Date.now();
-                    state.effects.push({ type: 'glitch_zone', x: Math.random() * canvas.width, y: Math.random() * canvas.height, r: 100, endTime: Date.now() + 3000 });
+                    state.effects.push({
+                        type: 'glitch_zone',
+                        x: Math.random() * canvas.width,
+                        y: Math.random() * canvas.height,
+                        r: 100,
+                        endTime: Date.now() + 3000
+                    });
                     b.beamTarget = { x: Math.random() * canvas.width, y: Math.random() * canvas.height };
                 }
                 break;
             case 3:
                 if (!b.teleportingAt && Date.now() - b.lastAction > 2000) {
                     b.teleportingAt = Date.now() + 1000;
-                    const targetX = Math.random() * canvas.width, targetY = Math.random() * canvas.height;
+                    const targetX = Math.random() * canvas.width;
+                    const targetY = Math.random() * canvas.height;
                     b.teleportTarget = { x: targetX, y: targetY };
                     state.effects.push({ type: 'teleport_indicator', x: targetX, y: targetY, r: b.r, endTime: b.teleportingAt });
                 }
                 if (b.teleportingAt && Date.now() > b.teleportingAt) {
                     utils.spawnParticles(state.particles, b.x, b.y, "#fff", 30, 4, 20);
-                    b.x = b.teleportTarget.x; b.y = b.teleportTarget.y;
+                    b.x = b.teleportTarget.x;
+                    b.y = b.teleportTarget.y;
                     utils.spawnParticles(state.particles, b.x, b.y, "#fff", 30, 4, 20);
-                    b.teleportingAt = null; b.lastAction = Date.now();
+                    b.teleportingAt = null;
+                    b.lastAction = Date.now();
                     for (let i = 0; i < 3; i++) {
-                        const spore = gameHelpers.spawnEnemy(false, null, { x: b.x, y: b.y });
-                        if (spore) { spore.r = 10; spore.hp = 1; spore.dx = (Math.random() - 0.5) * 8; spore.dy = (Math.random() - 0.5) * 8; spore.ignoresPlayer = true; }
+                        const spore = gameHelpers.spawnEnemy(false, null, {
+                            x: b.x,
+                            y: b.y
+                        });
+                        if (spore) {
+                            spore.r = 10;
+                            spore.hp = 1;
+                            spore.dx = (Math.random() - 0.5) * 8;
+                            spore.dy = (Math.random() - 0.5) * 8;
+                            spore.ignoresPlayer = true;
+                        }
                     }
                 }
                 break;
         }
+
         if (b.beamTarget) {
             utils.drawLightning(ctx, b.x, b.y, b.beamTarget.x, b.beamTarget.y, '#fd79a8', 8);
             const p1 = b, p2 = b.beamTarget, p3 = state.player; const L2 = Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2);
             if (L2 !== 0) {
                 let t = ((p3.x - p1.x) * (p2.x - p1.x) + (p3.y - p1.y) * (p2.y - p1.y)) / L2; t = Math.max(0, Math.min(1, t));
                 const closestX = p1.x + t * (p2.x - p1.x); const closestY = p1.y + t * (p2.y - p1.y);
-                if (Math.hypot(p3.x - closestX, p3.y - closestY) < p3.r + 5) {
-                    if (state.player.shield) { state.player.shield = false; gameHelpers.play('shieldBreak'); } else { state.player.health -= 2; }
+                if (Math.hypot(p3.x - closestX, p3.y - closestY) < p3.r + 5) { 
+                    if (state.player.shield) { 
+                        state.player.shield = false; 
+                        gameHelpers.play('shieldBreak'); 
+                    } else { 
+                        state.player.health -= 2; 
+                    } 
                 }
             }
         }
@@ -822,7 +899,6 @@ export const bossData = [{
     name: "The Miasma",
     color: "#6ab04c",
     maxHP: 400,
-    hasCustomMovement: true,
     init: (b, state, spawnEnemy, canvas) => {
         b.vents = [{x: canvas.width * 0.2, y: canvas.height * 0.2}, {x: canvas.width * 0.8, y: canvas.height * 0.2}, {x: canvas.width * 0.2, y: canvas.height * 0.8}, {x: canvas.width * 0.8, y: canvas.height * 0.8}].map(v => ({...v, cooldownUntil: 0}));
         b.isGasActive = false;
@@ -831,14 +907,6 @@ export const bossData = [{
     },
     hasCustomDraw: true,
     logic: (b, ctx, state, utils, gameHelpers) => {
-        const speed = 0.005;
-        if (state.player) {
-            const vx = (state.player.x - b.x) * speed;
-            const vy = (state.player.y - b.y) * speed;
-            b.x += vx;
-            b.y += vy;
-        }
-        
         const pulsatingSize = b.r + Math.sin(Date.now() / 300) * 5;
         utils.drawCircle(ctx, b.x, b.y, pulsatingSize, b.isGasActive ? '#6ab04c' : '#a4b0be');
         b.vents.forEach(v => {
@@ -947,16 +1015,12 @@ export const bossData = [{
             state.effects.push({
                 type: 'shrinking_box',
                 startTime: Date.now(),
-                duration: 6000,
+                duration: 8000,
                 x: state.player.x,
                 y: state.player.y,
                 initialSize: boxSize,
             });
         }
-    },
-    onDeath: (b, state, sE, sP, play, stopLoopingSfx) => {
-        state.effects = state.effects.filter(e => e.type !== 'shrinking_box');
-        stopLoopingSfx('wallShrink');
     }
 }, {
     id: "fractal_horror",
@@ -1019,7 +1083,7 @@ export const bossData = [{
     onDamage: (b, dmg) => { if(b.invulnerable) b.hp += dmg; },
     onDeath: (b, state, sE, sP, play, stopLoopingSfx) => {
         stopLoopingSfx('obeliskHum');
-        state.enemies.forEach(e => { if (e.parentObelisk === b) e.hp = 0; });
+        b.conduits.forEach(c => { if(c) c.hp = 0; });
     }
 }, {
     id: "obelisk_conduit",
@@ -1043,7 +1107,7 @@ export const bossData = [{
     onDeath: (b, state, sE, sP, play) => {
         play('conduitShatter');
         if (b.parentObelisk) {
-            const remainingConduits = state.enemies.filter(e => e.id === 'obelisk_conduit' && e.hp > 0 && e.parentObelisk === b.parentObelisk && e !== b);
+            const remainingConduits = state.enemies.filter(e => e.id === 'obelisk_conduit' && e.hp > 0 && e.parentObelisk === b.parentObelisk);
             if (remainingConduits.length === 0) {
                 b.parentObelisk.invulnerable = false;
                 b.parentObelisk.vulnerableUntil = Date.now() + 8000;
