@@ -908,7 +908,6 @@ export const bossData = [{
     hasCustomDraw: true,
     hasCustomMovement: true,
     logic: (b, ctx, state, utils, gameHelpers) => {
-        // --- CHANGE: Always move towards the player, ignoring decoys ---
         if (!b.frozen) {
             const target = state.player;
             const vx = (target.x - b.x) * 0.005;
@@ -920,12 +919,10 @@ export const bossData = [{
         const pulsatingSize = b.r + Math.sin(Date.now() / 300) * 5;
         utils.drawCircle(ctx, b.x, b.y, pulsatingSize, b.isGasActive ? '#6ab04c' : '#a4b0be');
         
-        // --- CHANGE: Draw vents as crystals and add pulsing indicator ---
         b.vents.forEach(v => {
             const isOnCooldown = Date.now() < v.cooldownUntil;
             const color = isOnCooldown ? 'rgba(127, 140, 141, 0.4)' : '#7f8c8d';
             
-            // Pulsing indicator when gas is active and vent is usable
             if (b.isGasActive && !isOnCooldown) {
                 const pulse = Math.abs(Math.sin(Date.now() / 200));
                 ctx.fillStyle = `rgba(255, 255, 255, ${pulse * 0.3})`;
@@ -1044,7 +1041,7 @@ export const bossData = [{
                 y: state.player.y,
                 initialSize: boxSize,
                 gapSide: Math.floor(Math.random() * 4), // 0: top, 1: right, 2: bottom, 3: left
-                gapPosition: Math.random() // 0 to 1 position along the wall
+                gapPosition: Math.random()
             });
         }
     },
@@ -1061,20 +1058,38 @@ export const bossData = [{
         b.generation = 1;
         b.damageThreshold = b.maxHP / 2;
         b.damageCounter = 0;
+        b.r = 120; // --- CHANGE: Start as a massive boss
     },
     onDamage: (b, dmg, source, state, spawnParticles, play, stopLoopingSfx, gameHelpers) => {
         b.damageCounter += dmg;
         if (b.damageCounter >= b.damageThreshold && b.generation < 3) {
             b.hp = 0;
             play('fractalSplit');
+            const children = [];
             for (let i = 0; i < 2; i++) {
-                const child = gameHelpers.spawnEnemy(true, 'fractal_horror', { x: b.x + (Math.random() - 0.5) * 50, y: b.y + (Math.random() - 0.5) * 50 });
+                const angle = Math.random() * 2 * Math.PI; // Spawn at a random angle
+                const child = gameHelpers.spawnEnemy(true, 'fractal_horror', { x: b.x + Math.cos(angle) * 50, y: b.y + Math.sin(angle) * 50 });
                 if (child) {
                     child.generation = b.generation + 1;
                     child.maxHP = b.maxHP / 2;
                     child.hp = child.maxHP;
                     child.r = b.r * 0.75;
                     child.damageThreshold = child.maxHP / 2;
+                    children.push(child);
+                }
+            }
+            // --- CHANGE: Force separation between the two new children ---
+            if (children.length === 2) {
+                const [c1, c2] = children;
+                const dist = Math.hypot(c1.x - c2.x, c1.y - c2.y);
+                const min_dist = c1.r + c2.r;
+                if (dist < min_dist) {
+                    const overlap = min_dist - dist;
+                    const angle = Math.atan2(c2.y - c1.y, c2.x - c1.x);
+                    c1.x -= Math.cos(angle) * overlap / 2;
+                    c1.y -= Math.sin(angle) * overlap / 2;
+                    c2.x += Math.cos(angle) * overlap / 2;
+                    c2.y += Math.sin(angle) * overlap / 2;
                 }
             }
         }
@@ -1165,7 +1180,8 @@ export const bossData = [{
             const arms = 4;
             for (let i = 0; i < arms; i++) {
                 const angle = b.angle + (i * (2 * Math.PI / arms));
-                state.effects.push({ type: 'nova_bullet', x: b.x, y: b.y, r: 5, dx: Math.cos(angle) * speed, dy: Math.sin(angle) * speed, color: '#e74c3c' });
+                // --- CHANGE: Add the boss itself as the 'caster' to prevent self-damage ---
+                state.effects.push({ type: 'nova_bullet', caster: b, x: b.x, y: b.y, r: 5, dx: Math.cos(angle) * speed, dy: Math.sin(angle) * speed, color: '#e74c3c' });
             }
             b.angle += 0.2;
         }
