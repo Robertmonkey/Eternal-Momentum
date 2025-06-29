@@ -118,6 +118,11 @@ export function resetGame(isArena = false) {
         arenaMode: isArena, wave: 0, lastArenaSpawn: Date.now(),
         bossSpawnCooldownEnd: Date.now() + 3000, 
     });
+    
+    // --- BUG FIX: Clean up Fractal Horror state variables on reset ---
+    delete state.fractalHorrorSharedHp;
+    delete state.fractalHorrorSplits;
+    // --- END BUG FIX ---
 
     // --- Temporal Echo Talent Logic ---
     if (state.player.purchasedTalents.has('temporal-echo')) {
