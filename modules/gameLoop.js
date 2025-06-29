@@ -28,7 +28,7 @@ const spawnParticlesCallback = (x, y, c, n, spd, life, r) => utils.spawnParticle
 export function addStatusEffect(name, emoji, duration) {
     const now = Date.now();
     
-    if (name === 'Stunned' || name === 'Petrified' || name === 'Slowed') {
+    if (name === 'Stunned' || name === 'Petrified' || name === 'Slowed' || name === 'Epoch-Slow') {
         const isBerserk = state.player.berserkUntil > now;
         const hasTalent = state.player.purchasedTalents.has('unstoppable-frenzy');
         if (isBerserk && hasTalent) {
@@ -258,7 +258,7 @@ export function gameTick(mx, my) {
     
     const isBerserkImmune = state.player.berserkUntil > Date.now() && state.player.purchasedTalents.has('unstoppable-frenzy');
     
-    if (state.player.statusEffects.some(e => e.name === 'Slowed') && !isBerserkImmune) {
+    if (state.player.statusEffects.some(e => e.name === 'Slowed' || e.name === 'Epoch-Slow') && !isBerserkImmune) {
         playerSpeedMultiplier *= 0.5;
     }
     
@@ -542,6 +542,44 @@ export function gameTick(mx, my) {
         if(!e.hasCustomDraw) utils.drawCircle(ctx, e.x,e.y,e.r, color);
         if(e.enraged) { ctx.strokeStyle = "yellow"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(e.x,e.y,e.r+5,0,2*Math.PI); ctx.stroke(); }
         
+        // --- OBELISK CONDUIT AURA DAMAGE LOGIC ---
+        if (e.id === 'obelisk_conduit' && e.hp > 0) {
+            const auraRadius = 120; // Radius for lightning and gravity auras
+            const distToPlayer = Math.hypot(state.player.x - e.x, state.player.y - e.y);
+            if (distToPlayer < auraRadius) {
+                switch(e.conduitType) {
+                    case 'lightning':
+                        if (!state.player.shield) state.player.health -= 0.5;
+                        else state.player.shield = false;
+                        break;
+                    case 'gravity':
+                        const pullStrength = 0.08;
+                        state.player.x += (e.x - state.player.x) * pullStrength;
+                        state.player.y += (e.y - state.player.y) * pullStrength;
+                        break;
+                }
+            }
+        }
+        // --- OBELISK BEAM DAMAGE LOGIC ---
+        if (e.id === 'obelisk' && e.isFiringBeam) {
+            const beamThickness = 10;
+            const beamLength = Math.hypot(canvas.width, canvas.height);
+            const beamEndX = e.x + Math.cos(e.beamAngle) * beamLength;
+            const beamEndY = e.y + Math.sin(e.beamAngle) * beamLength;
+            // Simplified line-point distance check
+            const L2 = Math.pow(e.x - beamEndX, 2) + Math.pow(e.y - beamEndY, 2);
+            let t = ((state.player.x - e.x) * (beamEndX - e.x) + (state.player.y - e.y) * (beamEndY - e.y)) / L2;
+            t = Math.max(0, Math.min(1, t));
+            const closestX = e.x + t * (beamEndX - e.x);
+            const closestY = e.y + t * (beamEndY - e.y);
+            const distToBeam = Math.hypot(state.player.x - closestX, state.player.y - closestY);
+
+            if (distToBeam < state.player.r + beamThickness / 2) {
+                if (!state.player.shield) state.player.health -= 5;
+                else state.player.shield = false;
+            }
+        }
+        
         if (e.id === 'basilisk' && e.petrifyZones) {
             e.petrifyZones.forEach(zone => {
                 const zoneX = zone.x - zone.sizeW / 2;
@@ -598,7 +636,7 @@ export function gameTick(mx, my) {
                         state.player.health -= damage; 
                     }
                     play('hitSound'); 
-                    if(e.onDamage) e.onDamage(e, damage, state.player, state, spawnParticlesCallback, play);
+                    if(e.onDamage) e.onDamage(e, damage, state.player, state, spawnParticlesCallback, play, gameHelpers);
                     if(state.player.health<=0) state.gameOver=true; 
                 } else { 
                     state.player.shield=false; 
@@ -697,8 +735,24 @@ export function gameTick(mx, my) {
         if (effect.type === 'nova_bullet' || effect.type === 'ricochet_projectile') {
             let speedMultiplier = 1.0;
             state.effects.forEach(eff => {
-                if (eff.type === 'dilation_field' && Math.hypot(effect.x - eff.x, effect.y - eff.y) < eff.r) {
-                    speedMultiplier = 0.2;
+                if (eff.type === 'dilation_field') {
+                    // Check for circular field (default)
+                    if (!eff.shape && Math.hypot(effect.x - eff.x, effect.y - eff.y) < eff.r) {
+                        speedMultiplier = 0.2;
+                    }
+                    // --- REWORK: Check for horseshoe field ---
+                    if (eff.shape === 'horseshoe') {
+                        const dist = Math.hypot(effect.x - eff.x, effect.y - eff.y);
+                        if (dist < eff.r) {
+                             let projAngle = Math.atan2(effect.y - eff.y, effect.x - eff.x);
+                             let targetAngle = eff.angle; // Center of opening
+                             let diff = Math.atan2(Math.sin(projAngle - targetAngle), Math.cos(projAngle - targetAngle));
+                             // If projectile is NOT in the opening (90 degree opening)
+                             if (Math.abs(diff) > (Math.PI / 4)) {
+                                 speedMultiplier = 0.2;
+                             }
+                        }
+                    }
                 }
             });
             effect.x += effect.dx * speedMultiplier;
@@ -715,7 +769,7 @@ export function gameTick(mx, my) {
                     if (effect.damage > 0) {
                         let dmg = (target.boss || target === state.player) ? effect.damage : 1000;
                         if(target.health) target.health -= dmg; else target.hp -= dmg;
-                        if (target.onDamage) target.onDamage(target, dmg, effect.caster, state, spawnParticlesCallback, play);
+                        if (target.onDamage) target.onDamage(target, dmg, effect.caster, state, spawnParticlesCallback, play, gameHelpers);
                     }
                     effect.hitEnemies.add(target);
                 }
@@ -733,7 +787,7 @@ export function gameTick(mx, my) {
                     let dmg = (to.boss ? effect.damage : 50) * state.player.talent_modifiers.damage_multiplier;
                     if (effect.caster !== state.player) dmg = effect.damage;
                     to.hp -= dmg; 
-                    if (to.onDamage) to.onDamage(to, dmg, effect.caster, state, spawnParticlesCallback, play);
+                    if (to.onDamage) to.onDamage(to, dmg, effect.caster, state, spawnParticlesCallback, play, gameHelpers);
                     effect.links.push(to);
                     if (state.player.purchasedTalents.has('volatile-finish') && i === effect.targets.length - 1) {
                          state.effects.push({ type: 'shockwave', caster: state.player, x: to.x, y: to.y, radius: 0, maxRadius: 150, speed: 600, startTime: Date.now(), hitEnemies: new Set(), damage: 15 * state.player.talent_modifiers.damage_multiplier });
@@ -756,9 +810,9 @@ export function gameTick(mx, my) {
                 const caster = effect.caster || state.player;
                 if (state.player.purchasedTalents.has('nova-pulsar') && caster === state.player) {
                     const angles = [effect.angle, effect.angle + (2 * Math.PI / 3), effect.angle - (2 * Math.PI / 3)];
-                    angles.forEach(angle => { state.effects.push({ type: 'nova_bullet', x: caster.x, y: caster.y, r: effect.r || 4, dx: Math.cos(angle) * speed, dy: Math.sin(angle) * speed, color: effect.color, caster: caster }); });
+                    angles.forEach(angle => { state.effects.push({ type: 'nova_bullet', x: caster.x, y: caster.y, r: effect.r || 4, dx: Math.cos(angle) * speed, dy: Math.sin(angle) * speed, color: effect.color, caster: caster, damage: effect.damage }); });
                 } else {
-                    state.effects.push({ type: 'nova_bullet', x: caster.x, y: caster.y, r: effect.r || 4, dx: Math.cos(effect.angle) * speed, dy: Math.sin(effect.angle) * speed, color: effect.color, caster: caster }); 
+                    state.effects.push({ type: 'nova_bullet', x: caster.x, y: caster.y, r: effect.r || 4, dx: Math.cos(effect.angle) * speed, dy: Math.sin(effect.angle) * speed, color: effect.color, caster: caster, damage: effect.damage }); 
                 }
                 effect.angle += 0.5; 
             }
@@ -769,7 +823,10 @@ export function gameTick(mx, my) {
                 state.enemies.forEach(e => { if (e !== effect.caster && Math.hypot(e.x-effect.x, e.y-effect.y) < e.r + effect.r) { let damage = ((state.player.berserkUntil > Date.now()) ? 6 : 3) * state.player.talent_modifiers.damage_multiplier; e.hp -= damage; state.effects.splice(index, 1); } }); 
             } else {
                 if (Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < state.player.r + effect.r) {
-                    if (!state.player.shield) state.player.health -= 40;
+                    if (!state.player.shield) {
+                        // --- REWORK: Use damage from effect if it exists ---
+                        state.player.health -= (effect.damage || 40);
+                    }
                     else state.player.shield = false;
                     state.effects.splice(index, 1);
                 }
@@ -789,7 +846,7 @@ export function gameTick(mx, my) {
                         
                         if(e.health) e.health -= damage; else e.hp -= damage; 
 
-                        if(e.onDamage) e.onDamage(e, damage, effect.caster, state, spawnParticlesCallback, play); 
+                        if(e.onDamage) e.onDamage(e, damage, effect.caster, state, spawnParticlesCallback, play, gameHelpers); 
                     } 
                 }); 
                 state.effects.splice(index, 1); 
@@ -884,8 +941,13 @@ export function gameTick(mx, my) {
             }
             const currentIndex = Math.floor(effect.history.length * progress);
             const currentPos = effect.history[currentIndex];
-            if (currentPos && Math.random() < 0.7) {
-                effect.trail.push({x: currentPos.x, y: currentPos.y, lifeEnd: Date.now() + 3000});
+
+            // --- FIX: Draw the clone ---
+            if (currentPos) {
+                 utils.drawCircle(ctx, currentPos.x, currentPos.y, effect.playerR, 'rgba(129, 236, 236, 0.4)');
+                 if (Math.random() < 0.7) {
+                    effect.trail.push({x: currentPos.x, y: currentPos.y, lifeEnd: Date.now() + 3000});
+                }
             }
             
             effect.trail.forEach((p, i) => {
@@ -1033,15 +1095,39 @@ export function gameTick(mx, my) {
             } else { ctx.fillRect(left, top, wallThickness, currentSize); }
         }
         else if (effect.type === 'dilation_field') {
-            effect.x += effect.dx;
-            effect.y += effect.dy;
-            if (effect.x < effect.r || effect.x > canvas.width - effect.r) effect.dx *= -1;
-            if (effect.y < effect.r || effect.y > canvas.height - effect.r) effect.dy *= -1;
-
             ctx.globalAlpha = 0.2;
-            ctx.fillStyle = '#bdc3c7';
-            utils.drawCircle(ctx, effect.x, effect.y, effect.r, ctx.fillStyle);
+            if (effect.shape === 'horseshoe') {
+                ctx.fillStyle = '#bdc3c7';
+                ctx.beginPath();
+                const openingAngle = Math.PI / 2; // 90 degree opening
+                ctx.arc(effect.x, effect.y, effect.r, effect.angle + openingAngle/2, effect.angle - openingAngle/2 + 2*Math.PI);
+                ctx.arc(effect.x, effect.y, effect.r * 0.8, effect.angle - openingAngle/2 + 2*Math.PI, effect.angle + openingAngle/2, true);
+                ctx.closePath();
+                ctx.fill();
+            } else {
+                 ctx.fillStyle = '#bdc3c7';
+                 utils.drawCircle(ctx, effect.x, effect.y, effect.r, ctx.fillStyle);
+            }
             ctx.globalAlpha = 1.0;
+        }
+        else if (effect.type === 'shaper_rune') {
+            // --- REWORK: Draw the rune for Shaper of Fate ---
+            const runeSymbols = {
+                nova: '💫',
+                shockwave: '💥',
+                lasers: '☄️'
+            };
+            ctx.font = `${effect.r * 0.8}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.beginPath();
+            ctx.arc(effect.x, effect.y, effect.r, 0, 2*Math.PI);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(241, 196, 15, 0.9)';
+            ctx.fillText(runeSymbols[effect.runeType] || '?', effect.x, effect.y);
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'alphabetic';
         }
         else if (effect.type === 'shaper_zone') {
             const colors = {
