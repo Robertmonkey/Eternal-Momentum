@@ -1064,30 +1064,31 @@ export const bossData = [{
     id: "fractal_horror",
     name: "The Fractal Horror",
     color: "#1abc9c",
-    maxHP: 500,
+    maxHP: 50000, // --- FIX: Increased health by 100x ---
     init: (b) => {
-        // Properties are set when spawned by parent or initially
         if (b.generation === undefined) {
             b.r = 156;
             b.generation = 1;
-            // The first instance holds the collective health
             b.sharedHp = b.maxHP;
         }
         b.lastSplit = Date.now();
     },
     logic: (b, ctx, state, utils, gameHelpers) => {
-        // Sync this fragment's hp with the collective pool
         const mainBoss = state.enemies.find(e => e.id === 'fractal_horror');
         if (mainBoss) {
             b.hp = mainBoss.sharedHp;
+        } else {
+             b.hp = 0; // If main boss is gone, all should die
+             return;
         }
 
-        // Automatically split on a timer to create the swarm
+        if (b.hp <= 0) return;
+
+        // --- FIX: Reworked splitting to be timed and automatic ---
         if (Date.now() - b.lastSplit > 4000 && b.r > 8) {
             b.lastSplit = Date.now();
             
-            // Mark for removal and spawn children
-            b.hp = 0;
+            b.hp = 0; // Mark this parent for removal
             gameHelpers.play('fractalSplit');
             utils.spawnParticles(state.particles, b.x, b.y, b.color, 25, 3, 20);
 
@@ -1101,9 +1102,9 @@ export const bossData = [{
                 });
                 if (child) {
                     child.r = newRadius;
-                    child.maxHP = mainBoss ? mainBoss.maxHP : b.maxHP;
-                    child.sharedHp = mainBoss ? mainBoss.sharedHp : b.sharedHp;
-                    child.hp = child.sharedHp;
+                    child.maxHP = mainBoss.maxHP;
+                    child.sharedHp = mainBoss.sharedHp;
+                    child.hp = mainBoss.sharedHp;
                     child.generation = b.generation + 1;
                     children.push(child);
                 }
@@ -1124,19 +1125,17 @@ export const bossData = [{
         }
     },
     onDamage: (b, dmg, source, state) => {
-        // Find any instance of the boss to act as the main health pool
         const mainBoss = state.enemies.find(e => e.id === 'fractal_horror');
         if (mainBoss) {
             mainBoss.sharedHp -= dmg;
         }
     },
     onDeath: (b, state) => {
-        // If this is the last fragment, ensure the boss is truly defeated
-        const remaining = state.enemies.filter(e => e.id === 'fractal_horror' && e.hp > 0);
-        if (remaining.length === 0) {
-            // This allows the main game loop to proceed to the next stage
-             state.enemies.filter(e => e.id === 'fractal_horror').forEach(e => e.hp = 0);
-        }
+         const remaining = state.enemies.filter(e => e.id === 'fractal_horror' && e !== b);
+         if (remaining.length > 0) {
+             // If this isn't the last one, just ensure its shared HP is 0
+             remaining[0].sharedHp = 0;
+         }
     }
 }, {
     id: "obelisk",
