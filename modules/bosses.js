@@ -1063,10 +1063,10 @@ export const bossData = [{
 }, {
     id: "fractal_horror",
     name: "The Fractal Horror",
-    color: "#be2edd", // TUNED
-    maxHP: 15000, // TUNED
+    color: "#be2edd",
+    maxHP: 15000,
     hasCustomMovement: true,
-    hasCustomDraw: true, // ADDED FOR GLOW EFFECT
+    hasCustomDraw: true,
     init: (b, state) => {
         if (state.fractalHorrorSharedHp === undefined) {
             state.fractalHorrorSharedHp = b.maxHP;
@@ -1084,9 +1084,28 @@ export const bossData = [{
         }
         if (b.hp <= 0) return;
 
-        // --- SPLITTING LOGIC (MOVED FROM onDamage) ---
+        // --- POWER-UP INTERACTION FIXES ---
+        if (b.frozen) return;
+
+        let isBeingPulled = false;
+        for (const effect of state.effects) {
+            if (effect.type === 'black_hole') {
+                const dist = Math.hypot(b.x - effect.x, b.y - effect.y);
+                const elapsed = Date.now() - effect.startTime;
+                const progress = Math.min(1, elapsed / effect.duration);
+                const currentPullRadius = effect.maxRadius * progress;
+                if (dist < currentPullRadius) {
+                    isBeingPulled = true;
+                    break;
+                }
+            }
+        }
+        
+        const target = state.decoy ? state.decoy : state.player;
+        // --- END OF FIXES ---
+
         const hpPercent = state.fractalHorrorSharedHp / b.maxHP;
-        const expectedSplits = Math.floor((1 - hpPercent) / 0.02); // One split per 2% health loss
+        const expectedSplits = Math.floor((1 - hpPercent) / 0.02);
         let allFractals = state.enemies.filter(e => e.id === 'fractal_horror');
 
         while (expectedSplits > state.fractalHorrorSplits && allFractals.length < 50) {
@@ -1108,61 +1127,61 @@ export const bossData = [{
                     child.generation = biggestFractal.generation + 1;
                 }
             }
-            biggestFractal.hp = 0; // Remove the parent fractal
+            biggestFractal.hp = 0;
             state.fractalHorrorSplits++;
-            allFractals = state.enemies.filter(e => e.id === 'fractal_horror'); // Re-fetch the list
+            allFractals = state.enemies.filter(e => e.id === 'fractal_horror');
         }
 
         // --- AI LOGIC ---
-        if (b.aiState === 'positioning') {
-            const myIndex = allFractals.indexOf(b);
-            if (myIndex === -1) return;
+        if (!isBeingPulled) {
+            if (b.aiState === 'positioning') {
+                const myIndex = allFractals.indexOf(b);
+                if (myIndex === -1) return;
 
-            const totalFractals = allFractals.length;
-            const targetAngle = (myIndex / totalFractals) * 2 * Math.PI + (Date.now() / 8000);
-            const surroundRadius = 250 + totalFractals * 10; // TUNED
+                const totalFractals = allFractals.length;
+                const targetAngle = (myIndex / totalFractals) * 2 * Math.PI + (Date.now() / 8000);
+                const surroundRadius = 250 + totalFractals * 10;
 
-            const targetX = state.player.x + surroundRadius * Math.cos(targetAngle);
-            const targetY = state.player.y + surroundRadius * Math.sin(targetAngle);
-            
-            b.x += (targetX - b.x) * 0.01; // TUNED
-            b.y += (targetY - b.y) * 0.01; // TUNED
+                const targetX = target.x + surroundRadius * Math.cos(targetAngle);
+                const targetY = target.y + surroundRadius * Math.sin(targetAngle);
+                
+                b.x += (targetX - b.x) * 0.005; // TUNED
+                b.y += (targetY - b.y) * 0.005; // TUNED
 
-            if (Date.now() > b.aiTimer) {
-                b.aiState = 'attacking';
-                b.attackTarget = { x: state.player.x, y: state.player.y }; // Lock target position
-                const angle = Math.atan2(b.attackTarget.y - b.y, b.attackTarget.x - b.x);
-                b.attackDx = Math.cos(angle) * 10;
-                b.attackDy = Math.sin(angle) * 10;
-                b.spiralDirection = myIndex % 2 === 0 ? 1 : -1;
-            }
-        } else if (b.aiState === 'attacking') {
-            const speed = Math.hypot(b.attackDx, b.attackDy) || 1;
-            const spiralForce = 0.2;
-            b.attackDx += -b.attackDy * spiralForce * b.spiralDirection / speed;
-            b.attackDy += b.attackDx * spiralForce * b.spiralDirection / speed;
+                if (Date.now() > b.aiTimer) {
+                    b.aiState = 'attacking';
+                    b.attackTarget = { x: target.x, y: target.y };
+                    const angle = Math.atan2(b.attackTarget.y - b.y, b.attackTarget.x - b.x);
+                    b.attackDx = Math.cos(angle) * 10;
+                    b.attackDy = Math.sin(angle) * 10;
+                    b.spiralDirection = myIndex % 2 === 0 ? 1 : -1;
+                }
+            } else if (b.aiState === 'attacking') {
+                const speed = Math.hypot(b.attackDx, b.attackDy) || 1;
+                const spiralForce = 0.2;
+                b.attackDx += -b.attackDy * spiralForce * b.spiralDirection / speed;
+                b.attackDy += b.attackDx * spiralForce * b.spiralDirection / speed;
 
-            b.x += b.attackDx;
-            b.y += b.attackDy;
-            b.attackDx *= 0.99;
-            b.attackDy *= 0.99;
+                b.x += b.attackDx;
+                b.y += b.attackDy;
+                b.attackDx *= 0.99;
+                b.attackDy *= 0.99;
 
-            if (Math.hypot(b.x - b.attackTarget.x, b.y - b.attackTarget.y) < 20 || Math.hypot(b.attackDx, b.attackDy) < 1) {
-                b.aiState = 'positioning';
-                b.aiTimer = Date.now() + 3000; // Cooldown before repositioning
+                if (Math.hypot(b.x - b.attackTarget.x, b.y - b.attackTarget.y) < 20 || Math.hypot(b.attackDx, b.attackDy) < 1) {
+                    b.aiState = 'positioning';
+                    b.aiTimer = Date.now() + 3000;
+                }
             }
         }
         
-        // --- VISIBILITY ENHANCEMENT ---
         const alpha = 0.6 + Math.sin(Date.now() / 300) * 0.4;
-        ctx.fillStyle = `rgba(190, 46, 221, ${alpha * 0.5})`; // Glow color ( Magenta )
+        ctx.fillStyle = `rgba(190, 46, 221, ${alpha * 0.5})`;
         ctx.beginPath();
         ctx.arc(b.x, b.y, b.r + 4, 0, 2 * Math.PI);
         ctx.fill();
-        utils.drawCircle(ctx, b.x, b.y, b.r, b.color); // Draw main body
+        utils.drawCircle(ctx, b.x, b.y, b.r, b.color);
     },
     onDamage: (b, dmg, source, state) => {
-        // This function now ONLY reduces the shared health pool.
         if (state.fractalHorrorSharedHp !== undefined) {
             state.fractalHorrorSharedHp -= dmg;
         }
@@ -1170,7 +1189,6 @@ export const bossData = [{
     onDeath: (b, state) => {
         const remaining = state.enemies.filter(e => e.id === 'fractal_horror' && e !== b);
         if (remaining.length === 0) {
-            // Clean up all shared state variables for the boss
             delete state.fractalHorrorSharedHp;
             delete state.fractalHorrorSplits;
         }
