@@ -79,6 +79,8 @@ export function drawLightning(ctx, x1, y1, x2, y2, color, width = 2) {
     const dx = x2 - x1, dy = y2 - y1;
     const dist = Math.hypot(dx, dy);
     const segments = Math.floor(dist / 15);
+    // --- FIX: Added the missing definition for perpAngle ---
+    const perpAngle = Math.atan2(dy, dx) + Math.PI / 2;
     for (let i = 1; i < segments; i++) {
         const pos = i / segments;
         const offset = (Math.random() - 0.5) * dist * 0.15;
@@ -89,7 +91,6 @@ export function drawLightning(ctx, x1, y1, x2, y2, color, width = 2) {
     ctx.restore();
 }
 
-// --- NEW: Added the missing helper function ---
 export function randomInRange(min, max) {
   return Math.random() * (max - min) + min;
 }
