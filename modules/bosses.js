@@ -1051,7 +1051,7 @@ export const bossData = [{
                 x: state.player.x,
                 y: state.player.y,
                 initialSize: boxSize,
-                gapSide: Math.floor(Math.random() * 4), // 0: top, 1: right, 2: bottom, 3: left
+                gapSide: Math.floor(Math.random() * 4),
                 gapPosition: Math.random()
             });
         }
@@ -1067,29 +1067,43 @@ export const bossData = [{
     maxHP: 500,
     init: (b) => {
         b.generation = 1;
-        b.damageThreshold = b.maxHP / 2;
-        b.damageCounter = 0;
         b.r = 156;
         b.isSplitting = false;
     },
-    logic: (b, ctx, state, utils, gameHelpers) => {
-        // --- FIX: Splitting logic moved to 'logic' to prevent race conditions ---
-        if (!b.isSplitting && b.damageCounter >= b.damageThreshold && b.generation < 3) {
-            b.isSplitting = true; // Prevent splitting multiple times
-            gameHelpers.play('fractalSplit');
-            utils.spawnParticles(state.particles, b.x, b.y, b.color, 50, 4, 30);
+    onDamage: (b, dmg, source, state, spawnParticles, play, stopLoopingSfx, gameHelpers) => {
+        // --- FIX: Prevent normal death by clamping HP at 1 ---
+        if (b.hp - dmg <= 0) {
+            b.hp = 1;
+        }
 
+        const damageToApply = Math.min(b.hp - 1, dmg);
+        if (damageToApply <= 0) return;
+
+        // Apply damage and sync HP across all fractals
+        state.enemies.forEach(e => {
+            if (e.id === 'fractal_horror') {
+                e.hp -= damageToApply;
+            }
+        });
+        
+        // --- FIX: Splitting logic is now robustly handled here ---
+        const hpPercent = b.hp / b.maxHP;
+        const splitThreshold = 1 / Math.pow(2, b.generation); // Gen 1 splits at 50%, Gen 2 at 25%
+        
+        if (hpPercent <= splitThreshold && !b.isSplitting && b.generation < 3) {
+            b.isSplitting = true;
+            play('fractalSplit');
+            spawnParticles(state.particles, b.x, b.y, b.color, 50, 4, 30);
+            
             const children = [];
             for (let i = 0; i < 2; i++) {
                 const angle = Math.random() * 2 * Math.PI;
                 const child = gameHelpers.spawnEnemy(true, 'fractal_horror', { x: b.x + Math.cos(angle) * 50, y: b.y + Math.sin(angle) * 50 });
                 if (child) {
                     child.generation = b.generation + 1;
-                    child.maxHP = b.maxHP / 2;
-                    child.hp = child.maxHP;
+                    child.maxHP = b.maxHP; // Keep maxHP the same for percentage calcs
+                    child.hp = b.hp; // Start with the same current HP
                     child.r = b.r * 0.75;
-                    child.damageThreshold = child.maxHP / 2;
-                    child.damageCounter = 0; // Reset counter for new generation
                     children.push(child);
                 }
             }
@@ -1106,17 +1120,8 @@ export const bossData = [{
                     c2.y += Math.sin(angle) * overlap / 2;
                 }
             }
-            b.hp = 0; // Mark parent for removal AFTER children are spawned
+            b.hp = 0; // Mark parent for removal
         }
-    },
-    onDamage: (b, dmg, source, state) => {
-        b.damageCounter += dmg;
-        // --- FIX: Only sync HP, not damageCounter ---
-        state.enemies.forEach(e => {
-            if (e.id === 'fractal_horror' && e !== b) {
-                e.hp = b.hp;
-            }
-        });
     }
 }, {
     id: "obelisk",
@@ -1160,7 +1165,7 @@ export const bossData = [{
                 utils.drawLightning(ctx, b.x, b.y, conduit.x, conduit.y, conduit.color, 3);
             });
         } else {
-            // --- FIX: Use gameHelpers to access stopLoopingSfx ---
+            // --- FIX: Correctly call stopLoopingSfx via gameHelpers ---
             gameHelpers.stopLoopingSfx('obeliskHum');
             b.isFiringBeam = true;
             b.beamAngle += 0.005;
@@ -1184,7 +1189,7 @@ export const bossData = [{
             b.hp -= dmg * 9;
         }
     },
-    onDeath: (b, state, sE, sP, play, stopLoopingSfx) => {
+    onDeath: (b, state, spawnEnemy, spawnParticles, play, stopLoopingSfx) => {
         stopLoopingSfx('obeliskHum');
         b.conduits.forEach(c => { if(c) c.hp = 0; });
     }
@@ -1266,14 +1271,13 @@ export const bossData = [{
         b.lastShot = 0;
         b.activeArms = 1;
     },
-    logic: (b, ctx, state, utils, gameHelpers) => {
+    logic: (b, ctx, state, utils) => {
         b.dx = 0; b.dy = 0;
         if (Date.now() - b.lastShot > 100) {
             b.lastShot = Date.now();
             const speed = 4;
             const totalArms = 4;
             for (let i = 0; i < totalArms; i++) {
-                // --- FIX: Only fire if the arm is active ---
                 if (i < b.activeArms) {
                     const angle = b.angle + (i * (2 * Math.PI / totalArms));
                     state.effects.push({ type: 'nova_bullet', caster: b, x: b.x, y: b.y, r: 5, dx: Math.cos(angle) * speed, dy: Math.sin(angle) * speed, color: '#e74c3c', damage: 13 });
@@ -1293,7 +1297,6 @@ export const bossData = [{
         } else if (hpPercent < 0.4 && b.activeArms < 4) {
             b.activeArms = 4;
         }
-        // --- FIX: Play sound only when a new lane is unlocked ---
         if (b.activeArms > oldArms) {
             play('weaverCast');
         }
@@ -1310,9 +1313,8 @@ export const bossData = [{
         b.dilationFieldEffect = null;
     },
     logic: (b, ctx, state, utils, gameHelpers) => {
-        // --- FIX: Opening of field should face AWAY from player ---
         const angleToPlayer = Math.atan2(state.player.y - b.y, state.player.x - b.x);
-        const fieldAngle = angleToPlayer + Math.PI; // Add 180 degrees
+        const fieldAngle = angleToPlayer + Math.PI;
 
         if (!b.dilationFieldEffect || !state.effects.includes(b.dilationFieldEffect)) {
              const field = {
@@ -1365,11 +1367,8 @@ export const bossData = [{
         }
     },
     onDeath: (b, state) => {
-        // --- FIX: Reliably remove the field on death ---
-        if (b.dilationFieldEffect) {
-            state.effects = state.effects.filter(e => e !== b.dilationFieldEffect);
-            b.dilationFieldEffect = null;
-        }
+        state.effects = state.effects.filter(e => e !== b.dilationFieldEffect);
+        b.dilationFieldEffect = null;
     }
 }, {
     id: "shaper_of_fate",
@@ -1389,16 +1388,16 @@ export const bossData = [{
             b.phase = 'prophecy';
             gameHelpers.play('shaperAppear');
             
-            const runeTypes = ['nova', 'shockwave', 'lasers'];
+            // --- FIX: Add variety to runes ---
+            const runeTypes = ['nova', 'shockwave', 'lasers', 'heal', 'speed_buff'];
             const shuffledRunes = runeTypes.sort(() => Math.random() - 0.5);
             
-            // --- FIX: Randomize rune positions ---
-            const margin = 100;
+            const margin = 150;
             const positions = [
-                { x: utils.randomInRange(margin, ctx.canvas.width / 2 - margin), y: utils.randomInRange(margin, ctx.canvas.height - margin) },
-                { x: utils.randomInRange(ctx.canvas.width / 2 + margin, ctx.canvas.width - margin), y: utils.randomInRange(margin, ctx.canvas.height - margin) },
-                { x: utils.randomInRange(margin, ctx.canvas.width - margin), y: utils.randomInRange(margin, ctx.canvas.height / 2 - margin) }
-            ].sort(() => Math.random() - 0.5); // Shuffle positions as well
+                { x: utils.randomInRange(margin, ctx.canvas.width / 3), y: utils.randomInRange(margin, ctx.canvas.height - margin) },
+                { x: utils.randomInRange(ctx.canvas.width / 3, ctx.canvas.width * 2 / 3), y: utils.randomInRange(margin, ctx.canvas.height - margin)},
+                { x: utils.randomInRange(ctx.canvas.width * 2 / 3, ctx.canvas.width - margin), y: utils.randomInRange(margin, ctx.canvas.height - margin) }
+            ].sort(() => Math.random() - 0.5);
 
             for (let i = 0; i < 3; i++) {
                 const rune = {
@@ -1408,7 +1407,7 @@ export const bossData = [{
                     y: positions[i].y,
                     r: 60,
                     endTime: now + 4000,
-                    sourceBoss: b // Link back to the boss
+                    sourceBoss: b
                 };
                 state.effects.push(rune);
                 b.activeRunes.push(rune);
@@ -1432,7 +1431,6 @@ export const bossData = [{
             
             b.chosenAttack = closestRune ? closestRune.runeType : 'shockwave';
             
-            // --- FIX: Reliably despawn runes ---
             const runesToRemove = new Set(b.activeRunes);
             state.effects = state.effects.filter(e => !runesToRemove.has(e));
             b.activeRunes = [];
@@ -1452,6 +1450,16 @@ export const bossData = [{
                            if (b.hp > 0) state.effects.push({ type: 'orbital_target', x: state.player.x, y: state.player.y, startTime: Date.now(), caster: b, damage: 30, radius: 100, color: 'rgba(241, 196, 15, 0.8)' });
                         }, i * 400);
                     }
+                    break;
+                case 'heal':
+                    b.hp = Math.min(b.maxHP, b.hp + b.maxHP * 0.1);
+                    utils.spawnParticles(state.particles, b.x, b.y, '#2ecc71', 50, 4, 30);
+                    break;
+                case 'speed_buff':
+                    b.dx *= 2;
+                    b.dy *= 2;
+                    setTimeout(() => { b.dx /= 2; b.dy /= 2; }, 5000);
+                    utils.spawnParticles(state.particles, b.x, b.y, '#3498db', 50, 4, 30);
                     break;
             }
             gameHelpers.play('shaperAttune');
@@ -1478,7 +1486,7 @@ export const bossData = [{
         b.aspects = [];
         b.aspectInfo = {};
         
-        const blacklist = new Set(['aethel_and_umbra', 'sentinel_pair', 'annihilator', 'obelisk', 'fractal_horror', 'pantheon', 'shaper_of_fate', 'obelisk_conduit']);
+        const blacklist = new Set(['aethel_and_umbra', 'sentinel_pair', 'annihilator', 'obelisk', 'fractal_horror', 'pantheon', 'shaper_of_fate', 'obelisk_conduit', 'miasma', 'basilisk']);
 
         b.bossPools = {
             tier1: bossData.filter(boss => boss.maxHP < 280 && !blacklist.has(boss.id)).map(boss => boss.id),
@@ -1505,26 +1513,24 @@ export const bossData = [{
             if (gameHelpers) gameHelpers.play('pantheonSummon');
             
             b.aspects.forEach(id => {
-                b.aspectInfo[id] = { lastUsed: 0, isCharging: false, chargeDx: 0, chargeDy: 0 };
+                b.aspectInfo[id] = { lastUsed: Date.now() + Math.random() * 5000, isCharging: false, chargeDx: 0, chargeDy: 0 };
             });
         };
         
-        b.selectNewAspects(state, null); // Initial selection
+        b.selectNewAspects(state, null);
     },
     logic: (b, ctx, state, utils, gameHelpers) => {
         const infoFor = (id) => b.aspectInfo[id];
-
-        // --- FIX: Add base movement when not performing a special move ---
         const isCharging = b.aspects.some(id => infoFor(id).isCharging);
+
         if (!isCharging) {
-            b.dx = (state.player.x - b.x) * 0.001;
-            b.dy = (state.player.y - b.y) * 0.001;
+            b.dx = (state.player.x - b.x) * 0.0005;
+            b.dy = (state.player.y - b.y) * 0.0005;
         } else {
             b.dx = 0; b.dy = 0;
         }
         b.x += b.dx;
         b.y += b.dy;
-
 
         b.aspects.forEach((id, i) => {
             const aspectData = bossData.find(boss => boss.id === id);
@@ -1539,32 +1545,20 @@ export const bossData = [{
         const now = Date.now();
         b.aspects.forEach(id => {
             const info = infoFor(id);
-            
-            // --- FIX: Flesh out aspect logic ---
+            if (!info) return;
+
             switch(id) {
-                case 'splitter':
-                    if (now > info.lastUsed + 8000) {
-                        info.lastUsed = now;
-                        for(let i=0; i<3; i++) gameHelpers.spawnEnemy(false, null, {x: b.x, y: b.y});
-                    }
-                    break;
-                case 'vampire':
-                    if (now > info.lastUsed + 6000) {
-                        info.lastUsed = now;
-                        b.hp = Math.min(b.maxHP, b.hp + 20);
-                        utils.spawnParticles(state.particles, b.x, b.y, '#800020', 20, 1, 40);
-                    }
-                    break;
                 case 'juggernaut':
-                    if (now > info.lastUsed + 7000 && !info.isCharging) {
-                        info.lastUsed = now;
+                    if (now > info.lastUsed + 8000 && !info.isCharging) {
                         info.isCharging = true;
+                        gameHelpers.play('chargeUpSound');
                         setTimeout(() => {
                             if (b.hp <= 0) return;
                             const angle = Math.atan2(state.player.y - b.y, state.player.x - b.x);
                             info.chargeDx = Math.cos(angle) * 15;
                             info.chargeDy = Math.sin(angle) * 15;
-                            setTimeout(() => { info.isCharging = false; info.chargeDx = 0; info.chargeDy = 0; }, 500);
+                            gameHelpers.play('chargeDashSound');
+                            setTimeout(() => { info.isCharging = false; info.chargeDx = 0; info.chargeDy = 0; info.lastUsed = Date.now(); }, 500);
                         }, 1000);
                     }
                     if(info.isCharging && info.chargeDx) {
@@ -1572,10 +1566,30 @@ export const bossData = [{
                         b.y += info.chargeDy;
                     }
                     break;
-                case 'gravity':
-                    if (now > info.lastUsed + 9000) {
-                         info.lastUsed = now;
-                         state.effects.push({ type: 'black_hole', x: b.x, y: b.y, radius: 15, maxRadius: 250, damageRate: 9999, lastDamage: new Map(), startTime: Date.now(), duration: 2000, endTime: Date.now() + 2000, damage: 0, caster: b, color: '#9b59b6' });
+                case 'vampire':
+                    if (now > info.lastUsed + 7000) {
+                        info.lastUsed = now;
+                        b.hp = Math.min(b.maxHP, b.hp + 25);
+                        utils.spawnParticles(state.particles, b.x, b.y, '#800020', 20, 1, 40);
+                        gameHelpers.play('vampireHeal');
+                    }
+                    break;
+                case 'emp':
+                     if (now > info.lastUsed + 12000) {
+                        info.lastUsed = now;
+                        gameHelpers.play('empDischarge');
+                        gameHelpers.addStatusEffect('Slowed', '🐌', 2000);
+                        state.effects.push({ type: 'transient_lightning', x1: b.x, y1: b.y, x2: state.player.x, y2: state.player.y, color: '#3498db', endTime: Date.now() + 300 });
+                    }
+                    break;
+                case 'looper':
+                    if (now > info.lastUsed + 5000) {
+                        info.lastUsed = now;
+                        gameHelpers.play('mirrorSwap');
+                        utils.spawnParticles(state.particles, b.x, b.y, '#fff', 30, 4, 20);
+                        b.x = utils.randomInRange(b.r, ctx.canvas.width - b.r);
+                        b.y = utils.randomInRange(b.r, ctx.canvas.height - b.r);
+                        utils.spawnParticles(state.particles, b.x, b.y, '#fff', 30, 4, 20);
                     }
                     break;
             }
