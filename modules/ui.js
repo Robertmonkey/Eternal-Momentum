@@ -2,6 +2,7 @@
 import { state } from './state.js';
 import { powers } from './powers.js';
 import { bossData } from './bosses.js';
+import { STAGE_CONFIG } from './config.js'; // --- NEW: Import STAGE_CONFIG ---
 
 const ascensionFill = document.getElementById('ascension-bar-fill');
 const ascensionText = document.getElementById('ascension-bar-text');
@@ -103,7 +104,14 @@ export function updateUI() {
     }
 
     bossContainer.innerHTML = '';
+    const renderedBossTypes = new Set(); // --- NEW: To prevent duplicate health bars for linked bosses
     state.enemies.filter(e => e.boss).forEach(boss => {
+        // --- CHANGE: Logic to only show one health bar for linked-health bosses ---
+        if (boss.id === 'sentinel_pair' || boss.id === 'aethel_and_umbra') {
+             if (renderedBossTypes.has(boss.id)) return;
+             renderedBossTypes.add(boss.id);
+        }
+
         const wrapper = document.createElement('div');
         wrapper.className = 'boss-hp-bar-wrapper';
         const label = document.createElement('div');
@@ -145,34 +153,25 @@ export function populateLevelSelect(startSpecificLevel) {
 
     const maxStage = state.player.highestStageBeaten + 1;
 
+    // --- CHANGE: Use STAGE_CONFIG to populate the level list ---
     for (let i = 1; i <= maxStage; i++) {
-        const stage = i;
+        const stageData = STAGE_CONFIG.find(s => s.stage === i);
+        if (!stageData) continue;
+
         const item = document.createElement('div');
         item.className = 'stage-select-item';
         
-        let bossNames = '';
-        if (stage <= 30) {
-            bossNames = bossData[stage - 1]?.name || 'Unknown Anomaly';
-        } else {
-            // Placeholder logic for post-stage 30, to be replaced by the intelligent algorithm's output
-            const hardBosses = bossData.slice(20, 30);
-            let names = [];
-            for (let j = 0; j < 3; j++) {
-                names.push(hardBosses[Math.floor(Math.random() * hardBosses.length)].name);
-            }
-            bossNames = names.join(', ');
-        }
+        let bossNames = stageData.displayName;
         
         item.innerHTML = `
-            <span class="stage-select-number">STAGE ${stage}</span>
+            <span class="stage-select-number">STAGE ${i}</span>
             <span class="stage-select-bosses">${bossNames}</span>
         `;
         
         item.onclick = () => {
-            startSpecificLevel(stage);
+            startSpecificLevel(i);
         };
 
-        // --- NEW --- Logic for scrolling marquee on long text
         const bossNameElement = item.querySelector('.stage-select-bosses');
         item.addEventListener('mouseenter', () => {
             if (bossNameElement.scrollWidth > bossNameElement.clientWidth) {
@@ -182,7 +181,6 @@ export function populateLevelSelect(startSpecificLevel) {
         item.addEventListener('mouseleave', () => {
             bossNameElement.classList.remove('is-scrolling');
         });
-        // --- END NEW ---
 
         levelSelectList.appendChild(item);
     }
