@@ -10,7 +10,6 @@ export function drawCircle(ctx, x, y, r, c) {
     ctx.fill();
 }
 
-// --- NEW: Function to draw a crystal shape ---
 export function drawCrystal(ctx, x, y, size, color) {
     const sides = 6;
     ctx.fillStyle = color;
@@ -18,7 +17,6 @@ export function drawCrystal(ctx, x, y, size, color) {
     ctx.moveTo(x + size * Math.cos(0), y + size * Math.sin(0));
     for (let i = 1; i <= sides; i++) {
         const angle = i * 2 * Math.PI / sides;
-        // Alternate between a sharp and a slightly inset point for a more "crystalline" look
         const modSize = (i % 2 === 0) ? size : size * 0.6;
         ctx.lineTo(x + modSize * Math.cos(angle), y + modSize * Math.sin(angle));
     }
@@ -81,7 +79,6 @@ export function drawLightning(ctx, x1, y1, x2, y2, color, width = 2) {
     const dx = x2 - x1, dy = y2 - y1;
     const dist = Math.hypot(dx, dy);
     const segments = Math.floor(dist / 15);
-    const perpAngle = Math.atan2(dy, dx) + Math.PI / 2;
     for (let i = 1; i < segments; i++) {
         const pos = i / segments;
         const offset = (Math.random() - 0.5) * dist * 0.15;
@@ -90,4 +87,9 @@ export function drawLightning(ctx, x1, y1, x2, y2, color, width = 2) {
     ctx.lineTo(x2, y2);
     ctx.stroke();
     ctx.restore();
+}
+
+// --- NEW: Added the missing helper function ---
+export function randomInRange(min, max) {
+  return Math.random() * (max - min) + min;
 }
