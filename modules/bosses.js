@@ -1066,66 +1066,76 @@ export const bossData = [{
     color: "#1abc9c",
     maxHP: 500,
     init: (b) => {
-        // Only set radius on first generation
+        // Properties are set when spawned by parent or initially
         if (b.generation === undefined) {
             b.r = 156;
             b.generation = 1;
+            // The first instance holds the collective health
+            b.sharedHp = b.maxHP;
         }
+        b.lastSplit = Date.now();
     },
-    logic: (b, ctx, state) => {
-        // Logic is handled in onDamage
-    },
-    onDamage: (b, dmg, source, state, spawnParticles, play, stopLoopingSfx, gameHelpers) => {
-        // Apply damage to all fractal instances to maintain a linked health pool
-        state.enemies.forEach(e => {
-            if (e.id === 'fractal_horror') {
-                e.hp -= dmg;
-            }
-        });
-
-        // Prevent splitting into fragments that are too small (dust)
-        if (b.r < 5) {
-            return;
+    logic: (b, ctx, state, utils, gameHelpers) => {
+        // Sync this fragment's hp with the collective pool
+        const mainBoss = state.enemies.find(e => e.id === 'fractal_horror');
+        if (mainBoss) {
+            b.hp = mainBoss.sharedHp;
         }
 
-        // This fractal will now split. Mark it for removal.
-        b.hp = 0;
-        play('fractalSplit');
-        spawnParticles(state.particles, b.x, b.y, b.color, 50, 4, 30);
-        
-        const newRadius = b.r / Math.SQRT2;
-        const children = [];
-        
-        // Find current HP from a surviving sibling or use own if none exist
-        const currentHpOfSwarm = state.enemies.find(e => e.id === 'fractal_horror' && e.hp > 0)?.hp || b.hp;
-        
-        for (let i = 0; i < 2; i++) {
-            const angle = Math.random() * 2 * Math.PI;
-            const child = gameHelpers.spawnEnemy(true, 'fractal_horror', { 
-                x: b.x + Math.cos(angle) * b.r * 0.25, 
-                y: b.y + Math.sin(angle) * b.r * 0.25 
-            });
-            if (child) {
-                child.r = newRadius;
-                child.hp = Math.max(1, currentHpOfSwarm);
-                child.maxHP = b.maxHP;
-                child.generation = b.generation + 1; // Pass down generation
-                children.push(child);
+        // Automatically split on a timer to create the swarm
+        if (Date.now() - b.lastSplit > 4000 && b.r > 8) {
+            b.lastSplit = Date.now();
+            
+            // Mark for removal and spawn children
+            b.hp = 0;
+            gameHelpers.play('fractalSplit');
+            utils.spawnParticles(state.particles, b.x, b.y, b.color, 25, 3, 20);
+
+            const newRadius = b.r / Math.SQRT2;
+            const children = [];
+            for (let i = 0; i < 2; i++) {
+                const angle = Math.random() * 2 * Math.PI;
+                const child = gameHelpers.spawnEnemy(true, 'fractal_horror', { 
+                    x: b.x + Math.cos(angle) * b.r * 0.25, 
+                    y: b.y + Math.sin(angle) * b.r * 0.25 
+                });
+                if (child) {
+                    child.r = newRadius;
+                    child.maxHP = mainBoss ? mainBoss.maxHP : b.maxHP;
+                    child.sharedHp = mainBoss ? mainBoss.sharedHp : b.sharedHp;
+                    child.hp = child.sharedHp;
+                    child.generation = b.generation + 1;
+                    children.push(child);
+                }
+            }
+            if (children.length === 2) {
+                const [c1, c2] = children;
+                const dist = Math.hypot(c1.x - c2.x, c1.y - c2.y);
+                const min_dist = c1.r + c2.r;
+                if (dist < min_dist) {
+                    const overlap = min_dist - dist;
+                    const angle = Math.atan2(c2.y - c1.y, c2.x - c1.x);
+                    c1.x -= Math.cos(angle) * overlap / 2;
+                    c1.y -= Math.sin(angle) * overlap / 2;
+                    c2.x += Math.cos(angle) * overlap / 2;
+                    c2.y += Math.sin(angle) * overlap / 2;
+                }
             }
         }
-        
-        if (children.length === 2) {
-            const [c1, c2] = children;
-            const dist = Math.hypot(c1.x - c2.x, c1.y - c2.y);
-            const min_dist = c1.r + c2.r;
-            if (dist < min_dist) {
-                const overlap = min_dist - dist;
-                const angle = Math.atan2(c2.y - c1.y, c2.x - c1.x);
-                c1.x -= Math.cos(angle) * overlap / 2;
-                c1.y -= Math.sin(angle) * overlap / 2;
-                c2.x += Math.cos(angle) * overlap / 2;
-                c2.y += Math.sin(angle) * overlap / 2;
-            }
+    },
+    onDamage: (b, dmg, source, state) => {
+        // Find any instance of the boss to act as the main health pool
+        const mainBoss = state.enemies.find(e => e.id === 'fractal_horror');
+        if (mainBoss) {
+            mainBoss.sharedHp -= dmg;
+        }
+    },
+    onDeath: (b, state) => {
+        // If this is the last fragment, ensure the boss is truly defeated
+        const remaining = state.enemies.filter(e => e.id === 'fractal_horror' && e.hp > 0);
+        if (remaining.length === 0) {
+            // This allows the main game loop to proceed to the next stage
+             state.enemies.filter(e => e.id === 'fractal_horror').forEach(e => e.hp = 0);
         }
     }
 }, {
@@ -1221,12 +1231,12 @@ export const bossData = [{
         
         switch (b.conduitType) {
             case 'lightning':
-                // --- FIX: Draw multiple bolts to fill the area ---
-                for(let i = 0; i < 3; i++) {
+                // --- FIX: Draw multiple, long bolts to clearly define the damage area ---
+                for(let i = 0; i < 5; i++) {
                     const angle = Math.random() * Math.PI * 2;
                     const endX = b.x + Math.cos(angle) * 250;
                     const endY = b.y + Math.sin(angle) * 250;
-                    utils.drawLightning(ctx, b.x, b.y, endX, endY, b.color, 2);
+                    utils.drawLightning(ctx, b.x, b.y, endX, endY, `rgba(241, 196, 15, 0.5)`, 2);
                 }
                 break;
             case 'gravity':
