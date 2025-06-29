@@ -283,7 +283,7 @@ export function gameTick(mx, my) {
 
     if (Date.now() > state.player.stunnedUntil) {
         state.player.x += (finalMx - state.player.x) * 0.015 * state.player.speed * playerSpeedMultiplier;
-        state.player.y += (finalMy - my) * 0.015 * state.player.speed * playerSpeedMultiplier;
+        state.player.y += (finalMy - state.player.y) * 0.015 * state.player.speed * playerSpeedMultiplier;
     }
 
     if (state.decoy && state.decoy.isMobile) {
@@ -435,7 +435,6 @@ export function gameTick(mx, my) {
 
         const slowZones = timeEater ? state.effects.filter(eff => eff.type === 'slow_zone') : [];
         
-        // --- REPLUSION FIELD FIX ---
         const isRepulsionTarget = !e.boss || e.id === 'fractal_horror';
         if (isRepulsionTarget && state.effects.filter(eff => eff.type === 'repulsion_field').length > 0) {
             state.effects.filter(eff => eff.type === 'repulsion_field').forEach(field => {
@@ -517,7 +516,6 @@ export function gameTick(mx, my) {
                     const dist = Math.hypot(e.x - effect.x, e.y - effect.y);
                     if (dist < currentPullRadius) {
                         let pullStrength = e.boss ? 0.03 : 0.1;
-                        // --- BLACK HOLE FIX ---
                         if (e.id === 'fractal_horror') {
                             pullStrength = 0.1;
                         }
