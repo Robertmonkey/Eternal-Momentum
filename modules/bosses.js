@@ -1064,7 +1064,7 @@ export const bossData = [{
     id: "fractal_horror",
     name: "The Fractal Horror",
     color: "#1abc9c",
-    maxHP: 50000, // --- FIX: Increased health by 100x ---
+    maxHP: 50000,
     init: (b) => {
         if (b.generation === undefined) {
             b.r = 156;
@@ -1078,17 +1078,16 @@ export const bossData = [{
         if (mainBoss) {
             b.hp = mainBoss.sharedHp;
         } else {
-             b.hp = 0; // If main boss is gone, all should die
+             b.hp = 0;
              return;
         }
 
         if (b.hp <= 0) return;
 
-        // --- FIX: Reworked splitting to be timed and automatic ---
         if (Date.now() - b.lastSplit > 4000 && b.r > 8) {
             b.lastSplit = Date.now();
             
-            b.hp = 0; // Mark this parent for removal
+            b.hp = 0;
             gameHelpers.play('fractalSplit');
             utils.spawnParticles(state.particles, b.x, b.y, b.color, 25, 3, 20);
 
@@ -1129,13 +1128,6 @@ export const bossData = [{
         if (mainBoss) {
             mainBoss.sharedHp -= dmg;
         }
-    },
-    onDeath: (b, state) => {
-         const remaining = state.enemies.filter(e => e.id === 'fractal_horror' && e !== b);
-         if (remaining.length > 0) {
-             // If this isn't the last one, just ensure its shared HP is 0
-             remaining[0].sharedHp = 0;
-         }
     }
 }, {
     id: "obelisk",
@@ -1230,7 +1222,6 @@ export const bossData = [{
         
         switch (b.conduitType) {
             case 'lightning':
-                // --- FIX: Draw multiple, long bolts to clearly define the damage area ---
                 for(let i = 0; i < 5; i++) {
                     const angle = Math.random() * Math.PI * 2;
                     const endX = b.x + Math.cos(angle) * 250;
