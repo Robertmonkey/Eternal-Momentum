@@ -1066,61 +1066,61 @@ export const bossData = [{
     color: "#1abc9c",
     maxHP: 500,
     init: (b) => {
-        b.generation = 1;
         b.r = 156;
         b.isSplitting = false;
     },
+    logic: (b, ctx, state) => {
+        // All logic is now in onDamage to handle splitting correctly
+    },
     onDamage: (b, dmg, source, state, spawnParticles, play, stopLoopingSfx, gameHelpers) => {
-        // --- FIX: Prevent normal death by clamping HP at 1 ---
-        if (b.hp - dmg <= 0) {
-            b.hp = 1;
-        }
-
-        const damageToApply = Math.min(b.hp - 1, dmg);
-        if (damageToApply <= 0) return;
-
-        // Apply damage and sync HP across all fractals
+        // Apply damage to all fractal instances to maintain a linked health pool
         state.enemies.forEach(e => {
             if (e.id === 'fractal_horror') {
-                e.hp -= damageToApply;
+                e.hp -= dmg;
             }
         });
+
+        // Prevent splitting into fragments that are too small
+        if (b.r < 5) {
+            return;
+        }
+
+        // This fractal will now split. Mark it for removal.
+        b.hp = 0;
+        play('fractalSplit');
+        spawnParticles(state.particles, b.x, b.y, b.color, 50, 4, 30);
         
-        // --- FIX: Splitting logic is now robustly handled here ---
-        const hpPercent = b.hp / b.maxHP;
-        const splitThreshold = 1 / Math.pow(2, b.generation); // Gen 1 splits at 50%, Gen 2 at 25%
+        const newRadius = b.r / Math.SQRT2;
+        const children = [];
+        for (let i = 0; i < 2; i++) {
+            const angle = Math.random() * 2 * Math.PI;
+            // Spawn children slightly offset from the parent
+            const child = gameHelpers.spawnEnemy(true, 'fractal_horror', { 
+                x: b.x + Math.cos(angle) * b.r * 0.5, 
+                y: b.y + Math.sin(angle) * b.r * 0.5 
+            });
+            if (child) {
+                child.r = newRadius;
+                // All fragments share the same collective HP pool
+                child.hp = Math.max(1, b.hp); // Ensure hp doesn't drop below 1 from this split
+                child.maxHP = b.maxHP;
+                children.push(child);
+            }
+        }
         
-        if (hpPercent <= splitThreshold && !b.isSplitting && b.generation < 3) {
-            b.isSplitting = true;
-            play('fractalSplit');
-            spawnParticles(state.particles, b.x, b.y, b.color, 50, 4, 30);
-            
-            const children = [];
-            for (let i = 0; i < 2; i++) {
-                const angle = Math.random() * 2 * Math.PI;
-                const child = gameHelpers.spawnEnemy(true, 'fractal_horror', { x: b.x + Math.cos(angle) * 50, y: b.y + Math.sin(angle) * 50 });
-                if (child) {
-                    child.generation = b.generation + 1;
-                    child.maxHP = b.maxHP; // Keep maxHP the same for percentage calcs
-                    child.hp = b.hp; // Start with the same current HP
-                    child.r = b.r * 0.75;
-                    children.push(child);
-                }
+        // Push children apart if they overlap
+        if (children.length === 2) {
+            const [c1, c2] = children;
+            const dist = Math.hypot(c1.x - c2.x, c1.y - c2.y);
+            const min_dist = c1.r + c2.r;
+            if (dist < min_dist) {
+                const overlap = min_dist - dist;
+                const angle = Math.atan2(c2.y - c1.y, c2.x - c1.x);
+                c1.x -= Math.cos(angle) * overlap / 2;
+                c1.y -= Math.sin(angle) * overlap / 2;
+                c2.x += Math.cos(angle) * overlap / 2;
+                c2.y += Math.sin(angle) * overlap / 2;
             }
-            if (children.length === 2) {
-                const [c1, c2] = children;
-                const dist = Math.hypot(c1.x - c2.x, c1.y - c2.y);
-                const min_dist = c1.r + c2.r;
-                if (dist < min_dist) {
-                    const overlap = min_dist - dist;
-                    const angle = Math.atan2(c2.y - c1.y, c2.x - c1.x);
-                    c1.x -= Math.cos(angle) * overlap / 2;
-                    c1.y -= Math.sin(angle) * overlap / 2;
-                    c2.x += Math.cos(angle) * overlap / 2;
-                    c2.y += Math.sin(angle) * overlap / 2;
-                }
-            }
-            b.hp = 0; // Mark parent for removal
         }
     }
 }, {
@@ -1165,7 +1165,6 @@ export const bossData = [{
                 utils.drawLightning(ctx, b.x, b.y, conduit.x, conduit.y, conduit.color, 3);
             });
         } else {
-            // --- FIX: Correctly call stopLoopingSfx via gameHelpers ---
             gameHelpers.stopLoopingSfx('obeliskHum');
             b.isFiringBeam = true;
             b.beamAngle += 0.005;
@@ -1217,11 +1216,13 @@ export const bossData = [{
         
         switch (b.conduitType) {
             case 'lightning':
-                if (Math.random() < 0.5) {
-                    const angle = Math.random() * 2 * Math.PI;
-                    const dist = b.r + Math.random() * 40;
-                    utils.drawLightning(ctx, b.x, b.y, b.x + Math.cos(angle) * dist, b.y + Math.sin(angle) * dist, b.color, 2);
-                }
+                // --- FIX: Draw a circle to represent the AoE ---
+                const pulse = Math.abs(Math.sin(Date.now() / 400));
+                ctx.strokeStyle = `rgba(241, 196, 15, ${pulse * 0.5})`;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, 250, 0, 2 * Math.PI);
+                ctx.stroke();
                 break;
             case 'gravity':
                 for (let i = 1; i <= 3; i++) {
@@ -1229,7 +1230,7 @@ export const bossData = [{
                     ctx.strokeStyle = `rgba(155, 89, 182, ${1 - pulse})`;
                     ctx.lineWidth = 2;
                     ctx.beginPath();
-                    ctx.arc(b.x, b.y, b.r + pulse * 100, 0, 2 * Math.PI);
+                    ctx.arc(b.x, b.y, b.r + pulse * 250, 0, 2 * Math.PI);
                     ctx.stroke();
                 }
                 break;
@@ -1388,7 +1389,6 @@ export const bossData = [{
             b.phase = 'prophecy';
             gameHelpers.play('shaperAppear');
             
-            // --- FIX: Add variety to runes ---
             const runeTypes = ['nova', 'shockwave', 'lasers', 'heal', 'speed_buff'];
             const shuffledRunes = runeTypes.sort(() => Math.random() - 0.5);
             
@@ -1439,15 +1439,15 @@ export const bossData = [{
             
             switch (b.chosenAttack) {
                 case 'nova':
-                    state.effects.push({ type: 'nova_controller', startTime: now, duration: 2500, lastShot: 0, angle: Math.random() * Math.PI * 2, caster: b, color: b.color, r: 8, damage: 15 });
+                    state.effects.push({ type: 'nova_controller', startTime: now, duration: 2500, lastShot: 0, angle: Math.random() * Math.PI * 2, caster: b, color: b.color, r: 8, damage: 25 });
                     break;
                 case 'shockwave':
-                     state.effects.push({ type: 'shockwave', caster: b, x: b.x, y: b.y, radius: 0, maxRadius: Math.max(ctx.canvas.width, ctx.canvas.height), speed: 1000, startTime: now, hitEnemies: new Set(), damage: 40, color: 'rgba(241, 196, 15, 0.7)' });
+                     state.effects.push({ type: 'shockwave', caster: b, x: b.x, y: b.y, radius: 0, maxRadius: Math.max(ctx.canvas.width, ctx.canvas.height), speed: 1000, startTime: now, hitEnemies: new Set(), damage: 90, color: 'rgba(241, 196, 15, 0.7)' });
                     break;
                 case 'lasers':
                     for(let i = 0; i < 5; i++) {
                         setTimeout(() => {
-                           if (b.hp > 0) state.effects.push({ type: 'orbital_target', x: state.player.x, y: state.player.y, startTime: Date.now(), caster: b, damage: 30, radius: 100, color: 'rgba(241, 196, 15, 0.8)' });
+                           if (b.hp > 0) state.effects.push({ type: 'orbital_target', x: state.player.x, y: state.player.y, startTime: Date.now(), caster: b, damage: 45, radius: 100, color: 'rgba(241, 196, 15, 0.8)' });
                         }, i * 400);
                     }
                     break;
@@ -1498,6 +1498,7 @@ export const bossData = [{
             b.aspects = [];
             b.aspectInfo = {};
             const getUniqueAspect = (tier) => {
+                if(tier.length === 0) return;
                 let aspectId;
                 do {
                     aspectId = tier[Math.floor(Math.random() * tier.length)];
@@ -1521,13 +1522,14 @@ export const bossData = [{
     },
     logic: (b, ctx, state, utils, gameHelpers) => {
         const infoFor = (id) => b.aspectInfo[id];
-        const isCharging = b.aspects.some(id => infoFor(id).isCharging);
+        const isCharging = b.aspects.some(id => infoFor(id) && infoFor(id).isCharging);
 
         if (!isCharging) {
             b.dx = (state.player.x - b.x) * 0.0005;
             b.dy = (state.player.y - b.y) * 0.0005;
         } else {
-            b.dx = 0; b.dy = 0;
+            b.dx = 0;
+            b.dy = 0;
         }
         b.x += b.dx;
         b.y += b.dy;
@@ -1558,7 +1560,7 @@ export const bossData = [{
                             info.chargeDx = Math.cos(angle) * 15;
                             info.chargeDy = Math.sin(angle) * 15;
                             gameHelpers.play('chargeDashSound');
-                            setTimeout(() => { info.isCharging = false; info.chargeDx = 0; info.chargeDy = 0; info.lastUsed = Date.now(); }, 500);
+                            setTimeout(() => { info.isCharging = false; info.chargeDx = 0; info.chargeDy = 0; info.lastUsed = now; }, 500);
                         }, 1000);
                     }
                     if(info.isCharging && info.chargeDx) {
@@ -1574,22 +1576,21 @@ export const bossData = [{
                         gameHelpers.play('vampireHeal');
                     }
                     break;
-                case 'emp':
-                     if (now > info.lastUsed + 12000) {
-                        info.lastUsed = now;
-                        gameHelpers.play('empDischarge');
-                        gameHelpers.addStatusEffect('Slowed', '🐌', 2000);
-                        state.effects.push({ type: 'transient_lightning', x1: b.x, y1: b.y, x2: state.player.x, y2: state.player.y, color: '#3498db', endTime: Date.now() + 300 });
-                    }
-                    break;
                 case 'looper':
                     if (now > info.lastUsed + 5000) {
                         info.lastUsed = now;
                         gameHelpers.play('mirrorSwap');
-                        utils.spawnParticles(state.particles, b.x, b.y, '#fff', 30, 4, 20);
+                        utils.spawnParticles(state.particles, b.x, b.y, b.color, 30, 4, 20);
                         b.x = utils.randomInRange(b.r, ctx.canvas.width - b.r);
                         b.y = utils.randomInRange(b.r, ctx.canvas.height - b.r);
                         utils.spawnParticles(state.particles, b.x, b.y, '#fff', 30, 4, 20);
+                    }
+                    break;
+                case 'helix_weaver':
+                    if (now > info.lastUsed + 6000) {
+                        info.lastUsed = now;
+                        gameHelpers.play('weaverCast');
+                        state.effects.push({ type: 'nova_controller', startTime: now, duration: 1500, lastShot: 0, angle: Math.random() * Math.PI * 2, caster: b, color: '#e74c3c', r: 5, damage: 10 });
                     }
                     break;
             }
