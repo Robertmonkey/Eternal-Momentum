@@ -1080,7 +1080,7 @@ export const bossData = [{
         if (state.fractalHorrorSharedHp !== undefined) {
             b.hp = state.fractalHorrorSharedHp;
         } else {
-            b.hp = 0;
+             b.hp = 0;
         }
         if (b.hp <= 0) return;
 
@@ -1090,8 +1090,8 @@ export const bossData = [{
             if (myIndex === -1) return;
 
             const totalFractals = allFractals.length;
-            const targetAngle = (myIndex / totalFractals) * 2 * Math.PI + (Date.now() / 8000); // Slow rotation
-            const surroundRadius = 200 + totalFractals * 5;
+            const targetAngle = (myIndex / totalFractals) * 2 * Math.PI + (Date.now() / 8000);
+            const surroundRadius = 150 + totalFractals * 10;
 
             const targetX = state.player.x + surroundRadius * Math.cos(targetAngle);
             const targetY = state.player.y + surroundRadius * Math.sin(targetAngle);
@@ -1105,11 +1105,10 @@ export const bossData = [{
                 const angle = Math.atan2(b.attackTarget.y - b.y, b.attackTarget.x - b.x);
                 b.attackDx = Math.cos(angle) * 10;
                 b.attackDy = Math.sin(angle) * 10;
-                // For spiraling effect
                 b.spiralDirection = myIndex % 2 === 0 ? 1 : -1;
             }
         } else if (b.aiState === 'attacking') {
-            const speed = Math.hypot(b.attackDx, b.attackDy);
+            const speed = Math.hypot(b.attackDx, b.attackDy) || 1;
             const spiralForce = 0.2;
             b.attackDx += -b.attackDy * spiralForce * b.spiralDirection / speed;
             b.attackDy += b.attackDx * spiralForce * b.spiralDirection / speed;
@@ -1129,6 +1128,41 @@ export const bossData = [{
         if (state.fractalHorrorSharedHp !== undefined) {
             state.fractalHorrorSharedHp -= dmg;
         }
+
+        if (b.r < 8) return;
+
+        play('fractalSplit');
+        spawnParticles(state.particles, b.x, b.y, b.color, 25, 3, 20);
+        
+        const newRadius = b.r / Math.SQRT2;
+        const children = [];
+        for (let i = 0; i < 2; i++) {
+            const angle = Math.random() * 2 * Math.PI;
+            const child = gameHelpers.spawnEnemy(true, 'fractal_horror', { 
+                x: b.x + Math.cos(angle) * b.r * 0.25, 
+                y: b.y + Math.sin(angle) * b.r * 0.25 
+            });
+            if (child) {
+                child.r = newRadius;
+                child.generation = b.generation + 1;
+                children.push(child);
+            }
+        }
+        
+        if (children.length === 2) {
+            const [c1, c2] = children;
+            const dist = Math.hypot(c1.x - c2.x, c1.y - c2.y);
+            const min_dist = c1.r + c2.r;
+            if (dist < min_dist) {
+                const overlap = min_dist - dist;
+                const angle = Math.atan2(c2.y - c1.y, c2.x - c1.x);
+                c1.x -= Math.cos(angle) * overlap / 2;
+                c1.y -= Math.sin(angle) * overlap / 2;
+                c2.x += Math.cos(angle) * overlap / 2;
+                c2.y += Math.sin(angle) * overlap / 2;
+            }
+        }
+        b.hp = 0;
     },
     onDeath: (b, state) => {
         const remaining = state.enemies.filter(e => e.id === 'fractal_horror' && e !== b);
@@ -1166,7 +1200,7 @@ export const bossData = [{
                 conduit.conduitType = conduitTypes[i].type;
                 conduit.color = conduitTypes[i].color;
                 conduit.orbitalAngle = angle;
-                conduit.r = 30; // --- FIX: Make conduits smaller ---
+                conduit.r = 30;
                 b.conduits.push(conduit);
             }
         }
@@ -1174,7 +1208,6 @@ export const bossData = [{
     logic: (b, ctx, state, utils, gameHelpers) => {
         b.dx = 0; b.dy = 0;
 
-        // --- FIX: Custom drawing logic for Obelisk shape ---
         const height = b.r * 2.5;
         const topWidth = b.r * 0.2;
         const baseWidth = b.r * 0.8;
@@ -1238,10 +1271,9 @@ export const bossData = [{
         b.orbitalAngle = 0;
         b.lastExplosion = Date.now();
     },
-    logic: (b, ctx, state, utils) => {
+    logic: (b, ctx, state, utils, gameHelpers) => {
         if(b.parentObelisk && b.parentObelisk.hp > 0) {
             const rotation = Date.now() / 3000;
-            // --- FIX: Increased oscillation speed and distance ---
             const baseDistance = 300;
             const oscillation = Math.sin(Date.now() / 800) * 150;
             const dynamicDistance = baseDistance + oscillation;
@@ -1275,6 +1307,9 @@ export const bossData = [{
             case 'explosion':
                 if (Date.now() - b.lastExplosion > 5000) {
                     b.lastExplosion = Date.now();
+                    // --- FIX: Add particle burst and screen shake for impact ---
+                    utils.spawnParticles(state.particles, b.x, b.y, b.color, 100, 8, 50, 5);
+                    utils.triggerScreenShake(200, 10);
                     state.effects.push({ type: 'shockwave', caster: b, x: b.x, y: b.y, radius: 0, maxRadius: 150, speed: 400, startTime: Date.now(), hitEnemies: new Set(), damage: 25, color: 'rgba(231, 76, 60, 0.7)' });
                 }
                 const timeToExplosion = 5000 - (Date.now() - b.lastExplosion);
