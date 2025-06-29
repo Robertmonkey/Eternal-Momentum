@@ -1124,7 +1124,7 @@ export const bossData = [{
             }
         }
     },
-    onDamage: (b, dmg, source, state, spawnParticles, play, gameHelpers) => {
+    onDamage: (b, dmg, source, state, spawnParticles, play, stopLoopingSfx, gameHelpers) => {
         if (state.fractalHorrorSharedHp !== undefined) {
             state.fractalHorrorSharedHp -= dmg;
         }
