@@ -1085,8 +1085,6 @@ export const bossData = [{
         if (b.hp <= 0) return;
 
         // --- POWER-UP INTERACTION FIXES ---
-        if (b.frozen) return;
-
         let isBeingPulled = false;
         for (const effect of state.effects) {
             if (effect.type === 'black_hole') {
@@ -1102,7 +1100,6 @@ export const bossData = [{
         }
         
         const target = state.decoy ? state.decoy : state.player;
-        // --- END OF FIXES ---
 
         const hpPercent = state.fractalHorrorSharedHp / b.maxHP;
         const expectedSplits = Math.floor((1 - hpPercent) / 0.02);
@@ -1132,8 +1129,8 @@ export const bossData = [{
             allFractals = state.enemies.filter(e => e.id === 'fractal_horror');
         }
 
-        // --- AI LOGIC ---
-        if (!isBeingPulled) {
+        // --- AI & MOVEMENT LOGIC ---
+        if (!b.frozen && !isBeingPulled) {
             if (b.aiState === 'positioning') {
                 const myIndex = allFractals.indexOf(b);
                 if (myIndex === -1) return;
@@ -1145,8 +1142,8 @@ export const bossData = [{
                 const targetX = target.x + surroundRadius * Math.cos(targetAngle);
                 const targetY = target.y + surroundRadius * Math.sin(targetAngle);
                 
-                b.x += (targetX - b.x) * 0.005; // TUNED
-                b.y += (targetY - b.y) * 0.005; // TUNED
+                b.x += (targetX - b.x) * 0.005;
+                b.y += (targetY - b.y) * 0.005;
 
                 if (Date.now() > b.aiTimer) {
                     b.aiState = 'attacking';
@@ -1174,12 +1171,20 @@ export const bossData = [{
             }
         }
         
+        // --- DRAWING LOGIC ---
         const alpha = 0.6 + Math.sin(Date.now() / 300) * 0.4;
         ctx.fillStyle = `rgba(190, 46, 221, ${alpha * 0.5})`;
         ctx.beginPath();
         ctx.arc(b.x, b.y, b.r + 4, 0, 2 * Math.PI);
         ctx.fill();
         utils.drawCircle(ctx, b.x, b.y, b.r, b.color);
+
+        if (b.frozen) {
+            ctx.fillStyle = "rgba(173, 216, 230, 0.4)"; // lightblue with transparency
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.r, 0, 2 * Math.PI);
+            ctx.fill();
+        }
     },
     onDamage: (b, dmg, source, state) => {
         if (state.fractalHorrorSharedHp !== undefined) {
