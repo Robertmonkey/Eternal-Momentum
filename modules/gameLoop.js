@@ -788,6 +788,7 @@ export function gameTick(mx, my) {
                     if (effect.caster !== state.player) dmg = effect.damage;
                     to.hp -= dmg; 
                     if (to.onDamage) to.onDamage(to, dmg, effect.caster, state, spawnParticlesCallback, play, stopLoopingSfx, gameHelpers);
+                    effect.links.push(to);
                     if (state.player.purchasedTalents.has('volatile-finish') && i === effect.targets.length - 1) {
                          state.effects.push({ type: 'shockwave', caster: state.player, x: to.x, y: to.y, radius: 0, maxRadius: 150, speed: 600, startTime: Date.now(), hitEnemies: new Set(), damage: 15 * state.player.talent_modifiers.damage_multiplier });
                     }
