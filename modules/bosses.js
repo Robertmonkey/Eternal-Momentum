@@ -257,7 +257,7 @@ export const bossData = [{
     maxHP: 280,
     init: (b, state, spawnEnemy) => {
         const partner = state.enemies.find(e => e.id === 'aethel_and_umbra' && e !== b);
-        b.r = 50; // --- FIX: Enforce a standard base radius ---
+        b.r = 50;
         if (!partner) {
             b.role = Math.random() < 0.5 ? 'Aethel' : 'Umbra';
             const partnerBoss = spawnEnemy(true, 'aethel_and_umbra');
@@ -270,12 +270,12 @@ export const bossData = [{
         }
         b.name = b.role;
         
-        if (b.role === 'Aethel') { // Speed role
-            b.r *= 0.75; // --- FIX: Multiplier applied after base radius is set ---
+        if (b.role === 'Aethel') {
+            b.r *= 0.75;
             b.dx = (b.dx || (Math.random() - 0.5)) * 2.5;
             b.dy = (b.dy || (Math.random() - 0.5)) * 2.5;
-        } else { // 'Umbra' - Health role
-            b.r *= 1.25; // --- FIX: Multiplier applied after base radius is set ---
+        } else {
+            b.r *= 1.25;
             b.maxHP *= 1.5;
             b.hp = b.maxHP;
         }
@@ -283,7 +283,6 @@ export const bossData = [{
     },
     logic: (b, ctx) => {
         if (!ctx) return;
-        // --- FIX: Add persistent visual indicators for roles ---
         const roleColor = b.role === 'Aethel' ? 'rgba(52, 152, 219, 0.7)' : 'rgba(192, 57, 43, 0.7)';
         ctx.strokeStyle = roleColor;
         ctx.lineWidth = 3;
@@ -292,8 +291,7 @@ export const bossData = [{
         ctx.stroke();
 
         if (b.enraged) {
-            // Enraged effect (yellow ring) remains the same
-            ctx.strokeStyle = '#f1c40f'; // Enraged color
+            ctx.strokeStyle = '#f1c40f';
             ctx.lineWidth = 5;
             ctx.beginPath();
             ctx.arc(b.x, b.y, b.r + 8, 0, 2 * Math.PI);
@@ -997,7 +995,6 @@ export const bossData = [{
             b.lastEcho = Date.now();
             gameHelpers.play('phaseShiftSound');
             const historyToReplay = [...b.playerHistory];
-            // --- FIX: Create a persistent effect for the clone ---
             state.effects.push({ type: 'paradox_echo', history: historyToReplay, startTime: Date.now(), trail: [], playerR: state.player.r });
             gameHelpers.playLooping('paradoxTrailHum');
         }
@@ -1013,7 +1010,6 @@ export const bossData = [{
     onDeath: (b, state, sE, sP, play, stopLoopingSfx) => {
         stopLoopingSfx('paradoxTrailHum');
         play('paradoxShatter');
-        // Clean up any lingering paradox effects
         state.effects = state.effects.filter(e => e.type !== 'paradox_echo');
     }
 }, {
@@ -1073,21 +1069,16 @@ export const bossData = [{
         b.generation = 1;
         b.damageThreshold = b.maxHP / 2;
         b.damageCounter = 0;
-        b.r = 156; // --- FIX: Increased initial size by 30% (from 120) ---
+        b.r = 156;
+        b.isSplitting = false;
     },
-    onDamage: (b, dmg, source, state, spawnParticles, play, stopLoopingSfx, gameHelpers) => {
-        b.damageCounter += dmg;
-        // --- FIX: Linked health pool ---
-        state.enemies.forEach(e => {
-            if (e.id === 'fractal_horror' && e !== b) {
-                e.hp = b.hp; // Sync HP
-                e.damageCounter = b.damageCounter; // Sync damage counter to ensure they split together
-            }
-        });
+    logic: (b, ctx, state, utils, gameHelpers) => {
+        // --- FIX: Splitting logic moved to 'logic' to prevent race conditions ---
+        if (!b.isSplitting && b.damageCounter >= b.damageThreshold && b.generation < 3) {
+            b.isSplitting = true; // Prevent splitting multiple times
+            gameHelpers.play('fractalSplit');
+            utils.spawnParticles(state.particles, b.x, b.y, b.color, 50, 4, 30);
 
-        if (b.damageCounter >= b.damageThreshold && b.generation < 3) {
-            b.hp = 0; // The parent fractal is destroyed
-            play('fractalSplit');
             const children = [];
             for (let i = 0; i < 2; i++) {
                 const angle = Math.random() * 2 * Math.PI;
@@ -1098,10 +1089,10 @@ export const bossData = [{
                     child.hp = child.maxHP;
                     child.r = b.r * 0.75;
                     child.damageThreshold = child.maxHP / 2;
+                    child.damageCounter = 0; // Reset counter for new generation
                     children.push(child);
                 }
             }
-            // Prevent children from spawning on top of each other
             if (children.length === 2) {
                 const [c1, c2] = children;
                 const dist = Math.hypot(c1.x - c2.x, c1.y - c2.y);
@@ -1115,7 +1106,17 @@ export const bossData = [{
                     c2.y += Math.sin(angle) * overlap / 2;
                 }
             }
+            b.hp = 0; // Mark parent for removal AFTER children are spawned
         }
+    },
+    onDamage: (b, dmg, source, state) => {
+        b.damageCounter += dmg;
+        // --- FIX: Only sync HP, not damageCounter ---
+        state.enemies.forEach(e => {
+            if (e.id === 'fractal_horror' && e !== b) {
+                e.hp = b.hp;
+            }
+        });
     }
 }, {
     id: "obelisk",
@@ -1128,12 +1129,10 @@ export const bossData = [{
         b.y = canvas.height / 2;
         b.invulnerable = true;
         b.conduits = [];
-        // --- REWORK: Add beam state ---
         b.beamAngle = 0;
         b.isFiringBeam = false;
-        b.beamColors = ['#f1c40f', '#9b59b6', '#e74c3c']; // Corresponds to conduit types
+        b.beamColors = ['#f1c40f', '#9b59b6', '#e74c3c'];
         
-        // --- REWORK: Spawn unique conduits ---
         const conduitTypes = [
             { type: 'lightning', color: '#f1c40f' },
             { type: 'gravity', color: '#9b59b6' },
@@ -1154,19 +1153,17 @@ export const bossData = [{
     logic: (b, ctx, state, utils, gameHelpers) => {
         b.dx = 0; b.dy = 0;
         
-        // --- REWORK: Vulnerability is now permanent, no timer needed ---
         if (b.invulnerable) {
             gameHelpers.playLooping('obeliskHum');
-            // Draw energy beams to living conduits
             const livingConduits = state.enemies.filter(e => e.id === 'obelisk_conduit' && e.parentObelisk === b);
             livingConduits.forEach(conduit => {
                 utils.drawLightning(ctx, b.x, b.y, conduit.x, conduit.y, conduit.color, 3);
             });
         } else {
-            // --- REWORK: Final attack phase ---
-            stopLoopingSfx('obeliskHum');
+            // --- FIX: Use gameHelpers to access stopLoopingSfx ---
+            gameHelpers.stopLoopingSfx('obeliskHum');
             b.isFiringBeam = true;
-            b.beamAngle += 0.005; // Rotation speed
+            b.beamAngle += 0.005;
             
             const beamLength = Math.hypot(ctx.canvas.width, ctx.canvas.height);
             const beamEndX = b.x + Math.cos(b.beamAngle) * beamLength;
@@ -1174,8 +1171,6 @@ export const bossData = [{
             const beamColor = b.beamColors[Math.floor(Math.random() * b.beamColors.length)];
 
             utils.drawLightning(ctx, b.x, b.y, beamEndX, beamEndY, beamColor, 10);
-            
-            // Beam collision logic is handled in gameLoop.js for cleanliness
         }
 
         const color = b.invulnerable ? b.color : '#ecf0f1';
@@ -1183,11 +1178,10 @@ export const bossData = [{
         if(!b.invulnerable) utils.spawnParticles(state.particles, b.x, b.y, '#fff', 3, 1, 10);
     },
     onDamage: (b, dmg) => { 
-        // --- REWORK: Apply 10x damage when vulnerable ---
         if (b.invulnerable) {
             b.hp += dmg; 
         } else {
-            b.hp -= dmg * 9; // Original damage is already subtracted, so add 9x more
+            b.hp -= dmg * 9;
         }
     },
     onDeath: (b, state, sE, sP, play, stopLoopingSfx) => {
@@ -1203,8 +1197,8 @@ export const bossData = [{
     init: (b) => {
         b.angle = Math.random() * Math.PI * 2;
         b.distance = 250 + Math.random() * 50;
-        b.conduitType = 'none'; // Will be set by parent
-        b.lastExplosion = Date.now(); // For explosion type
+        b.conduitType = 'none';
+        b.lastExplosion = Date.now();
     },
     logic: (b, ctx, state, utils) => {
         if(b.parentObelisk && b.parentObelisk.hp > 0) {
@@ -1216,19 +1210,15 @@ export const bossData = [{
             return;
         }
         
-        // --- REWORK: Unique logic based on conduit type ---
         switch (b.conduitType) {
             case 'lightning':
-                // Visual effect: flickering lightning aura
                 if (Math.random() < 0.5) {
                     const angle = Math.random() * 2 * Math.PI;
                     const dist = b.r + Math.random() * 40;
                     utils.drawLightning(ctx, b.x, b.y, b.x + Math.cos(angle) * dist, b.y + Math.sin(angle) * dist, b.color, 2);
                 }
-                // Damage effect is handled in gameLoop.js
                 break;
             case 'gravity':
-                // Visual effect: pulsing gravity waves
                 for (let i = 1; i <= 3; i++) {
                     const pulse = (Date.now() / 500 + i) % 1;
                     ctx.strokeStyle = `rgba(155, 89, 182, ${1 - pulse})`;
@@ -1237,15 +1227,12 @@ export const bossData = [{
                     ctx.arc(b.x, b.y, b.r + pulse * 100, 0, 2 * Math.PI);
                     ctx.stroke();
                 }
-                // Pull effect is handled in gameLoop.js
                 break;
             case 'explosion':
-                // Logic: timed explosions
                 if (Date.now() - b.lastExplosion > 5000) {
                     b.lastExplosion = Date.now();
                     state.effects.push({ type: 'shockwave', caster: b, x: b.x, y: b.y, radius: 0, maxRadius: 150, speed: 400, startTime: Date.now(), hitEnemies: new Set(), damage: 25, color: 'rgba(231, 76, 60, 0.7)' });
                 }
-                // Visual: charge-up indicator before explosion
                 const timeToExplosion = 5000 - (Date.now() - b.lastExplosion);
                 if (timeToExplosion < 1000) {
                     const progress = 1 - (timeToExplosion / 1000);
@@ -1261,7 +1248,6 @@ export const bossData = [{
         play('conduitShatter');
         if (b.parentObelisk) {
             const remainingConduits = state.enemies.filter(e => e.id === 'obelisk_conduit' && e.hp > 0 && e.parentObelisk === b.parentObelisk);
-            // --- REWORK: When all die, Obelisk becomes permanently vulnerable ---
             if (remainingConduits.length === 0) {
                 b.parentObelisk.invulnerable = false;
             }
@@ -1278,32 +1264,38 @@ export const bossData = [{
         b.y = canvas.height / 2;
         b.angle = 0;
         b.lastShot = 0;
-        b.activeArms = 1; // --- REWORK: Start with one arm ---
+        b.activeArms = 1;
     },
     logic: (b, ctx, state, utils, gameHelpers) => {
         b.dx = 0; b.dy = 0;
         if (Date.now() - b.lastShot > 100) {
             b.lastShot = Date.now();
-            gameHelpers.play('weaverCast');
             const speed = 4;
-            const totalArms = 4; // Total possible directions
-            for (let i = 0; i < b.activeArms; i++) { // --- REWORK: Fire based on active arms ---
-                const angle = b.angle + (i * (2 * Math.PI / totalArms));
-                // --- REWORK: Pass increased damage to the effect ---
-                state.effects.push({ type: 'nova_bullet', caster: b, x: b.x, y: b.y, r: 5, dx: Math.cos(angle) * speed, dy: Math.sin(angle) * speed, color: '#e74c3c', damage: 13 });
+            const totalArms = 4;
+            for (let i = 0; i < totalArms; i++) {
+                // --- FIX: Only fire if the arm is active ---
+                if (i < b.activeArms) {
+                    const angle = b.angle + (i * (2 * Math.PI / totalArms));
+                    state.effects.push({ type: 'nova_bullet', caster: b, x: b.x, y: b.y, r: 5, dx: Math.cos(angle) * speed, dy: Math.sin(angle) * speed, color: '#e74c3c', damage: 13 });
+                }
             }
             b.angle += 0.2;
         }
     },
-    // --- REWORK: Add onDamage to increase arms ---
-    onDamage: (b) => {
+    onDamage: (b, dmg, source, state, spawnParticles, play) => {
         const hpPercent = b.hp / b.maxHP;
+        const oldArms = b.activeArms;
+
         if (hpPercent < 0.8 && b.activeArms < 2) {
             b.activeArms = 2;
         } else if (hpPercent < 0.6 && b.activeArms < 3) {
             b.activeArms = 3;
         } else if (hpPercent < 0.4 && b.activeArms < 4) {
             b.activeArms = 4;
+        }
+        // --- FIX: Play sound only when a new lane is unlocked ---
+        if (b.activeArms > oldArms) {
+            play('weaverCast');
         }
     }
 }, {
@@ -1315,42 +1307,39 @@ export const bossData = [{
         b.lastDilation = Date.now();
         b.damageWindow = 0;
         b.lastKnownState = { x: b.x, y: b.y, hp: b.hp };
-        // --- REWORK: Create a persistent effect for the field ---
         b.dilationFieldEffect = null;
     },
     logic: (b, ctx, state, utils, gameHelpers) => {
+        // --- FIX: Opening of field should face AWAY from player ---
         const angleToPlayer = Math.atan2(state.player.y - b.y, state.player.x - b.x);
+        const fieldAngle = angleToPlayer + Math.PI; // Add 180 degrees
 
-        // --- REWORK: Field is now a persistent effect tied to the boss ---
         if (!b.dilationFieldEffect || !state.effects.includes(b.dilationFieldEffect)) {
              const field = {
                 type: 'dilation_field',
-                source: b, // Link to boss
+                source: b,
                 x: b.x,
                 y: b.y,
-                r: 300, // Larger radius
-                shape: 'horseshoe', // New property for custom shape
-                angle: angleToPlayer,
-                endTime: Infinity // It never expires on its own
+                r: 300,
+                shape: 'horseshoe',
+                angle: fieldAngle,
+                endTime: Infinity
             };
             state.effects.push(field);
             b.dilationFieldEffect = field;
         } else {
-            // Update position and angle every frame
             b.dilationFieldEffect.x = b.x;
             b.dilationFieldEffect.y = b.y;
-            b.dilationFieldEffect.angle = angleToPlayer;
+            b.dilationFieldEffect.angle = fieldAngle;
         }
 
-        // Slow player directly if they are in the field
         const playerDist = Math.hypot(state.player.x - b.x, state.player.y - b.y);
         if (playerDist < 300) {
             let playerAngle = Math.atan2(state.player.y - b.y, state.player.x - b.x);
             let targetAngle = b.dilationFieldEffect.angle;
             let diff = Math.atan2(Math.sin(playerAngle - targetAngle), Math.cos(playerAngle - targetAngle));
             
-            // Check if player is NOT in the opening
-            if (Math.abs(diff) > (Math.PI / 4)) { // Opening is 90 degrees wide
+            if (Math.abs(diff) > (Math.PI / 4)) {
                  if (!state.player.statusEffects.some(e => e.name === 'Epoch-Slow')) {
                      gameHelpers.addStatusEffect('Epoch-Slow', '🐌', 500);
                  }
@@ -1376,9 +1365,10 @@ export const bossData = [{
         }
     },
     onDeath: (b, state) => {
-        // --- REWORK: Clean up the persistent effect on death ---
+        // --- FIX: Reliably remove the field on death ---
         if (b.dilationFieldEffect) {
-            b.dilationFieldEffect.endTime = 0;
+            state.effects = state.effects.filter(e => e !== b.dilationFieldEffect);
+            b.dilationFieldEffect = null;
         }
     }
 }, {
@@ -1386,10 +1376,9 @@ export const bossData = [{
     name: "The Shaper of Fate",
     color: "#f1c40f",
     maxHP: 600,
-    // --- REWORK: Complete rework to "Choose Your Fate" mechanic ---
     init: (b) => {
         b.phase = 'idle';
-        b.phaseTimer = Date.now() + 3000; // Time until first action
+        b.phaseTimer = Date.now() + 3000;
         b.activeRunes = [];
         b.chosenAttack = null;
     },
@@ -1403,11 +1392,13 @@ export const bossData = [{
             const runeTypes = ['nova', 'shockwave', 'lasers'];
             const shuffledRunes = runeTypes.sort(() => Math.random() - 0.5);
             
+            // --- FIX: Randomize rune positions ---
+            const margin = 100;
             const positions = [
-                { x: ctx.canvas.width * 0.25, y: ctx.canvas.height * 0.5 },
-                { x: ctx.canvas.width * 0.50, y: ctx.canvas.height * 0.5 },
-                { x: ctx.canvas.width * 0.75, y: ctx.canvas.height * 0.5 }
-            ];
+                { x: utils.randomInRange(margin, ctx.canvas.width / 2 - margin), y: utils.randomInRange(margin, ctx.canvas.height - margin) },
+                { x: utils.randomInRange(ctx.canvas.width / 2 + margin, ctx.canvas.width - margin), y: utils.randomInRange(margin, ctx.canvas.height - margin) },
+                { x: utils.randomInRange(margin, ctx.canvas.width - margin), y: utils.randomInRange(margin, ctx.canvas.height / 2 - margin) }
+            ].sort(() => Math.random() - 0.5); // Shuffle positions as well
 
             for (let i = 0; i < 3; i++) {
                 const rune = {
@@ -1416,7 +1407,8 @@ export const bossData = [{
                     x: positions[i].x,
                     y: positions[i].y,
                     r: 60,
-                    endTime: now + 4000
+                    endTime: now + 4000,
+                    sourceBoss: b // Link back to the boss
                 };
                 state.effects.push(rune);
                 b.activeRunes.push(rune);
@@ -1436,14 +1428,17 @@ export const bossData = [{
                     minPlayerDist = dist;
                     closestRune = rune;
                 }
-                rune.endTime = 0; // Remove runes from field
             });
             
             b.chosenAttack = closestRune ? closestRune.runeType : 'shockwave';
-            b.activeRunes = [];
-            b.phaseTimer = now + 3000; // Duration of the attack phase
             
-            // Trigger attack
+            // --- FIX: Reliably despawn runes ---
+            const runesToRemove = new Set(b.activeRunes);
+            state.effects = state.effects.filter(e => !runesToRemove.has(e));
+            b.activeRunes = [];
+
+            b.phaseTimer = now + 3000;
+            
             switch (b.chosenAttack) {
                 case 'nova':
                     state.effects.push({ type: 'nova_controller', startTime: now, duration: 2500, lastShot: 0, angle: Math.random() * Math.PI * 2, caster: b, color: b.color, r: 8, damage: 15 });
@@ -1464,12 +1459,11 @@ export const bossData = [{
 
         else if (b.phase === 'fulfillment' && now > b.phaseTimer) {
             b.phase = 'idle';
-            b.phaseTimer = now + 5000; // Cooldown before next attack
+            b.phaseTimer = now + 5000;
         }
     },
     onDeath: (b, state) => {
-        // Clean up any remaining rune effects
-        state.effects = state.effects.filter(e => e.type !== 'shaper_rune');
+        state.effects = state.effects.filter(e => e.type !== 'shaper_rune' || e.sourceBoss !== b);
     }
 }, {
     id: "pantheon",
@@ -1477,7 +1471,6 @@ export const bossData = [{
     color: "#ecf0f1",
     maxHP: 1000,
     hasCustomMovement: true,
-    // --- REWORK: Complete rework to "Aspect Shifting" mechanic ---
     init: (b, state, spawnEnemy, canvas) => {
         b.x = canvas.width / 2;
         b.y = canvas.height / 2;
@@ -1485,8 +1478,7 @@ export const bossData = [{
         b.aspects = [];
         b.aspectInfo = {};
         
-        // Blacklist bosses that are too complex or environmental
-        const blacklist = new Set(['aethel_and_umbra', 'sentinel_pair', 'annihilator', 'obelisk', 'fractal_horror', 'pantheon', 'shaper_of_fate']);
+        const blacklist = new Set(['aethel_and_umbra', 'sentinel_pair', 'annihilator', 'obelisk', 'fractal_horror', 'pantheon', 'shaper_of_fate', 'obelisk_conduit']);
 
         b.bossPools = {
             tier1: bossData.filter(boss => boss.maxHP < 280 && !blacklist.has(boss.id)).map(boss => boss.id),
@@ -1494,7 +1486,7 @@ export const bossData = [{
             tier3: bossData.filter(boss => boss.maxHP >= 420 && !blacklist.has(boss.id)).map(boss => boss.id),
         };
 
-        b.selectNewAspects = (state) => {
+        b.selectNewAspects = (state, gameHelpers) => {
             b.aspects = [];
             b.aspectInfo = {};
             const getUniqueAspect = (tier) => {
@@ -1510,21 +1502,30 @@ export const bossData = [{
             getUniqueAspect(b.bossPools.tier2);
             getUniqueAspect(b.bossPools.tier3);
             
-            gameHelpers.play('pantheonSummon');
+            if (gameHelpers) gameHelpers.play('pantheonSummon');
             
-            // Initialize timers for aspect abilities
             b.aspects.forEach(id => {
-                b.aspectInfo[id] = { lastUsed: 0 };
+                b.aspectInfo[id] = { lastUsed: 0, isCharging: false, chargeDx: 0, chargeDy: 0 };
             });
         };
         
-        const gameHelpers = { play: (id) => {} }; // Dummy helpers for init
-        b.selectNewAspects(state);
+        b.selectNewAspects(state, null); // Initial selection
     },
     logic: (b, ctx, state, utils, gameHelpers) => {
-        b.dx = 0; b.dy = 0;
+        const infoFor = (id) => b.aspectInfo[id];
 
-        // Visuals: Draw aspect orbs inside the Pantheon
+        // --- FIX: Add base movement when not performing a special move ---
+        const isCharging = b.aspects.some(id => infoFor(id).isCharging);
+        if (!isCharging) {
+            b.dx = (state.player.x - b.x) * 0.001;
+            b.dy = (state.player.y - b.y) * 0.001;
+        } else {
+            b.dx = 0; b.dy = 0;
+        }
+        b.x += b.dx;
+        b.y += b.dy;
+
+
         b.aspects.forEach((id, i) => {
             const aspectData = bossData.find(boss => boss.id === id);
             if (aspectData) {
@@ -1535,60 +1536,53 @@ export const bossData = [{
             }
         });
         
-        // Execute aspect logic
         const now = Date.now();
         b.aspects.forEach(id => {
-            const info = b.aspectInfo[id];
+            const info = infoFor(id);
             
-            // Example aspect implementations
-            if (id === 'splitter' && now > info.lastUsed + 8000) {
-                info.lastUsed = now;
-                for(let i=0; i<3; i++) gameHelpers.spawnEnemy(false, null, {x: b.x, y: b.y});
-            }
-            if (id === 'reflector' && now > info.lastUsed + 10000) {
-                info.lastUsed = now;
-                b.isReflecting = true;
-                setTimeout(() => b.isReflecting = false, 2000);
-            }
-            if (id === 'juggernaut' && now > info.lastUsed + 7000 && !b.isCharging) {
-                info.lastUsed = now;
-                b.isCharging = true;
-                setTimeout(() => {
-                    const angle = Math.atan2(state.player.y - b.y, state.player.x - b.x);
-                    b.chargeDx = Math.cos(angle) * 15;
-                    b.chargeDy = Math.sin(angle) * 15;
-                    setTimeout(() => { b.isCharging = false; b.chargeDx = 0; b.chargeDy = 0; }, 500);
-                }, 1000);
-            }
-             if (id === 'puppeteer' && now > info.lastUsed + 5000) {
-                const target = state.enemies.find(e => !e.boss && !e.isPuppet);
-                if (target) {
-                    info.lastUsed = now;
-                    target.isPuppet = true;
-                    target.customColor = '#a29bfe';
-                }
+            // --- FIX: Flesh out aspect logic ---
+            switch(id) {
+                case 'splitter':
+                    if (now > info.lastUsed + 8000) {
+                        info.lastUsed = now;
+                        for(let i=0; i<3; i++) gameHelpers.spawnEnemy(false, null, {x: b.x, y: b.y});
+                    }
+                    break;
+                case 'vampire':
+                    if (now > info.lastUsed + 6000) {
+                        info.lastUsed = now;
+                        b.hp = Math.min(b.maxHP, b.hp + 20);
+                        utils.spawnParticles(state.particles, b.x, b.y, '#800020', 20, 1, 40);
+                    }
+                    break;
+                case 'juggernaut':
+                    if (now > info.lastUsed + 7000 && !info.isCharging) {
+                        info.lastUsed = now;
+                        info.isCharging = true;
+                        setTimeout(() => {
+                            if (b.hp <= 0) return;
+                            const angle = Math.atan2(state.player.y - b.y, state.player.x - b.x);
+                            info.chargeDx = Math.cos(angle) * 15;
+                            info.chargeDy = Math.sin(angle) * 15;
+                            setTimeout(() => { info.isCharging = false; info.chargeDx = 0; info.chargeDy = 0; }, 500);
+                        }, 1000);
+                    }
+                    if(info.isCharging && info.chargeDx) {
+                        b.x += info.chargeDx;
+                        b.y += info.chargeDy;
+                    }
+                    break;
+                case 'gravity':
+                    if (now > info.lastUsed + 9000) {
+                         info.lastUsed = now;
+                         state.effects.push({ type: 'black_hole', x: b.x, y: b.y, radius: 15, maxRadius: 250, damageRate: 9999, lastDamage: new Map(), startTime: Date.now(), duration: 2000, endTime: Date.now() + 2000, damage: 0, caster: b, color: '#9b59b6' });
+                    }
+                    break;
             }
         });
 
-        if (b.isReflecting) {
-             ctx.fillStyle = "rgba(46, 204, 113, 0.3)";
-             ctx.beginPath();
-             ctx.arc(b.x, b.y, b.r + 10, 0, 2 * Math.PI);
-             ctx.fill();
-        }
-        if (b.isCharging && b.chargeDx) {
-            b.x += b.chargeDx;
-            b.y += b.chargeDy;
-        }
-
     },
     onDamage: (b, dmg, source, state, sP, play, stopLoopingSfx, gameHelpers) => { 
-        if (b.isReflecting) {
-            b.hp += dmg;
-            if(source && source.health) source.health -= 10;
-            return;
-        }
-
         const hpPercent = b.hp / b.maxHP;
         let didPhaseChange = false;
         if (hpPercent < 0.7 && b.phase === 1) {
