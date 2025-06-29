@@ -106,7 +106,6 @@ export function updateUI() {
     bossContainer.innerHTML = '';
     const renderedBossTypes = new Set();
     state.enemies.filter(e => e.boss).forEach(boss => {
-        // --- FIX: Add Fractal Horror to the single-bar logic ---
         if (boss.id === 'sentinel_pair' || boss.id === 'fractal_horror') {
              if (renderedBossTypes.has(boss.id)) return;
              renderedBossTypes.add(boss.id);
@@ -117,16 +116,17 @@ export function updateUI() {
         const label = document.createElement('div');
         label.className = 'boss-hp-label';
         label.innerText = boss.name;
+        
         const bar = document.createElement('div');
         bar.className = 'boss-hp-bar';
-        bar.style.backgroundColor = boss.color;
         
-        // For Fractal Horror, read from the shared health pool
-        const currentHp = boss.id === 'fractal_horror' ? (state.enemies.find(e => e.id === 'fractal_horror')?.sharedHp || 0) : boss.hp;
+        const currentHp = boss.id === 'fractal_horror' ? (state.fractalHorrorSharedHp ?? 0) : boss.hp;
+        
+        bar.style.backgroundColor = boss.color;
         bar.style.width = `${(currentHp / boss.maxHP) * 100}%`;
         
         wrapper.appendChild(label);
-        wrapper.appendChild(bar);
+        wrapper.appendChild(bar); // Append bar directly to the wrapper
         bossContainer.appendChild(wrapper);
     });
     
