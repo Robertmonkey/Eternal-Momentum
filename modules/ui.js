@@ -2,7 +2,7 @@
 import { state } from './state.js';
 import { powers } from './powers.js';
 import { bossData } from './bosses.js';
-import { STAGE_CONFIG } from './config.js'; // --- NEW: Import STAGE_CONFIG ---
+import { STAGE_CONFIG } from './config.js';
 
 const ascensionFill = document.getElementById('ascension-bar-fill');
 const ascensionText = document.getElementById('ascension-bar-text');
@@ -104,10 +104,10 @@ export function updateUI() {
     }
 
     bossContainer.innerHTML = '';
-    const renderedBossTypes = new Set(); // --- NEW: To prevent duplicate health bars for linked bosses
+    const renderedBossTypes = new Set();
     state.enemies.filter(e => e.boss).forEach(boss => {
-        // --- CHANGE: Logic to only show one health bar for linked-health bosses ---
-        if (boss.id === 'sentinel_pair' || boss.id === 'aethel_and_umbra') {
+        // --- CHANGE: Only apply the single-bar logic to Sentinel Pair ---
+        if (boss.id === 'sentinel_pair') {
              if (renderedBossTypes.has(boss.id)) return;
              renderedBossTypes.add(boss.id);
         }
@@ -153,7 +153,6 @@ export function populateLevelSelect(startSpecificLevel) {
 
     const maxStage = state.player.highestStageBeaten + 1;
 
-    // --- CHANGE: Use STAGE_CONFIG to populate the level list ---
     for (let i = 1; i <= maxStage; i++) {
         const stageData = STAGE_CONFIG.find(s => s.stage === i);
         if (!stageData) continue;
