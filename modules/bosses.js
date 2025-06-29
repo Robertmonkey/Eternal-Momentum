@@ -1065,87 +1065,72 @@ export const bossData = [{
     name: "The Fractal Horror",
     color: "#1abc9c",
     maxHP: 50000,
-    hasCustomMovement: true, // --- FIX: Enable custom AI ---
+    hasCustomMovement: true,
     init: (b, state) => {
-        // --- FIX: Initialize the shared health pool on the game state object ---
         if (state.fractalHorrorSharedHp === undefined) {
             state.fractalHorrorSharedHp = b.maxHP;
         }
-        // Initialize properties for this fragment
         b.r = b.r || 156;
         b.generation = b.generation || 1;
+        b.aiState = 'positioning';
+        b.aiTimer = Date.now() + Math.random() * 2000;
+        b.attackTarget = null;
     },
     logic: (b, ctx, state, utils, gameHelpers) => {
-        // --- FIX: Sync local hp with shared pool and handle death ---
         if (state.fractalHorrorSharedHp !== undefined) {
             b.hp = state.fractalHorrorSharedHp;
+        } else {
+            b.hp = 0;
         }
-        if (b.hp <= 0) {
-            // The boss is defeated, this fragment will be removed by the main loop
-            return;
+        if (b.hp <= 0) return;
+
+        if (b.aiState === 'positioning') {
+            const allFractals = state.enemies.filter(e => e.id === 'fractal_horror');
+            const myIndex = allFractals.indexOf(b);
+            if (myIndex === -1) return;
+
+            const totalFractals = allFractals.length;
+            const targetAngle = (myIndex / totalFractals) * 2 * Math.PI + (Date.now() / 8000); // Slow rotation
+            const surroundRadius = 200 + totalFractals * 5;
+
+            const targetX = state.player.x + surroundRadius * Math.cos(targetAngle);
+            const targetY = state.player.y + surroundRadius * Math.sin(targetAngle);
+            
+            b.x += (targetX - b.x) * 0.02;
+            b.y += (targetY - b.y) * 0.02;
+
+            if (Date.now() - b.aiTimer > 5000) {
+                b.aiState = 'attacking';
+                b.attackTarget = { x: state.player.x, y: state.player.y };
+                const angle = Math.atan2(b.attackTarget.y - b.y, b.attackTarget.x - b.x);
+                b.attackDx = Math.cos(angle) * 10;
+                b.attackDy = Math.sin(angle) * 10;
+                // For spiraling effect
+                b.spiralDirection = myIndex % 2 === 0 ? 1 : -1;
+            }
+        } else if (b.aiState === 'attacking') {
+            const speed = Math.hypot(b.attackDx, b.attackDy);
+            const spiralForce = 0.2;
+            b.attackDx += -b.attackDy * spiralForce * b.spiralDirection / speed;
+            b.attackDy += b.attackDx * spiralForce * b.spiralDirection / speed;
+
+            b.x += b.attackDx;
+            b.y += b.attackDy;
+            b.attackDx *= 0.99;
+            b.attackDy *= 0.99;
+
+            if (Math.hypot(b.x - b.attackTarget.x, b.y - b.attackTarget.y) < 20 || Math.hypot(b.attackDx, b.attackDy) < 1) {
+                b.aiState = 'positioning';
+                b.aiTimer = Date.now();
+            }
         }
-
-        // --- FIX: New AI to surround the player ---
-        const allFractals = state.enemies.filter(e => e.id === 'fractal_horror');
-        const myIndex = allFractals.indexOf(b);
-        if (myIndex === -1) return; // Failsafe
-
-        const totalFractals = allFractals.length;
-        const targetAngle = (myIndex / totalFractals) * 2 * Math.PI;
-        const surroundRadius = 150 + totalFractals * 10; // Ring expands as more fragments spawn
-
-        const targetX = state.player.x + surroundRadius * Math.cos(targetAngle);
-        const targetY = state.player.y + surroundRadius * Math.sin(targetAngle);
-        
-        // Move towards the calculated position in the ring
-        b.x += (targetX - b.x) * 0.01;
-        b.y += (targetY - b.y) * 0.01;
     },
-    onDamage: (b, dmg, source, state, spawnParticles, play, stopLoopingSfx, gameHelpers) => {
-        // --- FIX: Reworked onDamage to only handle splitting, not health reduction ---
+    onDamage: (b, dmg, source, state, spawnParticles, play, gameHelpers) => {
         if (state.fractalHorrorSharedHp !== undefined) {
             state.fractalHorrorSharedHp -= dmg;
         }
-
-        if (b.r < 8) return; // Stop splitting if fragments are too small
-
-        // Mark this fragment for removal and spawn two children
-        b.hp = 0;
-        play('fractalSplit');
-        spawnParticles(state.particles, b.x, b.y, b.color, 25, 3, 20);
-
-        const newRadius = b.r / Math.SQRT2;
-        const children = [];
-        for (let i = 0; i < 2; i++) {
-            const angle = Math.random() * 2 * Math.PI;
-            const child = gameHelpers.spawnEnemy(true, 'fractal_horror', { 
-                x: b.x + Math.cos(angle) * b.r * 0.25, 
-                y: b.y + Math.sin(angle) * b.r * 0.25 
-            });
-            if (child) {
-                child.r = newRadius;
-                child.generation = b.generation + 1;
-                children.push(child);
-            }
-        }
-
-        // Push children apart to avoid overlap
-        if (children.length === 2) {
-            const [c1, c2] = children;
-            const dist = Math.hypot(c1.x - c2.x, c1.y - c2.y);
-            const min_dist = c1.r + c2.r;
-            if (dist < min_dist) {
-                const overlap = min_dist - dist;
-                const angle = Math.atan2(c2.y - c1.y, c2.x - c1.x);
-                c1.x -= Math.cos(angle) * overlap / 2;
-                c1.y -= Math.sin(angle) * overlap / 2;
-                c2.x += Math.cos(angle) * overlap / 2;
-                c2.y += Math.sin(angle) * overlap / 2;
-            }
-        }
     },
     onDeath: (b, state) => {
-        // --- FIX: Cleanup the shared health pool when the last fragment is gone ---
         const remaining = state.enemies.filter(e => e.id === 'fractal_horror' && e !== b);
         if (remaining.length === 0) {
             delete state.fractalHorrorSharedHp;
@@ -1156,6 +1141,7 @@ export const bossData = [{
     name: "The Obelisk",
     color: "#2c3e50",
     maxHP: 800,
+    hasCustomDraw: true,
     hasCustomMovement: true,
     init: (b, state, spawnEnemy, canvas) => {
         b.x = canvas.width / 2;
@@ -1179,20 +1165,44 @@ export const bossData = [{
                 conduit.parentObelisk = b;
                 conduit.conduitType = conduitTypes[i].type;
                 conduit.color = conduitTypes[i].color;
-                // --- FIX: Assign symmetrical orbital angle ---
                 conduit.orbitalAngle = angle;
+                conduit.r = 30; // --- FIX: Make conduits smaller ---
                 b.conduits.push(conduit);
             }
         }
     },
     logic: (b, ctx, state, utils, gameHelpers) => {
         b.dx = 0; b.dy = 0;
+
+        // --- FIX: Custom drawing logic for Obelisk shape ---
+        const height = b.r * 2.5;
+        const topWidth = b.r * 0.2;
+        const baseWidth = b.r * 0.8;
+        const pyramidHeight = b.r * 0.4;
+        const topY = b.y - height / 2;
+        const topCenter = { x: b.x, y: topY + pyramidHeight/2 };
+
+        ctx.fillStyle = b.invulnerable ? b.color : '#ecf0f1';
+        ctx.beginPath();
+        ctx.moveTo(b.x - baseWidth/2, b.y + height/2);
+        ctx.lineTo(b.x + baseWidth/2, b.y + height/2);
+        ctx.lineTo(b.x + topWidth/2, topY + pyramidHeight);
+        ctx.lineTo(b.x - topWidth/2, topY + pyramidHeight);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(b.x, topY);
+        ctx.lineTo(b.x + topWidth/2, topY + pyramidHeight);
+        ctx.lineTo(b.x - topWidth/2, topY + pyramidHeight);
+        ctx.closePath();
+        ctx.fill();
         
         if (b.invulnerable) {
             gameHelpers.playLooping('obeliskHum');
             const livingConduits = state.enemies.filter(e => e.id === 'obelisk_conduit' && e.parentObelisk === b);
             livingConduits.forEach(conduit => {
-                utils.drawLightning(ctx, b.x, b.y, conduit.x, conduit.y, conduit.color, 3);
+                utils.drawLightning(ctx, topCenter.x, topCenter.y, conduit.x, conduit.y, conduit.color, 3);
             });
         } else {
             gameHelpers.stopLoopingSfx('obeliskHum');
@@ -1200,16 +1210,12 @@ export const bossData = [{
             b.beamAngle += 0.005;
             
             const beamLength = Math.hypot(ctx.canvas.width, ctx.canvas.height);
-            const beamEndX = b.x + Math.cos(b.beamAngle) * beamLength;
-            const beamEndY = b.y + Math.sin(b.beamAngle) * beamLength;
+            const beamEndX = topCenter.x + Math.cos(b.beamAngle) * beamLength;
+            const beamEndY = topCenter.y + Math.sin(b.beamAngle) * beamLength;
             const beamColor = b.beamColors[Math.floor(Math.random() * b.beamColors.length)];
 
-            utils.drawLightning(ctx, b.x, b.y, beamEndX, beamEndY, beamColor, 10);
+            utils.drawLightning(ctx, topCenter.x, topCenter.y, beamEndX, beamEndY, beamColor, 10);
         }
-
-        const color = b.invulnerable ? b.color : '#ecf0f1';
-        utils.drawCircle(ctx, b.x, b.y, b.r, color);
-        if(!b.invulnerable) utils.spawnParticles(state.particles, b.x, b.y, '#fff', 3, 1, 10);
     },
     onDamage: (b, dmg) => { 
         if (b.invulnerable) {
@@ -1229,15 +1235,15 @@ export const bossData = [{
     maxHP: 150,
     hasCustomMovement: true,
     init: (b) => {
-        b.orbitalAngle = 0; // Will be set by parent
+        b.orbitalAngle = 0;
         b.lastExplosion = Date.now();
     },
     logic: (b, ctx, state, utils) => {
         if(b.parentObelisk && b.parentObelisk.hp > 0) {
-            // --- FIX: Symmetrical orbit with oscillation ---
             const rotation = Date.now() / 3000;
-            const baseDistance = 250;
-            const oscillation = Math.sin(Date.now() / 1500) * 100;
+            // --- FIX: Increased oscillation speed and distance ---
+            const baseDistance = 300;
+            const oscillation = Math.sin(Date.now() / 800) * 150;
             const dynamicDistance = baseDistance + oscillation;
 
             b.x = b.parentObelisk.x + Math.cos(b.orbitalAngle + rotation) * dynamicDistance;
@@ -1560,7 +1566,8 @@ export const bossData = [{
             b.dx = (state.player.x - b.x) * 0.0005;
             b.dy = (state.player.y - b.y) * 0.0005;
         } else {
-            b.dx = 0; b.dy = 0;
+            b.dx = 0;
+            b.dy = 0;
         }
         b.x += b.dx;
         b.y += b.dy;
