@@ -1064,7 +1064,7 @@ export const bossData = [{
     id: "fractal_horror",
     name: "The Fractal Horror",
     color: "#1abc9c",
-    maxHP: 5000,
+    maxHP: 15000, // TUNED
     hasCustomMovement: true,
     init: (b, state) => {
         if (state.fractalHorrorSharedHp === undefined) {
@@ -1119,13 +1119,14 @@ export const bossData = [{
 
             const totalFractals = allFractals.length;
             const targetAngle = (myIndex / totalFractals) * 2 * Math.PI + (Date.now() / 8000);
-            const surroundRadius = 150 + totalFractals * 10;
+            const surroundRadius = 250 + totalFractals * 10; // TUNED
 
             const targetX = state.player.x + surroundRadius * Math.cos(targetAngle);
             const targetY = state.player.y + surroundRadius * Math.sin(targetAngle);
             
-            b.x += (targetX - b.x) * 0.02;
-            b.y += (targetY - b.y) * 0.02;
+            // TUNED
+            b.x += (targetX - b.x) * 0.01;
+            b.y += (targetY - b.y) * 0.01;
 
             if (Date.now() > b.aiTimer) {
                 b.aiState = 'attacking';
