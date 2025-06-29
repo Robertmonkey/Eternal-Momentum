@@ -1066,11 +1066,14 @@ export const bossData = [{
     color: "#1abc9c",
     maxHP: 500,
     init: (b) => {
-        b.r = 156;
-        b.isSplitting = false;
+        // Only set radius on first generation
+        if (b.generation === undefined) {
+            b.r = 156;
+            b.generation = 1;
+        }
     },
     logic: (b, ctx, state) => {
-        // All logic is now in onDamage to handle splitting correctly
+        // Logic is handled in onDamage
     },
     onDamage: (b, dmg, source, state, spawnParticles, play, stopLoopingSfx, gameHelpers) => {
         // Apply damage to all fractal instances to maintain a linked health pool
@@ -1080,7 +1083,7 @@ export const bossData = [{
             }
         });
 
-        // Prevent splitting into fragments that are too small
+        // Prevent splitting into fragments that are too small (dust)
         if (b.r < 5) {
             return;
         }
@@ -1092,23 +1095,25 @@ export const bossData = [{
         
         const newRadius = b.r / Math.SQRT2;
         const children = [];
+        
+        // Find current HP from a surviving sibling or use own if none exist
+        const currentHpOfSwarm = state.enemies.find(e => e.id === 'fractal_horror' && e.hp > 0)?.hp || b.hp;
+        
         for (let i = 0; i < 2; i++) {
             const angle = Math.random() * 2 * Math.PI;
-            // Spawn children slightly offset from the parent
             const child = gameHelpers.spawnEnemy(true, 'fractal_horror', { 
-                x: b.x + Math.cos(angle) * b.r * 0.5, 
-                y: b.y + Math.sin(angle) * b.r * 0.5 
+                x: b.x + Math.cos(angle) * b.r * 0.25, 
+                y: b.y + Math.sin(angle) * b.r * 0.25 
             });
             if (child) {
                 child.r = newRadius;
-                // All fragments share the same collective HP pool
-                child.hp = Math.max(1, b.hp); // Ensure hp doesn't drop below 1 from this split
+                child.hp = Math.max(1, currentHpOfSwarm);
                 child.maxHP = b.maxHP;
+                child.generation = b.generation + 1; // Pass down generation
                 children.push(child);
             }
         }
         
-        // Push children apart if they overlap
         if (children.length === 2) {
             const [c1, c2] = children;
             const dist = Math.hypot(c1.x - c2.x, c1.y - c2.y);
@@ -1216,13 +1221,13 @@ export const bossData = [{
         
         switch (b.conduitType) {
             case 'lightning':
-                // --- FIX: Draw a circle to represent the AoE ---
-                const pulse = Math.abs(Math.sin(Date.now() / 400));
-                ctx.strokeStyle = `rgba(241, 196, 15, ${pulse * 0.5})`;
-                ctx.lineWidth = 3;
-                ctx.beginPath();
-                ctx.arc(b.x, b.y, 250, 0, 2 * Math.PI);
-                ctx.stroke();
+                // --- FIX: Draw multiple bolts to fill the area ---
+                for(let i = 0; i < 3; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const endX = b.x + Math.cos(angle) * 250;
+                    const endY = b.y + Math.sin(angle) * 250;
+                    utils.drawLightning(ctx, b.x, b.y, endX, endY, b.color, 2);
+                }
                 break;
             case 'gravity':
                 for (let i = 1; i <= 3; i++) {
@@ -1230,7 +1235,7 @@ export const bossData = [{
                     ctx.strokeStyle = `rgba(155, 89, 182, ${1 - pulse})`;
                     ctx.lineWidth = 2;
                     ctx.beginPath();
-                    ctx.arc(b.x, b.y, b.r + pulse * 250, 0, 2 * Math.PI);
+                    ctx.arc(b.x, b.y, 250 * pulse, 0, 2 * Math.PI);
                     ctx.stroke();
                 }
                 break;
@@ -1528,8 +1533,7 @@ export const bossData = [{
             b.dx = (state.player.x - b.x) * 0.0005;
             b.dy = (state.player.y - b.y) * 0.0005;
         } else {
-            b.dx = 0;
-            b.dy = 0;
+            b.dx = 0; b.dy = 0;
         }
         b.x += b.dx;
         b.y += b.dy;
