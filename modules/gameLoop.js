@@ -544,16 +544,17 @@ export function gameTick(mx, my) {
         
         if (e.id === 'obelisk_conduit' && e.hp > 0) {
             const distToPlayer = Math.hypot(state.player.x - e.x, state.player.y - e.y);
+            const auraRadius = 250;
             switch(e.conduitType) {
                 case 'lightning':
-                    if (distToPlayer < 180) { // Increased radius
+                    if (distToPlayer < auraRadius) {
                         if (!state.player.shield) state.player.health -= 0.5;
                         else state.player.shield = false;
                     }
                     break;
                 case 'gravity':
-                    if (distToPlayer < 180) {
-                        const pullStrength = 0.04; // Decreased pull
+                    if (distToPlayer < auraRadius) {
+                        const pullStrength = 0.04;
                         state.player.x += (e.x - state.player.x) * pullStrength;
                         state.player.y += (e.y - state.player.y) * pullStrength;
                     }
@@ -634,7 +635,7 @@ export function gameTick(mx, my) {
                         state.player.health -= damage; 
                     }
                     play('hitSound'); 
-                    if(e.onDamage) e.onDamage(e, damage, state.player, state, spawnParticlesCallback, play);
+                    if(e.onDamage) e.onDamage(e, damage, state.player, state, spawnParticlesCallback, play, stopLoopingSfx, gameHelpers);
                     if(state.player.health<=0) state.gameOver=true; 
                 } else { 
                     state.player.shield=false; 
@@ -734,9 +735,6 @@ export function gameTick(mx, my) {
             let speedMultiplier = 1.0;
             state.effects.forEach(eff => {
                 if (eff.type === 'dilation_field') {
-                    if (!eff.shape && Math.hypot(effect.x - eff.x, effect.y - eff.y) < eff.r) {
-                        speedMultiplier = 0.2;
-                    }
                     if (eff.shape === 'horseshoe') {
                         const dist = Math.hypot(effect.x - eff.x, effect.y - eff.y);
                         if (dist < eff.r) {
@@ -747,6 +745,8 @@ export function gameTick(mx, my) {
                                  speedMultiplier = 0.2;
                              }
                         }
+                    } else if (Math.hypot(effect.x - eff.x, effect.y - eff.y) < eff.r) {
+                        speedMultiplier = 0.2;
                     }
                 }
             });
@@ -764,7 +764,7 @@ export function gameTick(mx, my) {
                     if (effect.damage > 0) {
                         let dmg = (target.boss || target === state.player) ? effect.damage : 1000;
                         if(target.health) target.health -= dmg; else target.hp -= dmg;
-                        if (target.onDamage) target.onDamage(target, dmg, effect.caster, state, spawnParticlesCallback, play);
+                        if (target.onDamage) target.onDamage(target, dmg, effect.caster, state, spawnParticlesCallback, play, stopLoopingSfx, gameHelpers);
                     }
                     effect.hitEnemies.add(target);
                 }
@@ -782,7 +782,7 @@ export function gameTick(mx, my) {
                     let dmg = (to.boss ? effect.damage : 50) * state.player.talent_modifiers.damage_multiplier;
                     if (effect.caster !== state.player) dmg = effect.damage;
                     to.hp -= dmg; 
-                    if (to.onDamage) to.onDamage(to, dmg, effect.caster, state, spawnParticlesCallback, play);
+                    if (to.onDamage) to.onDamage(to, dmg, effect.caster, state, spawnParticlesCallback, play, stopLoopingSfx, gameHelpers);
                     effect.links.push(to);
                     if (state.player.purchasedTalents.has('volatile-finish') && i === effect.targets.length - 1) {
                          state.effects.push({ type: 'shockwave', caster: state.player, x: to.x, y: to.y, radius: 0, maxRadius: 150, speed: 600, startTime: Date.now(), hitEnemies: new Set(), damage: 15 * state.player.talent_modifiers.damage_multiplier });
@@ -838,7 +838,7 @@ export function gameTick(mx, my) {
                         
                         if(e.health) e.health -= damage; else e.hp -= damage; 
 
-                        if(e.onDamage) e.onDamage(e, damage, effect.caster, state, spawnParticlesCallback, play); 
+                        if(e.onDamage) e.onDamage(e, damage, effect.caster, state, spawnParticlesCallback, play, stopLoopingSfx, gameHelpers); 
                     } 
                 }); 
                 state.effects.splice(index, 1); 
@@ -1096,7 +1096,7 @@ export function gameTick(mx, my) {
             ctx.globalAlpha = 1.0;
         }
         else if (effect.type === 'shaper_rune') {
-            const runeSymbols = { nova: '💫', shockwave: '💥', lasers: '☄️' };
+            const runeSymbols = { nova: '💫', shockwave: '💥', lasers: '☄️', heal: '❤️', speed_buff: '🚀' };
             ctx.font = `${effect.r * 0.8}px sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
