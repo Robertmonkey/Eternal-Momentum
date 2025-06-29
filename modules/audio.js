@@ -90,7 +90,9 @@ export const AudioManager = {
             if (this.currentMusic && !this.currentMusic.paused) {
                 this.currentMusic.pause();
             }
+            // --- FIX: Add Obelisk hum to the list of sounds to stop ---
             this.stopLoopingSfx('beamHumSound');
+            this.stopLoopingSfx('obeliskHum');
         } else {
             if (!this.userMuted && this.currentMusic && this.currentMusic.paused) {
                 this.currentMusic.play().catch(e => {});
@@ -99,7 +101,6 @@ export const AudioManager = {
     },
 
     _fade(audioElement, startVol, endVol, duration, onComplete) {
-        // if (this.isFading && endVol > 0) return; // --- BUG FIX: This line was removed.
         this.isFading = true;
         let currentVol = startVol;
         audioElement.volume = currentVol;
