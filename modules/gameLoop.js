@@ -283,7 +283,7 @@ export function gameTick(mx, my) {
 
     if (Date.now() > state.player.stunnedUntil) {
         state.player.x += (finalMx - state.player.x) * 0.015 * state.player.speed * playerSpeedMultiplier;
-        state.player.y += (finalMy - state.player.y) * 0.015 * state.player.speed * playerSpeedMultiplier;
+        state.player.y += (finalMy - my) * 0.015 * state.player.speed * playerSpeedMultiplier;
     }
 
     if (state.decoy && state.decoy.isMobile) {
@@ -434,7 +434,10 @@ export function gameTick(mx, my) {
         }
 
         const slowZones = timeEater ? state.effects.filter(eff => eff.type === 'slow_zone') : [];
-        if (!e.boss && state.effects.filter(eff => eff.type === 'repulsion_field').length > 0) {
+        
+        // --- REPLUSION FIELD FIX ---
+        const isRepulsionTarget = !e.boss || e.id === 'fractal_horror';
+        if (isRepulsionTarget && state.effects.filter(eff => eff.type === 'repulsion_field').length > 0) {
             state.effects.filter(eff => eff.type === 'repulsion_field').forEach(field => {
                 const dist = Math.hypot(e.x - field.x, e.y - field.y);
                 if (dist < field.radius + e.r) {
@@ -514,6 +517,10 @@ export function gameTick(mx, my) {
                     const dist = Math.hypot(e.x - effect.x, e.y - effect.y);
                     if (dist < currentPullRadius) {
                         let pullStrength = e.boss ? 0.03 : 0.1;
+                        // --- BLACK HOLE FIX ---
+                        if (e.id === 'fractal_horror') {
+                            pullStrength = 0.1;
+                        }
                         e.x += (effect.x - e.x) * pullStrength;
                         e.y += (effect.y - e.y) * pullStrength;
                         if (dist < effect.radius + e.r && Date.now() - (effect.lastDamage.get(e) || 0) > effect.damageRate) {
@@ -783,7 +790,6 @@ export function gameTick(mx, my) {
                     if (effect.caster !== state.player) dmg = effect.damage;
                     to.hp -= dmg; 
                     if (to.onDamage) to.onDamage(to, dmg, effect.caster, state, spawnParticlesCallback, play, stopLoopingSfx, gameHelpers);
-                    effect.links.push(to);
                     if (state.player.purchasedTalents.has('volatile-finish') && i === effect.targets.length - 1) {
                          state.effects.push({ type: 'shockwave', caster: state.player, x: to.x, y: to.y, radius: 0, maxRadius: 150, speed: 600, startTime: Date.now(), hitEnemies: new Set(), damage: 15 * state.player.talent_modifiers.damage_multiplier });
                     }
@@ -883,7 +889,7 @@ export function gameTick(mx, my) {
             const p2x = source.x + maxDist * Math.cos(angle2); const p2y = source.y + maxDist * Math.sin(angle2);
             ctx.beginPath(); ctx.rect(-1000, -1000, canvas.width+2000, canvas.height+2000); ctx.moveTo(source.x, source.y); ctx.lineTo(p1x,p1y); ctx.lineTo(p2x,p2y); ctx.closePath(); ctx.fill('evenodd');
             const allTargets = state.arenaMode ? [state.player, ...state.enemies.filter(t => t !== source)] : [state.player];
-            allTargets.forEach(target => { const targetAngle = Math.atan2(target.y - source.y, target.x - source.x); let angleDiff = (targetAngle - angleToPillar + Math.PI * 3) % (Math.PI * 2) - Math.PI; const isSafe = Math.abs(angleDiff) < angleToTangent && Math.hypot(target.x - source.x, target.y - source.y) > distToPillar; if (!isSafe && (target.health > 0 || target.hp > 0)) { if (target.health && state.player.shield) return; if (target.health) target.health -= 999; else target.hp -= 999; if (target.health <= 0) state.gameOver = true; } });
+            allTargets.forEach(target => { const targetAngle = Math.atan2(target.y - source.y, target.x - source.y); let angleDiff = (targetAngle - angleToPillar + Math.PI * 3) % (Math.PI * 2) - Math.PI; const isSafe = Math.abs(angleDiff) < angleToTangent && Math.hypot(target.x - source.x, target.y - source.y) > distToPillar; if (!isSafe && (target.health > 0 || target.hp > 0)) { if (target.health && state.player.shield) return; if (target.health) target.health -= 999; else target.hp -= 999; if (target.health <= 0) state.gameOver = true; } });
         } else if (effect.type === 'juggernaut_charge_ring') {
             const progress = (Date.now() - effect.startTime) / effect.duration; if (progress >= 1) { state.effects.splice(index, 1); return; }
             ctx.strokeStyle = `rgba(255,255,255, ${0.8 * (1-progress)})`; ctx.lineWidth = 15; ctx.beginPath(); ctx.arc(effect.source.x, effect.source.y, effect.source.r + (100 * progress), 0, Math.PI*2); ctx.stroke();
