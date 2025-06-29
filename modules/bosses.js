@@ -1064,28 +1064,56 @@ export const bossData = [{
     id: "fractal_horror",
     name: "The Fractal Horror",
     color: "#1abc9c",
-    maxHP: 50000,
+    maxHP: 5000,
     hasCustomMovement: true,
     init: (b, state) => {
         if (state.fractalHorrorSharedHp === undefined) {
             state.fractalHorrorSharedHp = b.maxHP;
+            state.fractalHorrorSplits = 0;
         }
         b.r = b.r || 156;
         b.generation = b.generation || 1;
         b.aiState = 'positioning';
-        b.aiTimer = Date.now() + Math.random() * 2000;
+        b.aiTimer = Date.now() + Math.random() * 2000 + 1000;
         b.attackTarget = null;
     },
     logic: (b, ctx, state, utils, gameHelpers) => {
         if (state.fractalHorrorSharedHp !== undefined) {
             b.hp = state.fractalHorrorSharedHp;
-        } else {
-             b.hp = 0;
         }
         if (b.hp <= 0) return;
 
+        // --- SPLITTING LOGIC (MOVED FROM onDamage) ---
+        const hpPercent = state.fractalHorrorSharedHp / b.maxHP;
+        const expectedSplits = Math.floor((1 - hpPercent) / 0.02); // One split per 2% health loss
+        let allFractals = state.enemies.filter(e => e.id === 'fractal_horror');
+
+        while (expectedSplits > state.fractalHorrorSplits && allFractals.length < 50) {
+            let biggestFractal = allFractals.sort((a, b) => b.r - a.r)[0];
+            if (!biggestFractal) break;
+
+            gameHelpers.play('fractalSplit');
+            utils.spawnParticles(state.particles, biggestFractal.x, biggestFractal.y, biggestFractal.color, 25, 3, 20);
+
+            const newRadius = biggestFractal.r / Math.SQRT2;
+            for (let i = 0; i < 2; i++) {
+                const angle = Math.random() * 2 * Math.PI;
+                const child = gameHelpers.spawnEnemy(true, 'fractal_horror', {
+                    x: biggestFractal.x + Math.cos(angle) * biggestFractal.r * 0.25,
+                    y: biggestFractal.y + Math.sin(angle) * biggestFractal.r * 0.25
+                });
+                if (child) {
+                    child.r = newRadius;
+                    child.generation = biggestFractal.generation + 1;
+                }
+            }
+            biggestFractal.hp = 0; // Remove the parent fractal
+            state.fractalHorrorSplits++;
+            allFractals = state.enemies.filter(e => e.id === 'fractal_horror'); // Re-fetch the list
+        }
+
+        // --- AI LOGIC ---
         if (b.aiState === 'positioning') {
-            const allFractals = state.enemies.filter(e => e.id === 'fractal_horror');
             const myIndex = allFractals.indexOf(b);
             if (myIndex === -1) return;
 
@@ -1099,9 +1127,9 @@ export const bossData = [{
             b.x += (targetX - b.x) * 0.02;
             b.y += (targetY - b.y) * 0.02;
 
-            if (Date.now() - b.aiTimer > 5000) {
+            if (Date.now() > b.aiTimer) {
                 b.aiState = 'attacking';
-                b.attackTarget = { x: state.player.x, y: state.player.y };
+                b.attackTarget = { x: state.player.x, y: state.player.y }; // Lock target position
                 const angle = Math.atan2(b.attackTarget.y - b.y, b.attackTarget.x - b.x);
                 b.attackDx = Math.cos(angle) * 10;
                 b.attackDy = Math.sin(angle) * 10;
@@ -1120,54 +1148,22 @@ export const bossData = [{
 
             if (Math.hypot(b.x - b.attackTarget.x, b.y - b.attackTarget.y) < 20 || Math.hypot(b.attackDx, b.attackDy) < 1) {
                 b.aiState = 'positioning';
-                b.aiTimer = Date.now();
+                b.aiTimer = Date.now() + 3000; // Cooldown before repositioning
             }
         }
     },
-    onDamage: (b, dmg, source, state, spawnParticles, play, stopLoopingSfx, gameHelpers) => {
+    onDamage: (b, dmg, source, state) => {
+        // This function now ONLY reduces the shared health pool.
         if (state.fractalHorrorSharedHp !== undefined) {
             state.fractalHorrorSharedHp -= dmg;
         }
-
-        if (b.r < 8) return;
-
-        play('fractalSplit');
-        spawnParticles(state.particles, b.x, b.y, b.color, 25, 3, 20);
-        
-        const newRadius = b.r / Math.SQRT2;
-        const children = [];
-        for (let i = 0; i < 2; i++) {
-            const angle = Math.random() * 2 * Math.PI;
-            const child = gameHelpers.spawnEnemy(true, 'fractal_horror', { 
-                x: b.x + Math.cos(angle) * b.r * 0.25, 
-                y: b.y + Math.sin(angle) * b.r * 0.25 
-            });
-            if (child) {
-                child.r = newRadius;
-                child.generation = b.generation + 1;
-                children.push(child);
-            }
-        }
-        
-        if (children.length === 2) {
-            const [c1, c2] = children;
-            const dist = Math.hypot(c1.x - c2.x, c1.y - c2.y);
-            const min_dist = c1.r + c2.r;
-            if (dist < min_dist) {
-                const overlap = min_dist - dist;
-                const angle = Math.atan2(c2.y - c1.y, c2.x - c1.x);
-                c1.x -= Math.cos(angle) * overlap / 2;
-                c1.y -= Math.sin(angle) * overlap / 2;
-                c2.x += Math.cos(angle) * overlap / 2;
-                c2.y += Math.sin(angle) * overlap / 2;
-            }
-        }
-        b.hp = 0;
     },
     onDeath: (b, state) => {
         const remaining = state.enemies.filter(e => e.id === 'fractal_horror' && e !== b);
         if (remaining.length === 0) {
+            // Clean up all shared state variables for the boss
             delete state.fractalHorrorSharedHp;
+            delete state.fractalHorrorSplits;
         }
     }
 }, {
