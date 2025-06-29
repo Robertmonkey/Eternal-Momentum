@@ -1,6 +1,6 @@
 // modules/gameLoop.js
 import { state, savePlayerState } from './state.js';
-import { THEMATIC_UNLOCKS, SPAWN_WEIGHTS } from './config.js';
+import { THEMATIC_UNLOCKS, SPAWN_WEIGHTS, STAGE_CONFIG } from './config.js';
 import { powers, offensivePowers } from './powers.js';
 import { bossData } from './bosses.js';
 import { updateUI, showBossBanner, showUnlockNotification } from './ui.js';
@@ -114,31 +114,28 @@ function getSafeSpawnLocation() {
 }
 
 export function spawnBossesForStage(stageNum) {
-    const bossIdsToSpawn = [];
+    const stageData = STAGE_CONFIG.find(s => s.stage === stageNum);
 
-    // This section needs to be replaced with the "Threat Point & Synergy Tag" algorithm for stages 31+.
-    // For now, it will handle stages 1-30 as per the new boss list.
-    if (stageNum <= 30) {
-        const bossIndex = stageNum - 1;
-        if (bossData[bossIndex]) {
-            bossIdsToSpawn.push(bossData[bossIndex].id);
-        } else {
-             console.error(`No boss defined for stage ${stageNum}`);
-        }
-    } else {
-        // Placeholder for the intelligent infinite scaling algorithm
-        const hardBosses = bossData.slice(20, 31); // All hard bosses
-        for(let i=0; i < 3; i++) {
+    if (stageData && stageData.bosses) {
+        stageData.bosses.forEach(bossId => {
+            spawnEnemy(true, bossId, getSafeSpawnLocation());
+        });
+    } else if (stageNum > 30) {
+        const hardBosses = bossData.filter(b => b.maxHP >= 400 && b.id !== 'obelisk_conduit');
+        const bossCount = Math.min(3, Math.floor((stageNum - 30) / 5) + 1);
+        const bossIdsToSpawn = [];
+        for(let i=0; i < bossCount; i++) {
             const randomBoss = hardBosses[Math.floor(Math.random() * hardBosses.length)];
-            if (!bossIdsToSpawn.includes(randomBoss.id) && randomBoss.id !== 'obelisk_conduit') {
+            if (!bossIdsToSpawn.includes(randomBoss.id)) {
                 bossIdsToSpawn.push(randomBoss.id);
             }
         }
+        bossIdsToSpawn.forEach(bossId => {
+            spawnEnemy(true, bossId, getSafeSpawnLocation());
+        });
+    } else {
+        console.error(`No boss configuration found for stage ${stageNum}`);
     }
-
-    bossIdsToSpawn.forEach(bossId => {
-        spawnEnemy(true, bossId, getSafeSpawnLocation());
-    });
 }
 
 export function spawnEnemy(isBoss = false, bossId = null, location = null) {
@@ -161,7 +158,8 @@ export function spawnEnemy(isBoss = false, bossId = null, location = null) {
         if (bd.init) bd.init(e, state, spawnEnemy, canvas);
         
         if (!state.bossActive) {
-            showBossBanner(e);
+            const stageInfo = STAGE_CONFIG.find(s => s.stage === state.currentStage);
+            showBossBanner(stageInfo ? {name: stageInfo.displayName} : e);
             AudioManager.playSfx('bossSpawnSound');
             AudioManager.crossfadeToNextTrack();
         }
@@ -228,6 +226,7 @@ export function gameTick(mx, my) {
     
     if (state.gameOver) {
         stopLoopingSfx("beamHumSound");
+        stopLoopingSfx('wallShrink');
         const gameOverMenu = document.getElementById('gameOverMenu');
         if (gameOverMenu.style.display !== 'flex') {
             gameOverMenu.style.display = 'flex';
@@ -263,9 +262,7 @@ export function gameTick(mx, my) {
         playerSpeedMultiplier *= 0.5;
     }
     
-    const activeRepulsionFields = state.effects.filter(eff => eff.type === 'repulsion_field');
     const timeEater = state.enemies.find(e => e.id === 'time_eater');
-    const slowZones = timeEater ? state.effects.filter(e => e.type === 'slow_zone') : [];
     
     state.effects.forEach(effect => { 
         if(effect.type === 'slow_zone' && Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < effect.r && !isBerserkImmune) {
@@ -436,8 +433,9 @@ export function gameTick(mx, my) {
             }
         }
 
-        if (!e.boss && activeRepulsionFields.length > 0) {
-            activeRepulsionFields.forEach(field => {
+        const slowZones = timeEater ? state.effects.filter(eff => eff.type === 'slow_zone') : [];
+        if (!e.boss && state.effects.filter(eff => eff.type === 'repulsion_field').length > 0) {
+            state.effects.filter(eff => eff.type === 'repulsion_field').forEach(field => {
                 const dist = Math.hypot(e.x - field.x, e.y - field.y);
                 if (dist < field.radius + e.r) {
                     if (field.isOverloaded) {
@@ -624,6 +622,7 @@ export function gameTick(mx, my) {
     for (let i = state.pickups.length - 1; i >= 0; i--) {
         const p = state.pickups[i];
         if (p.lifeEnd && Date.now() > p.lifeEnd) { state.pickups.splice(i, 1); continue; }
+        const slowZones = timeEater ? state.effects.filter(eff => eff.type === 'slow_zone') : [];
         if (timeEater && !p.eatenBy) {
             for (const zone of slowZones) {
                 if (Math.hypot(p.x - zone.x, p.y - zone.y) < zone.r) {
@@ -998,15 +997,19 @@ export function gameTick(mx, my) {
             const playerIsInsideBounds = state.player.x >= left && state.player.x <= right && state.player.y >= top && state.player.y <= bottom;
 
             if (playerIsInsideBounds) {
+                // Top wall
                 if (state.player.y - state.player.r < top && (effect.gapSide !== 0 || state.player.x < left + gapStart || state.player.x > left + gapStart + gapSize)) {
                     state.player.y = top + state.player.r;
                 }
+                // Bottom wall
                 if (state.player.y + state.player.r > bottom && (effect.gapSide !== 2 || state.player.x < left + gapStart || state.player.x > left + gapStart + gapSize)) {
                     state.player.y = bottom - state.player.r;
                 }
+                // Left wall
                 if (state.player.x - state.player.r < left && (effect.gapSide !== 3 || state.player.y < top + gapStart || state.player.y > top + gapStart + gapSize)) {
                     state.player.x = left + state.player.r;
                 }
+                // Right wall
                 if (state.player.x + state.player.r > right && (effect.gapSide !== 1 || state.player.y < top + gapStart || state.player.y > top + gapStart + gapSize)) {
                     state.player.x = right - state.player.r;
                 }
@@ -1078,7 +1081,6 @@ export function gameTick(mx, my) {
                             state.player.health -= 30;
                             break;
                     }
-                    // Remove all shaper zones
                     state.effects = state.effects.filter(e => e.type !== 'shaper_zone');
                     effect.boss.zonesActive = false;
                 }
