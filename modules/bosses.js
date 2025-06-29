@@ -264,9 +264,13 @@ export const bossData = [{
                 partnerBoss.role = b.role === 'Aethel' ? 'Umbra' : 'Aethel';
                 b.partner = partnerBoss;
                 partnerBoss.partner = b;
-                if (partnerBoss.logic) partnerBoss.logic(partnerBoss, null, state, null, null);
+                // --- CHANGE: Set partner's name after role assignment ---
+                partnerBoss.name = partnerBoss.role;
             }
         }
+        // --- CHANGE: Set this boss's name after role assignment ---
+        b.name = b.role;
+        
         if (b.role === 'Aethel') { // Speed role
             b.r *= 0.75;
             b.dx = (b.dx || (Math.random() - 0.5)) * 2.5;
@@ -1058,7 +1062,7 @@ export const bossData = [{
         b.generation = 1;
         b.damageThreshold = b.maxHP / 2;
         b.damageCounter = 0;
-        b.r = 120; // --- CHANGE: Start as a massive boss
+        b.r = 120;
     },
     onDamage: (b, dmg, source, state, spawnParticles, play, stopLoopingSfx, gameHelpers) => {
         b.damageCounter += dmg;
@@ -1067,7 +1071,7 @@ export const bossData = [{
             play('fractalSplit');
             const children = [];
             for (let i = 0; i < 2; i++) {
-                const angle = Math.random() * 2 * Math.PI; // Spawn at a random angle
+                const angle = Math.random() * 2 * Math.PI;
                 const child = gameHelpers.spawnEnemy(true, 'fractal_horror', { x: b.x + Math.cos(angle) * 50, y: b.y + Math.sin(angle) * 50 });
                 if (child) {
                     child.generation = b.generation + 1;
@@ -1078,7 +1082,6 @@ export const bossData = [{
                     children.push(child);
                 }
             }
-            // --- CHANGE: Force separation between the two new children ---
             if (children.length === 2) {
                 const [c1, c2] = children;
                 const dist = Math.hypot(c1.x - c2.x, c1.y - c2.y);
@@ -1180,7 +1183,6 @@ export const bossData = [{
             const arms = 4;
             for (let i = 0; i < arms; i++) {
                 const angle = b.angle + (i * (2 * Math.PI / arms));
-                // --- CHANGE: Add the boss itself as the 'caster' to prevent self-damage ---
                 state.effects.push({ type: 'nova_bullet', caster: b, x: b.x, y: b.y, r: 5, dx: Math.cos(angle) * speed, dy: Math.sin(angle) * speed, color: '#e74c3c' });
             }
             b.angle += 0.2;
