@@ -1063,9 +1063,10 @@ export const bossData = [{
 }, {
     id: "fractal_horror",
     name: "The Fractal Horror",
-    color: "#1abc9c",
+    color: "#be2edd", // TUNED
     maxHP: 15000, // TUNED
     hasCustomMovement: true,
+    hasCustomDraw: true, // ADDED FOR GLOW EFFECT
     init: (b, state) => {
         if (state.fractalHorrorSharedHp === undefined) {
             state.fractalHorrorSharedHp = b.maxHP;
@@ -1124,9 +1125,8 @@ export const bossData = [{
             const targetX = state.player.x + surroundRadius * Math.cos(targetAngle);
             const targetY = state.player.y + surroundRadius * Math.sin(targetAngle);
             
-            // TUNED
-            b.x += (targetX - b.x) * 0.01;
-            b.y += (targetY - b.y) * 0.01;
+            b.x += (targetX - b.x) * 0.01; // TUNED
+            b.y += (targetY - b.y) * 0.01; // TUNED
 
             if (Date.now() > b.aiTimer) {
                 b.aiState = 'attacking';
@@ -1152,6 +1152,14 @@ export const bossData = [{
                 b.aiTimer = Date.now() + 3000; // Cooldown before repositioning
             }
         }
+        
+        // --- VISIBILITY ENHANCEMENT ---
+        const alpha = 0.6 + Math.sin(Date.now() / 300) * 0.4;
+        ctx.fillStyle = `rgba(190, 46, 221, ${alpha * 0.5})`; // Glow color ( Magenta )
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r + 4, 0, 2 * Math.PI);
+        ctx.fill();
+        utils.drawCircle(ctx, b.x, b.y, b.r, b.color); // Draw main body
     },
     onDamage: (b, dmg, source, state) => {
         // This function now ONLY reduces the shared health pool.
