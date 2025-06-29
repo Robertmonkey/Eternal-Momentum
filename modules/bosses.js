@@ -1065,69 +1065,87 @@ export const bossData = [{
     name: "The Fractal Horror",
     color: "#1abc9c",
     maxHP: 50000,
+    hasCustomMovement: true, // --- FIX: Enable custom AI ---
     init: (b, state) => {
-        // --- FIX: Logic to handle shared health and generation ---
-        if (!state.fractalHorrorSharedHp) {
+        // --- FIX: Initialize the shared health pool on the game state object ---
+        if (state.fractalHorrorSharedHp === undefined) {
             state.fractalHorrorSharedHp = b.maxHP;
         }
+        // Initialize properties for this fragment
         b.r = b.r || 156;
         b.generation = b.generation || 1;
-        b.hp = state.fractalHorrorSharedHp;
-        b.lastSplit = Date.now();
     },
     logic: (b, ctx, state, utils, gameHelpers) => {
+        // --- FIX: Sync local hp with shared pool and handle death ---
         if (state.fractalHorrorSharedHp !== undefined) {
             b.hp = state.fractalHorrorSharedHp;
-        } else {
-             b.hp = 0; // Failsafe if shared health is deleted
+        }
+        if (b.hp <= 0) {
+            // The boss is defeated, this fragment will be removed by the main loop
+            return;
         }
 
-        if (b.hp <= 0) return;
+        // --- FIX: New AI to surround the player ---
+        const allFractals = state.enemies.filter(e => e.id === 'fractal_horror');
+        const myIndex = allFractals.indexOf(b);
+        if (myIndex === -1) return; // Failsafe
 
-        if (Date.now() - b.lastSplit > 4000 && b.r > 8) {
-            b.lastSplit = Date.now();
-            
-            b.hp = 0;
-            gameHelpers.play('fractalSplit');
-            utils.spawnParticles(state.particles, b.x, b.y, b.color, 25, 3, 20);
+        const totalFractals = allFractals.length;
+        const targetAngle = (myIndex / totalFractals) * 2 * Math.PI;
+        const surroundRadius = 150 + totalFractals * 10; // Ring expands as more fragments spawn
 
-            const newRadius = b.r / Math.SQRT2;
-            const children = [];
-            for (let i = 0; i < 2; i++) {
-                const angle = Math.random() * 2 * Math.PI;
-                const child = gameHelpers.spawnEnemy(true, 'fractal_horror', { 
-                    x: b.x + Math.cos(angle) * b.r * 0.25, 
-                    y: b.y + Math.sin(angle) * b.r * 0.25 
-                });
-                if (child) {
-                    child.r = newRadius;
-                    child.generation = b.generation + 1;
-                    children.push(child);
-                }
-            }
-            if (children.length === 2) {
-                const [c1, c2] = children;
-                const dist = Math.hypot(c1.x - c2.x, c1.y - c2.y);
-                const min_dist = c1.r + c2.r;
-                if (dist < min_dist) {
-                    const overlap = min_dist - dist;
-                    const angle = Math.atan2(c2.y - c1.y, c2.x - c1.x);
-                    c1.x -= Math.cos(angle) * overlap / 2;
-                    c1.y -= Math.sin(angle) * overlap / 2;
-                    c2.x += Math.cos(angle) * overlap / 2;
-                    c2.y += Math.sin(angle) * overlap / 2;
-                }
-            }
-        }
+        const targetX = state.player.x + surroundRadius * Math.cos(targetAngle);
+        const targetY = state.player.y + surroundRadius * Math.sin(targetAngle);
+        
+        // Move towards the calculated position in the ring
+        b.x += (targetX - b.x) * 0.01;
+        b.y += (targetY - b.y) * 0.01;
     },
-    onDamage: (b, dmg, source, state) => {
+    onDamage: (b, dmg, source, state, spawnParticles, play, stopLoopingSfx, gameHelpers) => {
+        // --- FIX: Reworked onDamage to only handle splitting, not health reduction ---
         if (state.fractalHorrorSharedHp !== undefined) {
             state.fractalHorrorSharedHp -= dmg;
         }
+
+        if (b.r < 8) return; // Stop splitting if fragments are too small
+
+        // Mark this fragment for removal and spawn two children
+        b.hp = 0;
+        play('fractalSplit');
+        spawnParticles(state.particles, b.x, b.y, b.color, 25, 3, 20);
+
+        const newRadius = b.r / Math.SQRT2;
+        const children = [];
+        for (let i = 0; i < 2; i++) {
+            const angle = Math.random() * 2 * Math.PI;
+            const child = gameHelpers.spawnEnemy(true, 'fractal_horror', { 
+                x: b.x + Math.cos(angle) * b.r * 0.25, 
+                y: b.y + Math.sin(angle) * b.r * 0.25 
+            });
+            if (child) {
+                child.r = newRadius;
+                child.generation = b.generation + 1;
+                children.push(child);
+            }
+        }
+
+        // Push children apart to avoid overlap
+        if (children.length === 2) {
+            const [c1, c2] = children;
+            const dist = Math.hypot(c1.x - c2.x, c1.y - c2.y);
+            const min_dist = c1.r + c2.r;
+            if (dist < min_dist) {
+                const overlap = min_dist - dist;
+                const angle = Math.atan2(c2.y - c1.y, c2.x - c1.x);
+                c1.x -= Math.cos(angle) * overlap / 2;
+                c1.y -= Math.sin(angle) * overlap / 2;
+                c2.x += Math.cos(angle) * overlap / 2;
+                c2.y += Math.sin(angle) * overlap / 2;
+            }
+        }
     },
     onDeath: (b, state) => {
-        // --- FIX: Remove the faulty onDeath logic causing instant death ---
-        // Cleanup is handled by the last fragment dying naturally
+        // --- FIX: Cleanup the shared health pool when the last fragment is gone ---
         const remaining = state.enemies.filter(e => e.id === 'fractal_horror' && e !== b);
         if (remaining.length === 0) {
             delete state.fractalHorrorSharedHp;
@@ -1161,6 +1179,8 @@ export const bossData = [{
                 conduit.parentObelisk = b;
                 conduit.conduitType = conduitTypes[i].type;
                 conduit.color = conduitTypes[i].color;
+                // --- FIX: Assign symmetrical orbital angle ---
+                conduit.orbitalAngle = angle;
                 b.conduits.push(conduit);
             }
         }
@@ -1209,16 +1229,19 @@ export const bossData = [{
     maxHP: 150,
     hasCustomMovement: true,
     init: (b) => {
-        b.angle = Math.random() * Math.PI * 2;
-        b.distance = 250 + Math.random() * 50;
-        b.conduitType = 'none';
+        b.orbitalAngle = 0; // Will be set by parent
         b.lastExplosion = Date.now();
     },
     logic: (b, ctx, state, utils) => {
         if(b.parentObelisk && b.parentObelisk.hp > 0) {
-            b.angle += 0.01;
-            b.x = b.parentObelisk.x + Math.cos(b.angle) * b.distance;
-            b.y = b.parentObelisk.y + Math.sin(b.angle) * b.distance;
+            // --- FIX: Symmetrical orbit with oscillation ---
+            const rotation = Date.now() / 3000;
+            const baseDistance = 250;
+            const oscillation = Math.sin(Date.now() / 1500) * 100;
+            const dynamicDistance = baseDistance + oscillation;
+
+            b.x = b.parentObelisk.x + Math.cos(b.orbitalAngle + rotation) * dynamicDistance;
+            b.y = b.parentObelisk.y + Math.sin(b.orbitalAngle + rotation) * dynamicDistance;
         } else {
             b.hp = 0;
             return;
