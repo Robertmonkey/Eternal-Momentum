@@ -1065,21 +1065,21 @@ export const bossData = [{
     name: "The Fractal Horror",
     color: "#1abc9c",
     maxHP: 50000,
-    init: (b) => {
-        if (b.generation === undefined) {
-            b.r = 156;
-            b.generation = 1;
-            b.sharedHp = b.maxHP;
+    init: (b, state) => {
+        // --- FIX: Logic to handle shared health and generation ---
+        if (!state.fractalHorrorSharedHp) {
+            state.fractalHorrorSharedHp = b.maxHP;
         }
+        b.r = b.r || 156;
+        b.generation = b.generation || 1;
+        b.hp = state.fractalHorrorSharedHp;
         b.lastSplit = Date.now();
     },
     logic: (b, ctx, state, utils, gameHelpers) => {
-        const mainBoss = state.enemies.find(e => e.id === 'fractal_horror');
-        if (mainBoss) {
-            b.hp = mainBoss.sharedHp;
+        if (state.fractalHorrorSharedHp !== undefined) {
+            b.hp = state.fractalHorrorSharedHp;
         } else {
-             b.hp = 0;
-             return;
+             b.hp = 0; // Failsafe if shared health is deleted
         }
 
         if (b.hp <= 0) return;
@@ -1101,9 +1101,6 @@ export const bossData = [{
                 });
                 if (child) {
                     child.r = newRadius;
-                    child.maxHP = mainBoss.maxHP;
-                    child.sharedHp = mainBoss.sharedHp;
-                    child.hp = mainBoss.sharedHp;
                     child.generation = b.generation + 1;
                     children.push(child);
                 }
@@ -1124,9 +1121,16 @@ export const bossData = [{
         }
     },
     onDamage: (b, dmg, source, state) => {
-        const mainBoss = state.enemies.find(e => e.id === 'fractal_horror');
-        if (mainBoss) {
-            mainBoss.sharedHp -= dmg;
+        if (state.fractalHorrorSharedHp !== undefined) {
+            state.fractalHorrorSharedHp -= dmg;
+        }
+    },
+    onDeath: (b, state) => {
+        // --- FIX: Remove the faulty onDeath logic causing instant death ---
+        // Cleanup is handled by the last fragment dying naturally
+        const remaining = state.enemies.filter(e => e.id === 'fractal_horror' && e !== b);
+        if (remaining.length === 0) {
+            delete state.fractalHorrorSharedHp;
         }
     }
 }, {
