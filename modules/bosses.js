@@ -625,7 +625,7 @@ export const bossData = [{
                 state.effects.push({
                     type: 'annihilator_beam',
                     source: b,
-                    pillar: b.pillar,
+                    pillar: { ...b.pillar },
                     endTime: Date.now() + 1200
                 });
                 b.lastBeam = Date.now();
@@ -1641,19 +1641,40 @@ export const bossData = [{
             }
         });
 
+        // Handle collision with Architect pillars
         if (b.pillars) {
             b.pillars.forEach(pillar => {
-                const dist = Math.hypot(b.x - pillar.x, b.y - pillar.y);
-                if (dist < b.r + pillar.r) {
+                // Player collision
+                const playerDist = Math.hypot(state.player.x - pillar.x, state.player.y - pillar.y);
+                if (playerDist < state.player.r + pillar.r) {
+                    const angle = Math.atan2(state.player.y - pillar.y, state.player.x - pillar.x);
+                    state.player.x = pillar.x + Math.cos(angle) * (state.player.r + pillar.r);
+                    state.player.y = pillar.y + Math.sin(angle) * (state.player.r + pillar.r);
+                }
+
+                // Pantheon boss collision
+                const bossDist = Math.hypot(b.x - pillar.x, b.y - pillar.y);
+                if (bossDist < b.r + pillar.r) {
                     const angle = Math.atan2(b.y - pillar.y, b.x - pillar.x);
                     b.x = pillar.x + Math.cos(angle) * (b.r + pillar.r);
                     b.y = pillar.y + Math.sin(angle) * (b.r + pillar.r);
                 }
             });
         }
+
+        // Handle collision with Annihilator pillar
         if (b.pillar) {
-            const dist = Math.hypot(b.x - b.pillar.x, b.y - b.pillar.y);
-            if (dist < b.r + b.pillar.r) {
+            // Player collision
+            const playerDist = Math.hypot(state.player.x - b.pillar.x, state.player.y - b.pillar.y);
+            if (playerDist < state.player.r + b.pillar.r) {
+                const angle = Math.atan2(state.player.y - b.pillar.y, state.player.x - b.pillar.x);
+                state.player.x = b.pillar.x + Math.cos(angle) * (state.player.r + b.pillar.r);
+                state.player.y = b.pillar.y + Math.sin(angle) * (state.player.r + b.pillar.r);
+            }
+            
+            // Pantheon boss collision
+            const bossDist = Math.hypot(b.x - b.pillar.x, b.y - b.pillar.y);
+            if (bossDist < b.r + b.pillar.r) {
                 const angle = Math.atan2(b.y - b.pillar.y, b.x - b.pillar.x);
                 b.x = b.pillar.x + Math.cos(angle) * (b.r + b.pillar.r);
                 b.y = b.pillar.y + Math.sin(angle) * (b.r + b.pillar.r);
@@ -1661,8 +1682,8 @@ export const bossData = [{
         }
 
         if (!b.activeAspects.has('juggernaut')) {
-             b.dx = (state.player.x - b.x) * 0.001;
-             b.dy = (state.player.y - b.y) * 0.001;
+             b.dx = (state.player.x - b.x) * 0.005;
+             b.dy = (state.player.y - b.y) * 0.005;
              b.x += b.dx;
              b.y += b.dy;
         }
