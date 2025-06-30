@@ -566,23 +566,8 @@ export const bossData = [{
     name: "The Basilisk",
     color: "#00b894",
     maxHP: 384,
-    init: (b, state, spawnEnemy, canvas) => {
+    init: b => {
         b.petrifyZones = [];
-        const w = canvas.width;
-        const h = canvas.height;
-        const centers = [
-            { x: w / 4, y: h / 4 }, { x: w * 3 / 4, y: h / 4 },
-            { x: w / 4, y: h * 3 / 4 }, { x: w * 3 / 4, y: h * 3 / 4 }
-        ];
-        centers.forEach(center => {
-            b.petrifyZones.push({
-                x: center.x,
-                y: center.y,
-                sizeW: 0,
-                sizeH: 0,
-                playerInsideTime: null
-            });
-        });
     },
     logic: (b, ctx, state) => {
         const canvas = ctx.canvas;
