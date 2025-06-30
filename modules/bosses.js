@@ -1,4 +1,6 @@
 // modules/bosses.js
+import { STAGE_CONFIG } from './config.js'; // <-- ADDED THIS LINE TO FIX THE BUG
+
 export const bossData = [{
     id: "splitter",
     name: "Splitter Sentinel",
@@ -1084,7 +1086,6 @@ export const bossData = [{
         }
         if (b.hp <= 0) return;
 
-        // --- POWER-UP INTERACTION FIXES ---
         let isBeingPulled = false;
         for (const effect of state.effects) {
             if (effect.type === 'black_hole') {
@@ -1100,7 +1101,6 @@ export const bossData = [{
         }
         
         const target = state.decoy ? state.decoy : state.player;
-        // --- END OF FIXES ---
 
         const hpPercent = state.fractalHorrorSharedHp / b.maxHP;
         const expectedSplits = Math.floor((1 - hpPercent) / 0.02);
@@ -1130,7 +1130,6 @@ export const bossData = [{
             allFractals = state.enemies.filter(e => e.id === 'fractal_horror');
         }
 
-        // --- AI & MOVEMENT LOGIC ---
         if (!b.frozen && !isBeingPulled) {
             if (b.aiState === 'positioning') {
                 const myIndex = allFractals.indexOf(b);
@@ -1172,7 +1171,6 @@ export const bossData = [{
             }
         }
         
-        // --- DRAWING LOGIC ---
         const alpha = 0.6 + Math.sin(Date.now() / 300) * 0.4;
         ctx.fillStyle = `rgba(190, 46, 221, ${alpha * 0.5})`;
         ctx.beginPath();
@@ -1181,7 +1179,7 @@ export const bossData = [{
         utils.drawCircle(ctx, b.x, b.y, b.r, b.color);
 
         if (b.frozen) {
-            ctx.fillStyle = "rgba(173, 216, 230, 0.4)"; // lightblue with transparency
+            ctx.fillStyle = "rgba(173, 216, 230, 0.4)";
             ctx.beginPath();
             ctx.arc(b.x, b.y, b.r, 0, 2 * Math.PI);
             ctx.fill();
@@ -1592,7 +1590,6 @@ export const bossData = [{
 
         const blacklist = new Set(['aethel_and_umbra', 'sentinel_pair', 'fractal_horror', 'pantheon', 'shaper_of_fate', 'obelisk_conduit']);
 
-        const stageConfig = STAGE_CONFIG;
         b.aspectPools = {
             primary: ['juggernaut', 'annihilator', 'syphon', 'centurion'],
             ambient: ['swarm', 'basilisk', 'architect', 'glitch'],
