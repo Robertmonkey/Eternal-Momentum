@@ -1629,7 +1629,8 @@ export const bossData = [{
         b.activeAspects.forEach((aspectState, aspectId) => {
             if (now > aspectState.endTime) {
                 if (b.getAspectData(aspectId)?.onDeath) {
-                    b.getAspectData(aspectId).onDeath(b, state, null, null, null, gameHelpers.stopLoopingSfx);
+                    const spawnParticlesCallback = (x, y, c, n, spd, life, r) => utils.spawnParticles(state.particles, x, y, c, n, spd, life, r);
+                    b.getAspectData(aspectId).onDeath(b, state, gameHelpers.spawnEnemy, spawnParticlesCallback, gameHelpers.play, gameHelpers.stopLoopingSfx);
                 }
                 b.activeAspects.delete(aspectId);
             } else {
