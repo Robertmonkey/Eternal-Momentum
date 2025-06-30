@@ -1,6 +1,6 @@
 // modules/bosses.js
 import { STAGE_CONFIG } from './config.js';
-import * as utils from './utils.js'; // <-- ADDED THIS LINE TO FIX THE BUG
+import * as utils from './utils.js';
 
 export const bossData = [{
     id: "splitter",
@@ -1199,381 +1199,6 @@ export const bossData = [{
         }
     }
 }, {
-    id: "obelisk",
-    name: "The Obelisk",
-    color: "#2c3e50",
-    maxHP: 800,
-    hasCustomDraw: true,
-    hasCustomMovement: true,
-    init: (b, state, spawnEnemy, canvas) => {
-        b.x = canvas.width / 2;
-        b.y = canvas.height / 2;
-        b.invulnerable = true;
-        b.conduits = [];
-        b.beamAngle = 0;
-        b.isFiringBeam = false;
-        b.beamColors = ['#f1c40f', '#9b59b6', '#e74c3c'];
-        
-        const conduitTypes = [
-            { type: 'lightning', color: '#f1c40f' },
-            { type: 'gravity', color: '#9b59b6' },
-            { type: 'explosion', color: '#e74c3c' }
-        ];
-
-        for (let i = 0; i < 3; i++) {
-            const angle = (i / 3) * 2 * Math.PI;
-            const conduit = spawnEnemy(true, 'obelisk_conduit', {x: b.x + Math.cos(angle) * 250, y: b.y + Math.sin(angle) * 250});
-            if (conduit) {
-                conduit.parentObelisk = b;
-                conduit.conduitType = conduitTypes[i].type;
-                conduit.color = conduitTypes[i].color;
-                conduit.orbitalAngle = angle;
-                conduit.r = 30;
-                b.conduits.push(conduit);
-            }
-        }
-    },
-    logic: (b, ctx, state, utils, gameHelpers) => {
-        b.dx = 0; b.dy = 0;
-
-        const height = b.r * 2.5;
-        const topWidth = b.r * 0.2;
-        const baseWidth = b.r * 0.8;
-        const pyramidHeight = b.r * 0.4;
-        const topY = b.y - height / 2;
-        const topCenter = { x: b.x, y: topY + pyramidHeight/2 };
-
-        ctx.fillStyle = b.invulnerable ? b.color : '#ecf0f1';
-        ctx.beginPath();
-        ctx.moveTo(b.x - baseWidth/2, b.y + height/2);
-        ctx.lineTo(b.x + baseWidth/2, b.y + height/2);
-        ctx.lineTo(b.x + topWidth/2, topY + pyramidHeight);
-        ctx.lineTo(b.x - topWidth/2, topY + pyramidHeight);
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.moveTo(b.x, topY);
-        ctx.lineTo(b.x + topWidth/2, topY + pyramidHeight);
-        ctx.lineTo(b.x - topWidth/2, topY + pyramidHeight);
-        ctx.closePath();
-        ctx.fill();
-        
-        if (b.invulnerable) {
-            gameHelpers.playLooping('obeliskHum');
-            const livingConduits = state.enemies.filter(e => e.id === 'obelisk_conduit' && e.parentObelisk === b);
-            livingConduits.forEach(conduit => {
-                utils.drawLightning(ctx, topCenter.x, topCenter.y, conduit.x, conduit.y, conduit.color, 3);
-            });
-        } else {
-            gameHelpers.stopLoopingSfx('obeliskHum');
-            b.isFiringBeam = true;
-            b.beamAngle += 0.005;
-            
-            const beamLength = Math.hypot(ctx.canvas.width, ctx.canvas.height);
-            const beamEndX = topCenter.x + Math.cos(b.beamAngle) * beamLength;
-            const beamEndY = topCenter.y + Math.sin(b.beamAngle) * beamLength;
-            const beamColor = b.beamColors[Math.floor(Math.random() * b.beamColors.length)];
-
-            utils.drawLightning(ctx, topCenter.x, topCenter.y, beamEndX, beamEndY, beamColor, 10);
-        }
-    },
-    onDamage: (b, dmg) => { 
-        if (b.invulnerable) {
-            b.hp += dmg; 
-        } else {
-            b.hp -= dmg * 9;
-        }
-    },
-    onDeath: (b, state, spawnEnemy, spawnParticles, play, stopLoopingSfx) => {
-        stopLoopingSfx('obeliskHum');
-        b.conduits.forEach(c => { if(c) c.hp = 0; });
-    }
-}, {
-    id: "obelisk_conduit",
-    name: "Obelisk Conduit",
-    color: "#8e44ad",
-    maxHP: 150,
-    hasCustomMovement: true,
-    init: (b) => {
-        b.orbitalAngle = 0;
-        b.lastExplosion = Date.now();
-    },
-    logic: (b, ctx, state, utils, gameHelpers) => {
-        if(b.parentObelisk && b.parentObelisk.hp > 0) {
-            const rotation = Date.now() / 3000;
-            const baseDistance = 300;
-            const oscillation = Math.sin(Date.now() / 800) * 150;
-            const dynamicDistance = baseDistance + oscillation;
-
-            b.x = b.parentObelisk.x + Math.cos(b.orbitalAngle + rotation) * dynamicDistance;
-            b.y = b.parentObelisk.y + Math.sin(b.orbitalAngle + rotation) * dynamicDistance;
-        } else {
-            b.hp = 0;
-            return;
-        }
-        
-        switch (b.conduitType) {
-            case 'lightning':
-                for(let i = 0; i < 5; i++) {
-                    const angle = Math.random() * Math.PI * 2;
-                    const endX = b.x + Math.cos(angle) * 250;
-                    const endY = b.y + Math.sin(angle) * 250;
-                    utils.drawLightning(ctx, b.x, b.y, endX, endY, `rgba(241, 196, 15, 0.5)`, 2);
-                }
-                break;
-            case 'gravity':
-                for (let i = 1; i <= 3; i++) {
-                    const pulse = (Date.now() / 500 + i) % 1;
-                    ctx.strokeStyle = `rgba(155, 89, 182, ${1 - pulse})`;
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.arc(b.x, b.y, 250 * pulse, 0, 2 * Math.PI);
-                    ctx.stroke();
-                }
-                break;
-            case 'explosion':
-                if (Date.now() - b.lastExplosion > 5000) {
-                    b.lastExplosion = Date.now();
-                    utils.spawnParticles(state.particles, b.x, b.y, b.color, 100, 8, 50, 5);
-                    utils.triggerScreenShake(200, 10);
-                    state.effects.push({ type: 'shockwave', caster: b, x: b.x, y: b.y, radius: 0, maxRadius: 150, speed: 400, startTime: Date.now(), hitEnemies: new Set(), damage: 25, color: 'rgba(231, 76, 60, 0.7)' });
-                }
-                const timeToExplosion = 5000 - (Date.now() - b.lastExplosion);
-                if (timeToExplosion < 1000) {
-                    const progress = 1 - (timeToExplosion / 1000);
-                    ctx.fillStyle = `rgba(231, 76, 60, ${progress * 0.5})`;
-                    ctx.beginPath();
-                    ctx.arc(b.x, b.y, 150 * progress, 0, 2 * Math.PI);
-                    ctx.fill();
-                }
-                break;
-        }
-    },
-    onDeath: (b, state, sE, sP, play) => {
-        play('conduitShatter');
-        if (b.parentObelisk) {
-            const remainingConduits = state.enemies.filter(e => e.id === 'obelisk_conduit' && e.hp > 0 && e.parentObelisk === b.parentObelisk);
-            if (remainingConduits.length === 0) {
-                b.parentObelisk.invulnerable = false;
-            }
-        }
-    }
-}, {
-    id: "helix_weaver",
-    name: "The Helix Weaver",
-    color: "#e74c3c",
-    maxHP: 500,
-    hasCustomMovement: true,
-    init: (b, state, spawnEnemy, canvas) => {
-        b.x = canvas.width / 2;
-        b.y = canvas.height / 2;
-        b.angle = 0;
-        b.lastShot = 0;
-        b.activeArms = 1;
-    },
-    logic: (b, ctx, state, utils) => {
-        b.dx = 0; b.dy = 0;
-        if (Date.now() - b.lastShot > 100) {
-            b.lastShot = Date.now();
-            const speed = 4;
-            const totalArms = 4;
-            for (let i = 0; i < totalArms; i++) {
-                if (i < b.activeArms) {
-                    const angle = b.angle + (i * (2 * Math.PI / totalArms));
-                    state.effects.push({ type: 'nova_bullet', caster: b, x: b.x, y: b.y, r: 5, dx: Math.cos(angle) * speed, dy: Math.sin(angle) * speed, color: '#e74c3c', damage: 13 });
-                }
-            }
-            b.angle += 0.2;
-        }
-    },
-    onDamage: (b, dmg, source, state, spawnParticles, play) => {
-        const hpPercent = b.hp / b.maxHP;
-        const oldArms = b.activeArms;
-
-        if (hpPercent < 0.8 && b.activeArms < 2) {
-            b.activeArms = 2;
-        } else if (hpPercent < 0.6 && b.activeArms < 3) {
-            b.activeArms = 3;
-        } else if (hpPercent < 0.4 && b.activeArms < 4) {
-            b.activeArms = 4;
-        }
-        if (b.activeArms > oldArms) {
-            play('weaverCast');
-        }
-    }
-}, {
-    id: "epoch_ender",
-    name: "The Epoch-Ender",
-    color: "#bdc3c7",
-    maxHP: 550,
-    init: (b) => {
-        b.lastDilation = Date.now();
-        b.damageWindow = 0;
-        b.lastKnownState = { x: b.x, y: b.y, hp: b.hp };
-        b.dilationFieldEffect = null;
-    },
-    logic: (b, ctx, state, utils, gameHelpers) => {
-        const angleToPlayer = Math.atan2(state.player.y - b.y, state.player.x - b.x);
-        const fieldAngle = angleToPlayer + Math.PI;
-
-        if (!b.dilationFieldEffect || !state.effects.includes(b.dilationFieldEffect)) {
-             const field = {
-                type: 'dilation_field',
-                source: b,
-                x: b.x,
-                y: b.y,
-                r: 300,
-                shape: 'horseshoe',
-                angle: fieldAngle,
-                endTime: Infinity
-            };
-            state.effects.push(field);
-            b.dilationFieldEffect = field;
-        } else {
-            b.dilationFieldEffect.x = b.x;
-            b.dilationFieldEffect.y = b.y;
-            b.dilationFieldEffect.angle = fieldAngle;
-        }
-
-        const playerDist = Math.hypot(state.player.x - b.x, state.player.y - b.y);
-        if (playerDist < 300) {
-            let playerAngle = Math.atan2(state.player.y - b.y, state.player.x - b.x);
-            let targetAngle = b.dilationFieldEffect.angle;
-            let diff = Math.atan2(Math.sin(playerAngle - targetAngle), Math.cos(playerAngle - targetAngle));
-            
-            if (Math.abs(diff) > (Math.PI / 4)) {
-                 if (!state.player.statusEffects.some(e => e.name === 'Epoch-Slow')) {
-                     gameHelpers.addStatusEffect('Epoch-Slow', '🐌', 500);
-                 }
-            }
-        }
-    },
-    onDamage: (b, dmg, source, state, sP, play) => {
-        const now = Date.now();
-        if (!b.rewindCooldownUntil || now > b.rewindCooldownUntil) {
-            b.damageWindow += dmg;
-            if (b.damageWindow > 100) {
-                play('timeRewind');
-                b.hp = b.lastKnownState.hp;
-                b.x = b.lastKnownState.x;
-                b.y = b.lastKnownState.y;
-                b.rewindCooldownUntil = now + 15000;
-                b.damageWindow = 0;
-            }
-        }
-        if (!b.lastStateUpdate || now > b.lastStateUpdate + 2000) {
-            b.lastStateUpdate = now;
-            b.lastKnownState = { x: b.x, y: b.y, hp: b.hp };
-        }
-    },
-    onDeath: (b, state) => {
-        state.effects = state.effects.filter(e => e !== b.dilationFieldEffect);
-        b.dilationFieldEffect = null;
-    }
-}, {
-    id: "shaper_of_fate",
-    name: "The Shaper of Fate",
-    color: "#f1c40f",
-    maxHP: 600,
-    init: (b) => {
-        b.phase = 'idle';
-        b.phaseTimer = Date.now() + 3000;
-        b.activeRunes = [];
-        b.chosenAttack = null;
-    },
-    logic: (b, ctx, state, utils, gameHelpers) => {
-        const now = Date.now();
-
-        if (b.phase === 'idle' && now > b.phaseTimer) {
-            b.phase = 'prophecy';
-            gameHelpers.play('shaperAppear');
-            
-            const runeTypes = ['nova', 'shockwave', 'lasers', 'heal', 'speed_buff'];
-            const shuffledRunes = runeTypes.sort(() => Math.random() - 0.5);
-            
-            const margin = 150;
-            const positions = [
-                { x: utils.randomInRange(margin, ctx.canvas.width / 3), y: utils.randomInRange(margin, ctx.canvas.height - margin) },
-                { x: utils.randomInRange(ctx.canvas.width / 3, ctx.canvas.width * 2 / 3), y: utils.randomInRange(margin, ctx.canvas.height - margin)},
-                { x: utils.randomInRange(ctx.canvas.width * 2 / 3, ctx.canvas.width - margin), y: utils.randomInRange(margin, ctx.canvas.height - margin) }
-            ].sort(() => Math.random() - 0.5);
-
-            for (let i = 0; i < 3; i++) {
-                const rune = {
-                    type: 'shaper_rune',
-                    runeType: shuffledRunes[i],
-                    x: positions[i].x,
-                    y: positions[i].y,
-                    r: 60,
-                    endTime: now + 4000,
-                    sourceBoss: b
-                };
-                state.effects.push(rune);
-                b.activeRunes.push(rune);
-            }
-            b.phaseTimer = now + 4000;
-        }
-        
-        else if (b.phase === 'prophecy' && now > b.phaseTimer) {
-            b.phase = 'fulfillment';
-            
-            let closestRune = null;
-            let minPlayerDist = Infinity;
-            
-            b.activeRunes.forEach(rune => {
-                const dist = Math.hypot(state.player.x - rune.x, state.player.y - rune.y);
-                if (dist < minPlayerDist) {
-                    minPlayerDist = dist;
-                    closestRune = rune;
-                }
-            });
-            
-            b.chosenAttack = closestRune ? closestRune.runeType : 'shockwave';
-            
-            const runesToRemove = new Set(b.activeRunes);
-            state.effects = state.effects.filter(e => !runesToRemove.has(e));
-            b.activeRunes = [];
-
-            b.phaseTimer = now + 3000;
-            
-            switch (b.chosenAttack) {
-                case 'nova':
-                    state.effects.push({ type: 'nova_controller', startTime: now, duration: 2500, lastShot: 0, angle: Math.random() * Math.PI * 2, caster: b, color: b.color, r: 8, damage: 25 });
-                    break;
-                case 'shockwave':
-                     state.effects.push({ type: 'shockwave', caster: b, x: b.x, y: b.y, radius: 0, maxRadius: Math.max(ctx.canvas.width, ctx.canvas.height), speed: 1000, startTime: now, hitEnemies: new Set(), damage: 90, color: 'rgba(241, 196, 15, 0.7)' });
-                    break;
-                case 'lasers':
-                    for(let i = 0; i < 5; i++) {
-                        setTimeout(() => {
-                           if (b.hp > 0) state.effects.push({ type: 'orbital_target', x: state.player.x, y: state.player.y, startTime: Date.now(), caster: b, damage: 45, radius: 100, color: 'rgba(241, 196, 15, 0.8)' });
-                        }, i * 400);
-                    }
-                    break;
-                case 'heal':
-                    b.hp = Math.min(b.maxHP, b.hp + b.maxHP * 0.1);
-                    utils.spawnParticles(state.particles, b.x, b.y, '#2ecc71', 50, 4, 30);
-                    break;
-                case 'speed_buff':
-                    b.dx *= 2;
-                    b.dy *= 2;
-                    setTimeout(() => { b.dx /= 2; b.dy /= 2; }, 5000);
-                    utils.spawnParticles(state.particles, b.x, b.y, '#3498db', 50, 4, 30);
-                    break;
-            }
-            gameHelpers.play('shaperAttune');
-        }
-
-        else if (b.phase === 'fulfillment' && now > b.phaseTimer) {
-            b.phase = 'idle';
-            b.phaseTimer = now + 5000;
-        }
-    },
-    onDeath: (b, state) => {
-        state.effects = state.effects.filter(e => e.type !== 'shaper_rune' || e.sourceBoss !== b);
-    }
-}, {
     id: "pantheon",
     name: "The Pantheon",
     color: "#ecf0f1",
@@ -1618,7 +1243,7 @@ export const bossData = [{
                     b.activeAspects.set(aspectId, {
                         id: aspectId,
                         type: poolToUse,
-                        endTime: now + (poolToUse === 'primary' ? 12000 : 15000),
+                        endTime: now + (poolToUse === 'primary' ? 16000 : 15000),
                     });
                     gameHelpers.play('pantheonSummon');
                 }
@@ -1640,9 +1265,28 @@ export const bossData = [{
             }
         });
 
-        if (!Array.from(b.activeAspects.keys()).includes('juggernaut')) {
-             b.dx = (state.player.x - b.x) * 0.0005;
-             b.dy = (state.player.y - b.y) * 0.0005;
+        if (b.pillars) {
+            b.pillars.forEach(pillar => {
+                const dist = Math.hypot(b.x - pillar.x, b.y - pillar.y);
+                if (dist < b.r + pillar.r) {
+                    const angle = Math.atan2(b.y - pillar.y, b.x - pillar.x);
+                    b.x = pillar.x + Math.cos(angle) * (b.r + pillar.r);
+                    b.y = pillar.y + Math.sin(angle) * (b.r + pillar.r);
+                }
+            });
+        }
+        if (b.pillar) {
+            const dist = Math.hypot(b.x - b.pillar.x, b.y - b.pillar.y);
+            if (dist < b.r + b.pillar.r) {
+                const angle = Math.atan2(b.y - b.pillar.y, b.x - b.pillar.x);
+                b.x = b.pillar.x + Math.cos(angle) * (b.r + b.pillar.r);
+                b.y = b.pillar.y + Math.sin(angle) * (b.r + b.pillar.r);
+            }
+        }
+
+        if (!b.activeAspects.has('juggernaut')) {
+             b.dx = (state.player.x - b.x) * 0.001;
+             b.dy = (state.player.y - b.y) * 0.001;
              b.x += b.dx;
              b.y += b.dy;
         }
