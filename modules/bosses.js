@@ -1,5 +1,5 @@
 // modules/bosses.js
-import { STAGE_CONFIG } from './config.js'; // <-- ADDED THIS LINE TO FIX THE BUG
+import { STAGE_CONFIG } from './config.js'; // <-- THIS IS THE MISSING LINE THAT FIXES THE CRASH
 
 export const bossData = [{
     id: "splitter",
@@ -1590,6 +1590,7 @@ export const bossData = [{
 
         const blacklist = new Set(['aethel_and_umbra', 'sentinel_pair', 'fractal_horror', 'pantheon', 'shaper_of_fate', 'obelisk_conduit']);
 
+        const stageConfig = STAGE_CONFIG;
         b.aspectPools = {
             primary: ['juggernaut', 'annihilator', 'syphon', 'centurion'],
             ambient: ['swarm', 'basilisk', 'architect', 'glitch'],
