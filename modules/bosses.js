@@ -1100,6 +1100,7 @@ export const bossData = [{
         }
         
         const target = state.decoy ? state.decoy : state.player;
+        // --- END OF FIXES ---
 
         const hpPercent = state.fractalHorrorSharedHp / b.maxHP;
         const expectedSplits = Math.floor((1 - hpPercent) / 0.02);
@@ -1335,7 +1336,6 @@ export const bossData = [{
             case 'explosion':
                 if (Date.now() - b.lastExplosion > 5000) {
                     b.lastExplosion = Date.now();
-                    // --- FIX: Add particle burst and screen shake for impact ---
                     utils.spawnParticles(state.particles, b.x, b.y, b.color, 100, 8, 50, 5);
                     utils.triggerScreenShake(200, 10);
                     state.effects.push({ type: 'shockwave', caster: b, x: b.x, y: b.y, radius: 0, maxRadius: 150, speed: 400, startTime: Date.now(), hitEnemies: new Set(), damage: 25, color: 'rgba(231, 76, 60, 0.7)' });
@@ -1580,138 +1580,127 @@ export const bossData = [{
     color: "#ecf0f1",
     maxHP: 1000,
     hasCustomMovement: true,
+    hasCustomDraw: true,
     init: (b, state, spawnEnemy, canvas) => {
         b.x = canvas.width / 2;
         b.y = canvas.height / 2;
         b.phase = 1;
-        b.aspects = [];
-        b.aspectInfo = {};
+        b.actionCooldown = 8000;
+        b.nextActionTime = Date.now() + 3000;
         
-        const blacklist = new Set(['aethel_and_umbra', 'sentinel_pair', 'annihilator', 'obelisk', 'fractal_horror', 'pantheon', 'shaper_of_fate', 'obelisk_conduit', 'miasma', 'basilisk']);
+        b.activeAspects = new Map();
 
-        b.bossPools = {
-            tier1: bossData.filter(boss => boss.maxHP < 280 && !blacklist.has(boss.id)).map(boss => boss.id),
-            tier2: bossData.filter(boss => boss.maxHP >= 280 && boss.maxHP < 420 && !blacklist.has(boss.id)).map(boss => boss.id),
-            tier3: bossData.filter(boss => boss.maxHP >= 420 && !blacklist.has(boss.id)).map(boss => boss.id),
-        };
+        const blacklist = new Set(['aethel_and_umbra', 'sentinel_pair', 'fractal_horror', 'pantheon', 'shaper_of_fate', 'obelisk_conduit']);
 
-        b.selectNewAspects = (state, gameHelpers) => {
-            b.aspects = [];
-            b.aspectInfo = {};
-            const getUniqueAspect = (tier) => {
-                if(tier.length === 0) return;
-                let aspectId;
-                do {
-                    aspectId = tier[Math.floor(Math.random() * tier.length)];
-                } while (b.aspects.includes(aspectId));
-                b.aspects.push(aspectId);
-            };
-
-            getUniqueAspect(b.bossPools.tier1);
-            getUniqueAspect(b.bossPools.tier1);
-            getUniqueAspect(b.bossPools.tier2);
-            getUniqueAspect(b.bossPools.tier3);
-            
-            if (gameHelpers) gameHelpers.play('pantheonSummon');
-            
-            b.aspects.forEach(id => {
-                b.aspectInfo[id] = { lastUsed: Date.now() + Math.random() * 5000, isCharging: false, chargeDx: 0, chargeDy: 0 };
-            });
+        const stageConfig = STAGE_CONFIG;
+        b.aspectPools = {
+            primary: ['juggernaut', 'annihilator', 'syphon', 'centurion'],
+            ambient: ['swarm', 'basilisk', 'architect', 'glitch'],
+            projectile: ['helix_weaver', 'emp', 'puppeteer', 'vampire', 'looper', 'mirror'],
         };
         
-        b.selectNewAspects(state, null);
+        b.getAspectData = (aspectId) => bossData.find(boss => boss.id === aspectId);
     },
     logic: (b, ctx, state, utils, gameHelpers) => {
-        const infoFor = (id) => b.aspectInfo[id];
-        const isCharging = b.aspects.some(id => infoFor(id) && infoFor(id).isCharging);
-
-        if (!isCharging) {
-            b.dx = (state.player.x - b.x) * 0.0005;
-            b.dy = (state.player.y - b.y) * 0.0005;
-        } else {
-            b.dx = 0;
-            b.dy = 0;
-        }
-        b.x += b.dx;
-        b.y += b.dy;
-
-        b.aspects.forEach((id, i) => {
-            const aspectData = bossData.find(boss => boss.id === id);
-            if (aspectData) {
-                const angle = (Date.now() / 2000) + (i * (2 * Math.PI / b.aspects.length));
-                const orbX = b.x + Math.cos(angle) * (b.r * 0.6);
-                const orbY = b.y + Math.sin(angle) * (b.r * 0.6);
-                utils.drawCircle(ctx, orbX, orbY, 15, aspectData.color);
-            }
-        });
-        
         const now = Date.now();
-        b.aspects.forEach(id => {
-            const info = infoFor(id);
-            if (!info) return;
 
-            switch(id) {
-                case 'juggernaut':
-                    if (now > info.lastUsed + 8000 && !info.isCharging) {
-                        info.isCharging = true;
-                        gameHelpers.play('chargeUpSound');
-                        setTimeout(() => {
-                            if (b.hp <= 0) return;
-                            const angle = Math.atan2(state.player.y - b.y, state.player.x - b.x);
-                            info.chargeDx = Math.cos(angle) * 15;
-                            info.chargeDy = Math.sin(angle) * 15;
-                            gameHelpers.play('chargeDashSound');
-                            setTimeout(() => { info.isCharging = false; info.chargeDx = 0; info.chargeDy = 0; info.lastUsed = now; }, 500);
-                        }, 1000);
+        if (now > b.nextActionTime && b.activeAspects.size < 3) {
+            let availablePools = ['primary', 'ambient', 'projectile'].filter(p => !Array.from(b.activeAspects.values()).some(asp => asp.type === p));
+            
+            if (availablePools.length > 0) {
+                const poolToUse = availablePools[Math.floor(Math.random() * availablePools.length)];
+                const aspectId = b.aspectPools[poolToUse][Math.floor(Math.random() * b.aspectPools[poolToUse].length)];
+                
+                const aspectData = b.getAspectData(aspectId);
+                if (aspectData) {
+                    if (aspectData.init) {
+                        aspectData.init(b, state, gameHelpers.spawnEnemy, ctx.canvas);
                     }
-                    if(info.isCharging && info.chargeDx) {
-                        b.x += info.chargeDx;
-                        b.y += info.chargeDy;
-                    }
-                    break;
-                case 'vampire':
-                    if (now > info.lastUsed + 7000) {
-                        info.lastUsed = now;
-                        b.hp = Math.min(b.maxHP, b.hp + 25);
-                        utils.spawnParticles(state.particles, b.x, b.y, '#800020', 20, 1, 40);
-                        gameHelpers.play('vampireHeal');
-                    }
-                    break;
-                case 'looper':
-                    if (now > info.lastUsed + 5000) {
-                        info.lastUsed = now;
-                        gameHelpers.play('mirrorSwap');
-                        utils.spawnParticles(state.particles, b.x, b.y, b.color, 30, 4, 20);
-                        b.x = utils.randomInRange(b.r, ctx.canvas.width - b.r);
-                        b.y = utils.randomInRange(b.r, ctx.canvas.height - b.r);
-                        utils.spawnParticles(state.particles, b.x, b.y, '#fff', 30, 4, 20);
-                    }
-                    break;
-                case 'helix_weaver':
-                    if (now > info.lastUsed + 6000) {
-                        info.lastUsed = now;
-                        gameHelpers.play('weaverCast');
-                        state.effects.push({ type: 'nova_controller', startTime: now, duration: 1500, lastShot: 0, angle: Math.random() * Math.PI * 2, caster: b, color: '#e74c3c', r: 5, damage: 10 });
-                    }
-                    break;
+                    b.activeAspects.set(aspectId, {
+                        id: aspectId,
+                        type: poolToUse,
+                        endTime: now + (poolToUse === 'primary' ? 12000 : 15000),
+                    });
+                    gameHelpers.play('pantheonSummon');
+                }
+            }
+            b.nextActionTime = now + b.actionCooldown;
+        }
+
+        b.activeAspects.forEach((aspectState, aspectId) => {
+            if (now > aspectState.endTime) {
+                if (b.getAspectData(aspectId)?.onDeath) {
+                    b.getAspectData(aspectId).onDeath(b, state, null, null, null, gameHelpers.stopLoopingSfx);
+                }
+                b.activeAspects.delete(aspectId);
+            } else {
+                const aspectData = b.getAspectData(aspectId);
+                if (aspectData?.logic) {
+                    aspectData.logic(b, ctx, state, utils, gameHelpers);
+                }
             }
         });
+
+        if (!Array.from(b.activeAspects.keys()).includes('juggernaut')) {
+             b.dx = (state.player.x - b.x) * 0.0005;
+             b.dy = (state.player.y - b.y) * 0.0005;
+             b.x += b.dx;
+             b.y += b.dy;
+        }
+
+        ctx.globalAlpha = 0.2;
+        b.activeAspects.forEach((aspectState, aspectId) => {
+            const aspectData = b.getAspectData(aspectId);
+            if (aspectData) {
+                ctx.fillStyle = aspectData.color;
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, b.r + Math.random() * 30, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+        });
+        ctx.globalAlpha = 1.0;
+
+        const angle = (now / 2000) % (2 * Math.PI);
+        const gradient = ctx.createConicGradient(angle, b.x, b.y);
+        const colors = ['#ff0000', '#ff8800', '#ffff00', '#00ff00', '#00ffff', '#0000ff', '#ff00ff'];
+        colors.forEach((color, i) => {
+            gradient.addColorStop(i / colors.length, color);
+        });
+        gradient.addColorStop(1, colors[0]);
+        
+        utils.drawCircle(ctx, b.x, b.y, b.r, gradient);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r, 0, 2 * Math.PI);
+        ctx.fill();
 
     },
     onDamage: (b, dmg, source, state, sP, play, stopLoopingSfx, gameHelpers) => { 
+        if (b.invulnerable) return;
+        b.hp -= dmg;
+
         const hpPercent = b.hp / b.maxHP;
-        let didPhaseChange = false;
-        if (hpPercent < 0.7 && b.phase === 1) {
-            b.phase = 2;
-            didPhaseChange = true;
-        } else if (hpPercent < 0.4 && b.phase === 2) {
-            b.phase = 3;
-            didPhaseChange = true;
-        }
         
-        if (didPhaseChange) {
-            b.selectNewAspects(state, gameHelpers);
+        if ((hpPercent < 0.67 && b.phase === 1) || (hpPercent < 0.34 && b.phase === 2)) {
+            b.phase++;
+            b.actionCooldown *= 0.75;
+            b.invulnerable = true;
+            utils.spawnParticles(state.particles, b.x, b.y, '#fff', 150, 8, 50);
+            state.effects.push({ type: 'shockwave', caster: b, x: b.x, y: b.y, radius: 0, maxRadius: 1200, speed: 1000, startTime: Date.now(), hitEnemies: new Set(), damage: 50, color: 'rgba(255, 255, 255, 0.7)' });
+            setTimeout(() => b.invulnerable = false, 2000);
         }
+    },
+    onDeath: (b, state, spawnEnemy, spawnParticles, play, stopLoopingSfx) => {
+        b.activeAspects.forEach((aspectState, aspectId) => {
+            if (b.getAspectData(aspectId)?.onDeath) {
+                b.getAspectData(aspectId).onDeath(b, state, null, null, null, stopLoopingSfx);
+            }
+        });
+        delete b.pillar;
+        delete b.pillars;
+        delete b.chain;
+        delete b.clones;
+        delete b.petrifyZones;
     }
 }
 ];
