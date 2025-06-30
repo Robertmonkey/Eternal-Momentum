@@ -1,6 +1,6 @@
 // modules/bosses.js
 import { STAGE_CONFIG } from './config.js';
-import * as utils from './utils.js'; // <-- ADDED THIS LINE TO FIX THE BUG
+import * as utils from './utils.js';
 
 export const bossData = [{
     id: "splitter",
@@ -1618,7 +1618,7 @@ export const bossData = [{
                     b.activeAspects.set(aspectId, {
                         id: aspectId,
                         type: poolToUse,
-                        endTime: now + (poolToUse === 'primary' ? 12000 : 15000),
+                        endTime: now + (poolToUse === 'primary' ? 16000 : 15000),
                     });
                     gameHelpers.play('pantheonSummon');
                 }
@@ -1640,9 +1640,28 @@ export const bossData = [{
             }
         });
 
-        if (!Array.from(b.activeAspects.keys()).includes('juggernaut')) {
-             b.dx = (state.player.x - b.x) * 0.0005;
-             b.dy = (state.player.y - b.y) * 0.0005;
+        if (b.pillars) {
+            b.pillars.forEach(pillar => {
+                const dist = Math.hypot(b.x - pillar.x, b.y - pillar.y);
+                if (dist < b.r + pillar.r) {
+                    const angle = Math.atan2(b.y - pillar.y, b.x - pillar.x);
+                    b.x = pillar.x + Math.cos(angle) * (b.r + pillar.r);
+                    b.y = pillar.y + Math.sin(angle) * (b.r + pillar.r);
+                }
+            });
+        }
+        if (b.pillar) {
+            const dist = Math.hypot(b.x - b.pillar.x, b.y - b.pillar.y);
+            if (dist < b.r + b.pillar.r) {
+                const angle = Math.atan2(b.y - b.pillar.y, b.x - b.pillar.x);
+                b.x = b.pillar.x + Math.cos(angle) * (b.r + b.pillar.r);
+                b.y = b.pillar.y + Math.sin(angle) * (b.r + b.pillar.r);
+            }
+        }
+
+        if (!b.activeAspects.has('juggernaut')) {
+             b.dx = (state.player.x - b.x) * 0.001;
+             b.dy = (state.player.y - b.y) * 0.001;
              b.x += b.dx;
              b.y += b.dy;
         }
