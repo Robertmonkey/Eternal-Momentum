@@ -264,7 +264,6 @@ export const bossData = [{
         b.pillars.forEach(p => utils.drawCircle(ctx, p.x, p.y, p.r, "#444"));
     },
     onDeath: (b) => {
-        // Set a grace period before the pillars disappear to avoid phantom collisions.
         setTimeout(() => {
             if (!b.activeAspects || !b.activeAspects.has('architect')) {
                 b.pillars = [];
@@ -1099,21 +1098,28 @@ export const bossData = [{
     hasCustomMovement: true,
     hasCustomDraw: true,
     init: (b, state) => {
+        // --- FIX: Initialize a shared AI state for all fractals ---
         if (state.fractalHorrorSharedHp === undefined) {
             state.fractalHorrorSharedHp = b.maxHP;
             state.fractalHorrorSplits = 0;
+            state.fractalHorrorAi = {
+                state: 'positioning',
+                attackTarget: null,
+                lastStateChange: Date.now()
+            };
         }
         b.r = b.r || 156;
         b.generation = b.generation || 1;
-        b.aiState = 'positioning';
-        b.aiTimer = Date.now() + Math.random() * 2000 + 1000;
-        b.attackTarget = null;
+        // Individual timers are no longer needed
+        delete b.aiState;
+        delete b.aiTimer;
+        delete b.attackTarget;
     },
     logic: (b, ctx, state, utils, gameHelpers) => {
         if (state.fractalHorrorSharedHp !== undefined) {
             b.hp = state.fractalHorrorSharedHp;
         }
-        if (b.hp <= 0) return;
+        if (b.hp <= 0 || !state.fractalHorrorAi) return;
 
         let isBeingPulled = false;
         for (const effect of state.effects) {
@@ -1131,7 +1137,6 @@ export const bossData = [{
         
         const target = state.decoy ? state.decoy : state.player;
         let allFractals = state.enemies.filter(e => e.id === 'fractal_horror');
-
         const hpPercent = state.fractalHorrorSharedHp / b.maxHP;
         const expectedSplits = Math.floor((1 - hpPercent) / 0.02);
         
@@ -1159,59 +1164,70 @@ export const bossData = [{
             allFractals = state.enemies.filter(e => e.id === 'fractal_horror');
         }
 
-        if (!b.frozen && !isBeingPulled) {
-            const myIndex = allFractals.indexOf(b);
+        const myIndex = allFractals.indexOf(b);
+        const isLeader = myIndex === 0;
 
-            if (b.aiState === 'positioning') {
+        // --- FIX: Shared state transition logic, run only by the leader fractal ---
+        if (isLeader) {
+            const now = Date.now();
+            const timeInState = now - state.fractalHorrorAi.lastStateChange;
+            if (state.fractalHorrorAi.state === 'positioning' && timeInState > 4000) {
+                state.fractalHorrorAi.state = 'attacking';
+                state.fractalHorrorAi.attackTarget = { x: target.x, y: target.y };
+                state.fractalHorrorAi.lastStateChange = now;
+            } else if (state.fractalHorrorAi.state === 'attacking' && timeInState > 5000) {
+                state.fractalHorrorAi.state = 'positioning';
+                state.fractalHorrorAi.attackTarget = null;
+                state.fractalHorrorAi.lastStateChange = now;
+            }
+        }
+        
+        // --- FIX: Reworked movement logic for all fractals ---
+        if (!b.frozen && !isBeingPulled) {
+            if (state.fractalHorrorAi.state === 'positioning') {
                 if (myIndex !== -1) {
                     const totalFractals = allFractals.length;
                     const targetAngle = (myIndex / totalFractals) * 2 * Math.PI;
                     const surroundRadius = 250 + totalFractals * 10;
-    
                     const targetX = target.x + surroundRadius * Math.cos(targetAngle);
                     const targetY = target.y + surroundRadius * Math.sin(targetAngle);
                     
-                    b.x += (targetX - b.x) * 0.015;
-                    b.y += (targetY - b.y) * 0.015;
-    
+                    b.x += (targetX - b.x) * 0.02;
+                    b.y += (targetY - b.y) * 0.02;
+
                     allFractals.forEach(other => {
                         if (b === other) return;
                         const dist = Math.hypot(b.x - other.x, b.y - other.y);
-                        if (dist < b.r + other.r + 20) {
+                        const spacing = (b.r + other.r) * 0.8; // Use 80% of combined radius for spacing
+                        if (dist < spacing) {
                             const angle = Math.atan2(b.y - other.y, b.x - other.x);
-                            b.x += Math.cos(angle) * 0.5;
-                            b.y += Math.sin(angle) * 0.5;
+                            const force = (spacing - dist) * 0.1;
+                            b.x += Math.cos(angle) * force;
+                            b.y += Math.sin(angle) * force;
                         }
                     });
                 }
+            } else if (state.fractalHorrorAi.state === 'attacking') {
+                const attackTarget = state.fractalHorrorAi.attackTarget;
+                if (attackTarget) {
+                    const pullMultiplier = 0.01;
+                    const swirlForce = 1.0; 
 
-                if (Date.now() > b.aiTimer) {
-                    b.aiState = 'attacking';
-                    b.attackTarget = { x: target.x, y: target.y };
-                    b.spiralDirection = myIndex % 2 === 0 ? 1 : -1;
-                }
-            } else if (b.aiState === 'attacking') {
-                const pullMultiplier = 0.01;
-                const swirlMultiplier = 0.005;
+                    const vecX = attackTarget.x - b.x;
+                    const vecY = attackTarget.y - b.y;
+                    const dist = Math.hypot(vecX, vecY) || 1;
 
-                const vecX = b.attackTarget.x - b.x;
-                const vecY = b.attackTarget.y - b.y;
-                const dist = Math.hypot(vecX, vecY) || 1;
+                    const pullX = vecX * pullMultiplier;
+                    const pullY = vecY * pullMultiplier;
+                    
+                    const perpX = -vecY / dist;
+                    const perpY =  vecX / dist;
+                    const spiralDirection = myIndex % 2 === 0 ? 1 : -1;
+                    const swirlX = perpX * swirlForce * spiralDirection;
+                    const swirlY = perpY * swirlForce * spiralDirection;
 
-                const pullX = vecX * pullMultiplier;
-                const pullY = vecY * pullMultiplier;
-
-                const perpX = -vecY / dist;
-                const perpY =  vecX / dist;
-                const swirlX = perpX * 2 * b.spiralDirection;
-                const swirlY = perpY * 2 * b.spiralDirection;
-
-                b.x += pullX + swirlX;
-                b.y += pullY + swirlY;
-
-                if (dist < 20) {
-                    b.aiState = 'positioning';
-                    b.aiTimer = Date.now() + 3000;
+                    b.x += pullX + swirlX;
+                    b.y += pullY + swirlY;
                 }
             }
         }
@@ -1240,6 +1256,7 @@ export const bossData = [{
         if (remaining.length === 0) {
             delete state.fractalHorrorSharedHp;
             delete state.fractalHorrorSplits;
+            delete state.fractalHorrorAi; // --- FIX: Clean up shared AI state on final death ---
         }
     }
 }, {
