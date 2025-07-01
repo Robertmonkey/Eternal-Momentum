@@ -1747,7 +1747,7 @@ export const bossData = [{
     onDeath: (b, state, spawnEnemy, spawnParticles, play, stopLoopingSfx) => {
         b.activeAspects.forEach((aspectState, aspectId) => {
             if (b.getAspectData(aspectId)?.onDeath) {
-                b.getAspectData(aspectId).onDeath(b, state, null, null, null, stopLoopingSfx);
+                b.getAspectData(aspectId).onDeath(b, state, spawnEnemy, spawnParticles, play, stopLoopingSfx);
             }
         });
         delete b.pillar;
