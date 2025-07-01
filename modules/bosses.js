@@ -1676,19 +1676,20 @@ export const bossData = [{
         if (b.pillar) {
             const allEntities = [state.player, ...state.enemies];
             allEntities.forEach(entity => {
+                // --- FIX: This check was simplified to be more robust ---
                 // Skip collision check for the Pantheon itself if the Architect aspect is active
                 if (entity === b && b.activeAspects.has('architect')) {
                     return;
                 }
                 
+                // Use the entity's own radius, or the player's if it's the player object
                 const entityRadius = entity.r || state.player.r;
-                if(entity === b || (entity.id !== b.id)){
-                    const dist = Math.hypot(entity.x - b.pillar.x, entity.y - b.pillar.y);
-                    if (dist < entityRadius + b.pillar.r) {
-                        const angle = Math.atan2(entity.y - b.pillar.y, entity.x - b.pillar.x);
-                        entity.x = b.pillar.x + Math.cos(angle) * (entityRadius + b.pillar.r);
-                        entity.y = b.pillar.y + Math.sin(angle) * (entityRadius + b.pillar.r);
-                    }
+                
+                const dist = Math.hypot(entity.x - b.pillar.x, entity.y - b.pillar.y);
+                if (dist < entityRadius + b.pillar.r) {
+                    const angle = Math.atan2(entity.y - b.pillar.y, entity.x - b.pillar.x);
+                    entity.x = b.pillar.x + Math.cos(angle) * (entityRadius + b.pillar.r);
+                    entity.y = b.pillar.y + Math.sin(angle) * (entityRadius + b.pillar.r);
                 }
             });
         }
