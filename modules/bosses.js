@@ -1644,6 +1644,7 @@ export const bossData = [{
             }
         });
 
+        // Handle collision with Architect pillars (PLAYER ONLY)
         if (b.pillars) {
             b.pillars.forEach(pillar => {
                 const playerDist = Math.hypot(state.player.x - pillar.x, state.player.y - pillar.y);
@@ -1655,15 +1656,23 @@ export const bossData = [{
             });
         }
 
+        // Handle collision with Annihilator pillar
         if (b.pillar) {
             const allEntities = [state.player, ...state.enemies];
             allEntities.forEach(entity => {
-                const dist = Math.hypot(entity.x - b.pillar.x, entity.y - b.pillar.y);
+                // Skip collision check for the Pantheon itself if the Architect aspect is active
+                if (entity === b && b.activeAspects.has('architect')) {
+                    return;
+                }
+                
                 const entityRadius = entity.r || state.player.r;
-                if (dist < entityRadius + b.pillar.r) {
-                    const angle = Math.atan2(entity.y - b.pillar.y, entity.x - b.pillar.x);
-                    entity.x = b.pillar.x + Math.cos(angle) * (entityRadius + b.pillar.r);
-                    entity.y = b.pillar.y + Math.sin(angle) * (entityRadius + b.pillar.r);
+                if(entity === b || (entity.id !== b.id)){
+                    const dist = Math.hypot(entity.x - b.pillar.x, entity.y - b.pillar.y);
+                    if (dist < entityRadius + b.pillar.r) {
+                        const angle = Math.atan2(entity.y - b.pillar.y, entity.x - b.pillar.x);
+                        entity.x = b.pillar.x + Math.cos(angle) * (entityRadius + b.pillar.r);
+                        entity.y = b.pillar.y + Math.sin(angle) * (entityRadius + b.pillar.r);
+                    }
                 }
             });
         }
@@ -1715,7 +1724,8 @@ export const bossData = [{
     },
     onDamage: (b, dmg, source, state, sP, play, stopLoopingSfx, gameHelpers) => { 
         if (b.invulnerable) return;
-        
+        b.hp -= dmg;
+
         const hpPercent = b.hp / b.maxHP;
         
         const phaseThresholds = [0.8, 0.6, 0.4, 0.2];
