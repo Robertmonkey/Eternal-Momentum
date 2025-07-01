@@ -1644,13 +1644,11 @@ export const bossData = [{
 
         b.activeAspects.forEach((aspectState, aspectId) => {
             if (now > aspectState.endTime) {
-                if (b.getAspectData(aspectId)?.onDeath) {
-                    const spawnParticlesCallback = (x, y, c, n, spd, life, r) => utils.spawnParticles(state.particles, x, y, c, n, spd, life, r);
-                    b.getAspectData(aspectId).onDeath(b, state, gameHelpers.spawnEnemy, spawnParticlesCallback, gameHelpers.play, gameHelpers.stopLoopingSfx);
-                }
-                if (aspectId === 'architect') {
-                    b.pillars = [];
-                }
+                // --- FIX: When an aspect expires, remove it from the map.
+                // Do NOT call its onDeath function, as this causes a race condition
+                // with pending setTimeouts that might still need its properties.
+                // The properties (like b.pillar) will persist harmlessly until
+                // they are overwritten or the Pantheon is defeated.
                 b.activeAspects.delete(aspectId);
             } else {
                 const aspectData = b.getAspectData(aspectId);
@@ -1676,13 +1674,10 @@ export const bossData = [{
         if (b.pillar) {
             const allEntities = [state.player, ...state.enemies];
             allEntities.forEach(entity => {
-                // --- FIX: This check was simplified to be more robust ---
-                // Skip collision check for the Pantheon itself if the Architect aspect is active
                 if (entity === b && b.activeAspects.has('architect')) {
                     return;
                 }
                 
-                // Use the entity's own radius, or the player's if it's the player object
                 const entityRadius = entity.r || state.player.r;
                 
                 const dist = Math.hypot(entity.x - b.pillar.x, entity.y - b.pillar.y);
