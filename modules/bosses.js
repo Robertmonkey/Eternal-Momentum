@@ -1130,11 +1130,11 @@ export const bossData = [{
         }
         
         const target = state.decoy ? state.decoy : state.player;
+        let allFractals = state.enemies.filter(e => e.id === 'fractal_horror');
 
         const hpPercent = state.fractalHorrorSharedHp / b.maxHP;
         const expectedSplits = Math.floor((1 - hpPercent) / 0.02);
-        let allFractals = state.enemies.filter(e => e.id === 'fractal_horror');
-
+        
         while (expectedSplits > state.fractalHorrorSplits && allFractals.length < 50) {
             let biggestFractal = allFractals.sort((a, b) => b.r - a.r)[0];
             if (!biggestFractal) break;
@@ -1165,22 +1165,19 @@ export const bossData = [{
             if (b.aiState === 'positioning') {
                 if (myIndex !== -1) {
                     const totalFractals = allFractals.length;
-                    // --- FIX: Remove chaotic rotation for a stable ring ---
                     const targetAngle = (myIndex / totalFractals) * 2 * Math.PI;
                     const surroundRadius = 250 + totalFractals * 10;
     
                     const targetX = target.x + surroundRadius * Math.cos(targetAngle);
                     const targetY = target.y + surroundRadius * Math.sin(targetAngle);
                     
-                    // --- FIX: Increased speed for faster positioning ---
-                    b.x += (targetX - b.x) * 0.04;
-                    b.y += (targetY - b.y) * 0.04;
+                    b.x += (targetX - b.x) * 0.015;
+                    b.y += (targetY - b.y) * 0.015;
     
-                    // --- FIX: Add repulsion to prevent clumping ---
                     allFractals.forEach(other => {
                         if (b === other) return;
                         const dist = Math.hypot(b.x - other.x, b.y - other.y);
-                        if (dist < b.r + other.r + 20) { // +20 for buffer
+                        if (dist < b.r + other.r + 20) {
                             const angle = Math.atan2(b.y - other.y, b.x - other.x);
                             b.x += Math.cos(angle) * 0.5;
                             b.y += Math.sin(angle) * 0.5;
@@ -1191,24 +1188,28 @@ export const bossData = [{
                 if (Date.now() > b.aiTimer) {
                     b.aiState = 'attacking';
                     b.attackTarget = { x: target.x, y: target.y };
-                    const angle = Math.atan2(b.attackTarget.y - b.y, b.attackTarget.x - b.x);
-                    // --- FIX: Decreased speed for slower, telegraphed attack ---
-                    b.attackDx = Math.cos(angle) * 3;
-                    b.attackDy = Math.sin(angle) * 3;
                     b.spiralDirection = myIndex % 2 === 0 ? 1 : -1;
                 }
             } else if (b.aiState === 'attacking') {
-                const speed = Math.hypot(b.attackDx, b.attackDy) || 1;
-                const spiralForce = 0.2;
-                b.attackDx += -b.attackDy * spiralForce * b.spiralDirection / speed;
-                b.attackDy += b.attackDx * spiralForce * b.spiralDirection / speed;
+                const pullMultiplier = 0.01;
+                const swirlMultiplier = 0.005;
 
-                b.x += b.attackDx;
-                b.y += b.attackDy;
-                b.attackDx *= 0.99;
-                b.attackDy *= 0.99;
+                const vecX = b.attackTarget.x - b.x;
+                const vecY = b.attackTarget.y - b.y;
+                const dist = Math.hypot(vecX, vecY) || 1;
 
-                if (Math.hypot(b.x - b.attackTarget.x, b.y - b.attackTarget.y) < 20 || Math.hypot(b.attackDx, b.attackDy) < 1) {
+                const pullX = vecX * pullMultiplier;
+                const pullY = vecY * pullMultiplier;
+
+                const perpX = -vecY / dist;
+                const perpY =  vecX / dist;
+                const swirlX = perpX * 2 * b.spiralDirection;
+                const swirlY = perpY * 2 * b.spiralDirection;
+
+                b.x += pullX + swirlX;
+                b.y += pullY + swirlY;
+
+                if (dist < 20) {
                     b.aiState = 'positioning';
                     b.aiTimer = Date.now() + 3000;
                 }
