@@ -262,6 +262,14 @@ export const bossData = [{
             }
         }
         b.pillars.forEach(p => utils.drawCircle(ctx, p.x, p.y, p.r, "#444"));
+    },
+    onDeath: (b) => {
+        // Set a grace period before the pillars disappear to avoid phantom collisions.
+        setTimeout(() => {
+            if (!b.activeAspects || !b.activeAspects.has('architect')) {
+                b.pillars = [];
+            }
+        }, 2000);
     }
 }, {
     id: "aethel_and_umbra",
@@ -653,7 +661,12 @@ export const bossData = [{
         }
     },
     onDeath: b => {
-        b.pillar = null;
+        // Delay cleanup to allow any active beam to finish.
+        setTimeout(() => {
+            if (!b.activeAspects || !b.activeAspects.has('annihilator')) {
+                b.pillar = null;
+            }
+        }, 2000);
     }
 }, {
     id: "parasite",
@@ -1644,11 +1657,11 @@ export const bossData = [{
 
         b.activeAspects.forEach((aspectState, aspectId) => {
             if (now > aspectState.endTime) {
-                // --- FIX: When an aspect expires, remove it from the map.
-                // Do NOT call its onDeath function, as this causes a race condition
-                // with pending setTimeouts that might still need its properties.
-                // The properties (like b.pillar) will persist harmlessly until
-                // they are overwritten or the Pantheon is defeated.
+                const aspectData = b.getAspectData(aspectId);
+                if (aspectData?.onDeath) {
+                    const spawnParticlesCallback = (x, y, c, n, spd, life, r) => utils.spawnParticles(state.particles, x, y, c, n, spd, life, r);
+                    aspectData.onDeath(b, state, gameHelpers.spawnEnemy, spawnParticlesCallback, gameHelpers.play, gameHelpers.stopLoopingSfx);
+                }
                 b.activeAspects.delete(aspectId);
             } else {
                 const aspectData = b.getAspectData(aspectId);
