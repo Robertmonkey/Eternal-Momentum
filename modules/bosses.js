@@ -154,6 +154,16 @@ export const bossData = [{
             c.y += (prev.y - c.y) * 0.2;
             utils.drawCircle(ctx, c.x, c.y, 8, "orange");
             prev = c;
+            
+            const pDist = Math.hypot(state.player.x - c.x, state.player.y - c.y);
+            if (pDist < state.player.r + 8) { // 8 is the radius of the tail segment
+                state.player.talent_states.phaseMomentum.lastDamageTime = Date.now();
+                state.player.talent_states.phaseMomentum.active = false;
+                if(!state.player.shield){
+                    state.player.health -= 0.25;
+                    if(state.player.health <= 0) state.gameOver = true;
+                }
+            }
         });
     }
 }, {
@@ -634,6 +644,12 @@ export const bossData = [{
         }
         if (b.pillar) {
             utils.drawCircle(ctx, b.pillar.x, b.pillar.y, b.pillar.r, "#2d3436");
+            const bossDist = Math.hypot(b.x - b.pillar.x, b.y - b.pillar.y);
+            if (bossDist < b.r + b.pillar.r) {
+                const angle = Math.atan2(b.y - b.pillar.y, b.x - b.pillar.x);
+                b.x = b.pillar.x + Math.cos(angle) * (b.r + b.pillar.r);
+                b.y = b.pillar.y + Math.sin(angle) * (b.r + b.pillar.r);
+            }
         }
     },
     onDeath: b => {
@@ -1658,30 +1674,20 @@ export const bossData = [{
 
         // Handle collision with Annihilator pillar
         if (b.pillar) {
-            // Player collision
-            const playerDist = Math.hypot(state.player.x - b.pillar.x, state.player.y - b.pillar.y);
-            if (playerDist < state.player.r + b.pillar.r) {
-                const angle = Math.atan2(state.player.y - b.pillar.y, state.player.x - b.pillar.x);
-                state.player.x = b.pillar.x + Math.cos(angle) * (state.player.r + b.pillar.r);
-                state.player.y = b.pillar.y + Math.sin(angle) * (state.player.r + b.pillar.r);
-            }
-            
-            // Pantheon boss collision (to prevent breaking the beam mechanic)
-            const bossDist = Math.hypot(b.x - b.pillar.x, b.y - b.pillar.y);
-            if (bossDist < b.r + b.pillar.r) {
-                const angle = Math.atan2(b.y - b.pillar.y, b.x - b.pillar.x);
-                b.x = b.pillar.x + Math.cos(angle) * (b.r + b.pillar.r);
-                b.y = b.pillar.y + Math.sin(angle) * (b.r + b.pillar.r);
-            }
-
-            // Collision for OTHER enemies
-            state.enemies.forEach(e => {
-                if (e !== b) { // Don't check against the Pantheon itself again
-                    const dist = Math.hypot(e.x - b.pillar.x, e.y - b.pillar.y);
-                    if (dist < e.r + b.pillar.r) {
-                        const angle = Math.atan2(e.y - b.pillar.y, e.x - b.pillar.x);
-                        e.x = b.pillar.x + Math.cos(angle) * (e.r + b.pillar.r);
-                        e.y = b.pillar.y + Math.sin(angle) * (e.r + b.pillar.r);
+            const allEntities = [state.player, ...state.enemies];
+            allEntities.forEach(entity => {
+                // Skip collision check for the Pantheon itself if the Architect aspect is active
+                if (entity === b && b.activeAspects.has('architect')) {
+                    return;
+                }
+                
+                const entityRadius = entity.r || state.player.r;
+                if(entity === b || (entity.id !== b.id)){
+                    const dist = Math.hypot(entity.x - b.pillar.x, entity.y - b.pillar.y);
+                    if (dist < entityRadius + b.pillar.r) {
+                        const angle = Math.atan2(entity.y - b.pillar.y, entity.x - b.pillar.x);
+                        entity.x = b.pillar.x + Math.cos(angle) * (entityRadius + b.pillar.r);
+                        entity.y = b.pillar.y + Math.sin(angle) * (entityRadius + b.pillar.r);
                     }
                 }
             });
@@ -1734,9 +1740,9 @@ export const bossData = [{
     },
     onDamage: (b, dmg, source, state, sP, play, stopLoopingSfx, gameHelpers) => { 
         if (b.invulnerable) {
-            b.hp -= dmg;
             return;
         };
+        b.hp -= dmg
 
         const hpPercent = b.hp / b.maxHP;
         
