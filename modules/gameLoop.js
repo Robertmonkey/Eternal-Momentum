@@ -887,8 +887,26 @@ export function gameTick(mx, my) {
             const p1x = source.x + maxDist * Math.cos(angle1); const p1y = source.y + maxDist * Math.sin(angle1);
             const p2x = source.x + maxDist * Math.cos(angle2); const p2y = source.y + maxDist * Math.sin(angle2);
             ctx.beginPath(); ctx.rect(-1000, -1000, canvas.width+2000, canvas.height+2000); ctx.moveTo(source.x, source.y); ctx.lineTo(p1x,p1y); ctx.lineTo(p2x,p2y); ctx.closePath(); ctx.fill('evenodd');
-            const allTargets = state.arenaMode ? [state.player, ...state.enemies.filter(t => t !== source)] : [state.player];
-            allTargets.forEach(target => { const targetAngle = Math.atan2(target.y - source.y, target.x - source.y); let angleDiff = (targetAngle - angleToPillar + Math.PI * 3) % (Math.PI * 2) - Math.PI; const isSafe = Math.abs(angleDiff) < angleToTangent && Math.hypot(target.x - source.x, target.y - source.y) > distToPillar; if (!isSafe && (target.health > 0 || target.hp > 0)) { if (target === state.player && state.player.shield) { return; } if (target === state.player) { target.health -= 999; } else { target.hp -= 999; } if (target === state.player && target.health <= 0) { state.gameOver = true; } } });
+            
+            // --- FIX: Correctly define all potential targets for the beam ---
+            const allTargets = [state.player, ...state.enemies.filter(t => t !== source)];
+            
+            allTargets.forEach(target => {
+                const targetAngle = Math.atan2(target.y - source.y, target.x - source.x);
+                let angleDiff = (targetAngle - angleToPillar + Math.PI * 3) % (Math.PI * 2) - Math.PI;
+                const isSafe = Math.abs(angleDiff) < angleToTangent && Math.hypot(target.x - source.x, target.y - source.y) > distToPillar;
+                
+                // --- FIX: Damage any entity that is not safe and is alive ---
+                if (!isSafe && (target.health > 0 || target.hp > 0)) {
+                    if (target === state.player) {
+                        if (state.player.shield) return; // Shield protects the player
+                        target.health -= 999;
+                        if (target.health <= 0) state.gameOver = true;
+                    } else {
+                        target.hp -= 999; // Damage other enemies
+                    }
+                }
+            });
         } else if (effect.type === 'juggernaut_charge_ring') {
             const progress = (Date.now() - effect.startTime) / effect.duration; if (progress >= 1) { state.effects.splice(index, 1); return; }
             ctx.strokeStyle = `rgba(255,255,255, ${0.8 * (1-progress)})`; ctx.lineWidth = 15; ctx.beginPath(); ctx.arc(effect.source.x, effect.source.y, effect.source.r + (100 * progress), 0, Math.PI*2); ctx.stroke();
