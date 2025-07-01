@@ -122,6 +122,7 @@ export function resetGame(isArena = false) {
     // --- BUG FIX: Clean up Fractal Horror state variables on reset ---
     delete state.fractalHorrorSharedHp;
     delete state.fractalHorrorSplits;
+    delete state.fractalHorrorAi; // --- FIX: Clean up shared AI state ---
     // --- END BUG FIX ---
 
     // --- Temporal Echo Talent Logic ---
