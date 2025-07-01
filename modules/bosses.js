@@ -1641,10 +1641,9 @@ export const bossData = [{
             }
         });
 
-        // Handle collision with Architect pillars
+        // Handle collision with Architect pillars (PLAYER ONLY)
         if (b.pillars) {
             b.pillars.forEach(pillar => {
-                // Player collision
                 const playerDist = Math.hypot(state.player.x - pillar.x, state.player.y - pillar.y);
                 if (playerDist < state.player.r + pillar.r) {
                     const angle = Math.atan2(state.player.y - pillar.y, state.player.x - pillar.x);
@@ -1663,6 +1662,26 @@ export const bossData = [{
                 state.player.x = b.pillar.x + Math.cos(angle) * (state.player.r + b.pillar.r);
                 state.player.y = b.pillar.y + Math.sin(angle) * (state.player.r + b.pillar.r);
             }
+            
+            // Pantheon boss collision (to prevent breaking the beam mechanic)
+            const bossDist = Math.hypot(b.x - b.pillar.x, b.y - b.pillar.y);
+            if (bossDist < b.r + b.pillar.r) {
+                const angle = Math.atan2(b.y - b.pillar.y, b.x - b.pillar.x);
+                b.x = b.pillar.x + Math.cos(angle) * (b.r + b.pillar.r);
+                b.y = b.pillar.y + Math.sin(angle) * (b.r + b.pillar.r);
+            }
+
+            // Collision for OTHER enemies
+            state.enemies.forEach(e => {
+                if (e !== b) { // Don't check against the Pantheon itself again
+                    const dist = Math.hypot(e.x - b.pillar.x, e.y - b.pillar.y);
+                    if (dist < e.r + b.pillar.r) {
+                        const angle = Math.atan2(e.y - b.pillar.y, e.x - b.pillar.x);
+                        e.x = b.pillar.x + Math.cos(angle) * (e.r + b.pillar.r);
+                        e.y = b.pillar.y + Math.sin(angle) * (e.r + b.pillar.r);
+                    }
+                }
+            });
         }
 
         if (!b.activeAspects.has('juggernaut')) {
@@ -1673,8 +1692,14 @@ export const bossData = [{
         } else {
             b.x += b.dx;
             b.y += b.dy;
-            if(b.x < b.r || b.x > ctx.canvas.width-b.r) b.dx*=-1;
-            if(b.y < b.r || b.y > ctx.canvas.height-b.r) b.dy*=-1;
+            if(b.x < b.r || b.x > ctx.canvas.width-b.r) {
+                b.x = Math.max(b.r, Math.min(ctx.canvas.width - b.r, b.x));
+                b.dx*=-1;
+            }
+            if(b.y < b.r || b.y > ctx.canvas.height-b.r) {
+                b.y = Math.max(b.r, Math.min(ctx.canvas.height - b.r, b.y));
+                b.dy*=-1;
+            }
         }
 
         ctx.globalAlpha = 0.2;
