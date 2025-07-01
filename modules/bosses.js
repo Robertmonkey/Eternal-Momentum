@@ -1582,7 +1582,7 @@ export const bossData = [{
     hasCustomDraw: true,
     init: (b, state, spawnEnemy, canvas) => {
         b.x = canvas.width / 2;
-        b.y = canvas.height / 2;
+        b.y = 150;
         b.phase = 1;
         b.actionCooldown = 8000;
         b.nextActionTime = Date.now() + 3000;
@@ -1651,14 +1651,6 @@ export const bossData = [{
                     state.player.x = pillar.x + Math.cos(angle) * (state.player.r + pillar.r);
                     state.player.y = pillar.y + Math.sin(angle) * (state.player.r + pillar.r);
                 }
-
-                // Pantheon boss collision
-                const bossDist = Math.hypot(b.x - pillar.x, b.y - pillar.y);
-                if (bossDist < b.r + pillar.r) {
-                    const angle = Math.atan2(b.y - pillar.y, b.x - pillar.x);
-                    b.x = pillar.x + Math.cos(angle) * (b.r + pillar.r);
-                    b.y = pillar.y + Math.sin(angle) * (b.r + pillar.r);
-                }
             });
         }
 
@@ -1671,14 +1663,6 @@ export const bossData = [{
                 state.player.x = b.pillar.x + Math.cos(angle) * (state.player.r + b.pillar.r);
                 state.player.y = b.pillar.y + Math.sin(angle) * (state.player.r + b.pillar.r);
             }
-            
-            // Pantheon boss collision
-            const bossDist = Math.hypot(b.x - b.pillar.x, b.y - b.pillar.y);
-            if (bossDist < b.r + b.pillar.r) {
-                const angle = Math.atan2(b.y - b.pillar.y, b.x - b.pillar.x);
-                b.x = b.pillar.x + Math.cos(angle) * (b.r + b.pillar.r);
-                b.y = b.pillar.y + Math.sin(angle) * (b.r + b.pillar.r);
-            }
         }
 
         if (!b.activeAspects.has('juggernaut')) {
@@ -1686,6 +1670,11 @@ export const bossData = [{
              b.dy = (state.player.y - b.y) * 0.005;
              b.x += b.dx;
              b.y += b.dy;
+        } else {
+            b.x += b.dx;
+            b.y += b.dy;
+            if(b.x < b.r || b.x > ctx.canvas.width-b.r) b.dx*=-1;
+            if(b.y < b.r || b.y > ctx.canvas.height-b.r) b.dy*=-1;
         }
 
         ctx.globalAlpha = 0.2;
