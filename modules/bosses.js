@@ -661,7 +661,6 @@ export const bossData = [{
         }
     },
     onDeath: b => {
-        // Delay cleanup to allow any active beam to finish.
         setTimeout(() => {
             if (!b.activeAspects || !b.activeAspects.has('annihilator')) {
                 b.pillar = null;
@@ -1161,26 +1160,41 @@ export const bossData = [{
         }
 
         if (!b.frozen && !isBeingPulled) {
+            const myIndex = allFractals.indexOf(b);
+
             if (b.aiState === 'positioning') {
-                const myIndex = allFractals.indexOf(b);
-                if (myIndex === -1) return;
-
-                const totalFractals = allFractals.length;
-                const targetAngle = (myIndex / totalFractals) * 2 * Math.PI + (Date.now() / 8000);
-                const surroundRadius = 250 + totalFractals * 10;
-
-                const targetX = target.x + surroundRadius * Math.cos(targetAngle);
-                const targetY = target.y + surroundRadius * Math.sin(targetAngle);
-                
-                b.x += (targetX - b.x) * 0.005;
-                b.y += (targetY - b.y) * 0.005;
+                if (myIndex !== -1) {
+                    const totalFractals = allFractals.length;
+                    // --- FIX: Remove chaotic rotation for a stable ring ---
+                    const targetAngle = (myIndex / totalFractals) * 2 * Math.PI;
+                    const surroundRadius = 250 + totalFractals * 10;
+    
+                    const targetX = target.x + surroundRadius * Math.cos(targetAngle);
+                    const targetY = target.y + surroundRadius * Math.sin(targetAngle);
+                    
+                    // --- FIX: Increased speed for faster positioning ---
+                    b.x += (targetX - b.x) * 0.04;
+                    b.y += (targetY - b.y) * 0.04;
+    
+                    // --- FIX: Add repulsion to prevent clumping ---
+                    allFractals.forEach(other => {
+                        if (b === other) return;
+                        const dist = Math.hypot(b.x - other.x, b.y - other.y);
+                        if (dist < b.r + other.r + 20) { // +20 for buffer
+                            const angle = Math.atan2(b.y - other.y, b.x - other.x);
+                            b.x += Math.cos(angle) * 0.5;
+                            b.y += Math.sin(angle) * 0.5;
+                        }
+                    });
+                }
 
                 if (Date.now() > b.aiTimer) {
                     b.aiState = 'attacking';
                     b.attackTarget = { x: target.x, y: target.y };
                     const angle = Math.atan2(b.attackTarget.y - b.y, b.attackTarget.x - b.x);
-                    b.attackDx = Math.cos(angle) * 10;
-                    b.attackDy = Math.sin(angle) * 10;
+                    // --- FIX: Decreased speed for slower, telegraphed attack ---
+                    b.attackDx = Math.cos(angle) * 3;
+                    b.attackDy = Math.sin(angle) * 3;
                     b.spiralDirection = myIndex % 2 === 0 ? 1 : -1;
                 }
             } else if (b.aiState === 'attacking') {
