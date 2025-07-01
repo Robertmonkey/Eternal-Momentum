@@ -880,30 +880,70 @@ export function gameTick(mx, my) {
         } else if (effect.type === 'annihilator_beam') {
             if (Date.now() > effect.endTime) { state.effects.splice(index, 1); return; }
             const { source, pillar } = effect; if(!source || !pillar || source.hp <= 0) { state.effects.splice(index, 1); return; }
-            const alpha = (effect.endTime - Date.now()) / 1200; ctx.fillStyle = `rgba(214, 48, 49, ${alpha * 0.7})`;
-            const distToPillar = Math.hypot(pillar.x - source.x, pillar.y - source.y); const angleToPillar = Math.atan2(pillar.y - source.y, pillar.x - source.x); const angleToTangent = Math.asin(pillar.r / distToPillar);
-            const angle1 = angleToPillar - angleToTangent; const angle2 = angleToPillar + angleToTangent;
-            const maxDist = Math.hypot(canvas.width, canvas.height) * 2;
-            const p1x = source.x + maxDist * Math.cos(angle1); const p1y = source.y + maxDist * Math.sin(angle1);
-            const p2x = source.x + maxDist * Math.cos(angle2); const p2y = source.y + maxDist * Math.sin(angle2);
-            ctx.beginPath(); ctx.rect(-1000, -1000, canvas.width+2000, canvas.height+2000); ctx.moveTo(source.x, source.y); ctx.lineTo(p1x,p1y); ctx.lineTo(p2x,p2y); ctx.closePath(); ctx.fill('evenodd');
             
-            // --- FIX: Correctly define all potential targets for the beam ---
-            const allTargets = [state.player, ...state.enemies.filter(t => t !== source)];
+            const alpha = (effect.endTime - Date.now()) / 1200; 
+            ctx.fillStyle = `rgba(214, 48, 49, ${alpha * 0.7})`;
             
-            allTargets.forEach(target => {
-                const targetAngle = Math.atan2(target.y - source.y, target.x - source.x);
-                let angleDiff = (targetAngle - angleToPillar + Math.PI * 3) % (Math.PI * 2) - Math.PI;
-                const isSafe = Math.abs(angleDiff) < angleToTangent && Math.hypot(target.x - source.x, target.y - source.y) > distToPillar;
+            // --- FIX: This is the new, corrected drawing logic ---
+            ctx.save();
+            ctx.fillStyle = `rgba(214, 48, 49, ${alpha * 0.7})`;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            const distToPillar = Math.hypot(pillar.x - source.x, pillar.y - source.y);
+            // Prevent division by zero or asin(>1) if the source is inside the pillar
+            if (distToPillar > pillar.r) {
+                const angleToPillar = Math.atan2(pillar.y - source.y, pillar.x - source.x);
+                const angleToTangent = Math.asin(pillar.r / distToPillar);
+                const angle1 = angleToPillar - angleToTangent;
+                const angle2 = angleToPillar + angleToTangent;
+        
+                const distToTangentPoint = Math.sqrt(distToPillar**2 - pillar.r**2);
+                const t1x = source.x + distToTangentPoint * Math.cos(angle1);
+                const t1y = source.y + distToTangentPoint * Math.sin(angle1);
+                const t2x = source.x + distToTangentPoint * Math.cos(angle2);
+                const t2y = source.y + distToTangentPoint * Math.sin(angle2);
+
+                const maxDist = Math.hypot(canvas.width, canvas.height) * 2;
+                const p1x = t1x + maxDist * Math.cos(angle1);
+                const p1y = t1y + maxDist * Math.sin(angle1);
+                const p2x = t2x + maxDist * Math.cos(angle2);
+                const p2y = t2y + maxDist * Math.sin(angle2);
                 
-                // --- FIX: Damage any entity that is not safe and is alive ---
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.beginPath();
+                ctx.arc(pillar.x, pillar.y, pillar.r, 0, 2 * Math.PI);
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.moveTo(t1x, t1y);
+                ctx.lineTo(p1x, p1y);
+                ctx.lineTo(p2x, p2y);
+                ctx.lineTo(t2x, t2y);
+                ctx.closePath();
+                ctx.fill();
+            }
+            ctx.restore(); // Restores fillStyle and globalCompositeOperation
+            // --- End of new drawing logic ---
+
+            const allTargets = [state.player, ...state.enemies.filter(t => t !== source)];
+            allTargets.forEach(target => {
+                const distToPillarCheck = Math.hypot(pillar.x - source.x, pillar.y - source.y);
+                if (distToPillarCheck <= pillar.r) return; // Don't fire if source is inside pillar
+
+                const angleToPillarCheck = Math.atan2(pillar.y - source.y, pillar.x - source.x);
+                const angleToTangentCheck = Math.asin(pillar.r / distToPillarCheck);
+                const targetAngle = Math.atan2(target.y - source.y, target.x - source.x);
+                let angleDiff = (targetAngle - angleToPillarCheck + Math.PI * 3) % (Math.PI * 2) - Math.PI;
+
+                const isSafe = Math.abs(angleDiff) < angleToTangentCheck && Math.hypot(target.x - source.x, target.y - source.y) > distToPillarCheck;
+                
                 if (!isSafe && (target.health > 0 || target.hp > 0)) {
                     if (target === state.player) {
-                        if (state.player.shield) return; // Shield protects the player
+                        if (state.player.shield) return;
                         target.health -= 999;
                         if (target.health <= 0) state.gameOver = true;
                     } else {
-                        target.hp -= 999; // Damage other enemies
+                        target.hp -= 999;
                     }
                 }
             });
