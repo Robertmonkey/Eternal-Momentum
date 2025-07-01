@@ -606,7 +606,7 @@ export const bossData = [{
     name: "The Annihilator",
     color: "#d63031",
     maxHP: 480,
-    init: b => {
+    init: (b, state, spawnEnemy, canvas) => {
         b.lastBeam = Date.now();
         b.isChargingBeam = false;
         b.pillar = {
@@ -1658,20 +1658,30 @@ export const bossData = [{
 
         // Handle collision with Annihilator pillar
         if (b.pillar) {
-            const allEntities = [state.player, ...state.enemies];
-            allEntities.forEach(entity => {
-                // Skip collision check for the Pantheon itself if the Architect aspect is active
-                if (entity === b && b.activeAspects.has('architect')) {
-                    return;
-                }
-                
-                const entityRadius = entity.r || state.player.r;
-                if(entity === b || (entity.id !== b.id)){
-                    const dist = Math.hypot(entity.x - b.pillar.x, entity.y - b.pillar.y);
-                    if (dist < entityRadius + b.pillar.r) {
-                        const angle = Math.atan2(entity.y - b.pillar.y, entity.x - b.pillar.x);
-                        entity.x = b.pillar.x + Math.cos(angle) * (entityRadius + b.pillar.r);
-                        entity.y = b.pillar.y + Math.sin(angle) * (entityRadius + b.pillar.r);
+            // Player collision
+            const playerDist = Math.hypot(state.player.x - b.pillar.x, state.player.y - b.pillar.y);
+            if (playerDist < state.player.r + b.pillar.r) {
+                const angle = Math.atan2(state.player.y - b.pillar.y, state.player.x - b.pillar.x);
+                state.player.x = b.pillar.x + Math.cos(angle) * (state.player.r + b.pillar.r);
+                state.player.y = b.pillar.y + Math.sin(angle) * (state.player.r + b.pillar.r);
+            }
+            
+            // Pantheon boss collision (to prevent breaking the beam mechanic)
+            const bossDist = Math.hypot(b.x - b.pillar.x, b.y - b.pillar.y);
+            if (bossDist < b.r + b.pillar.r) {
+                const angle = Math.atan2(b.y - b.pillar.y, b.x - b.pillar.x);
+                b.x = b.pillar.x + Math.cos(angle) * (b.r + b.pillar.r);
+                b.y = b.pillar.y + Math.sin(angle) * (b.r + b.pillar.r);
+            }
+
+            // Collision for OTHER enemies
+            state.enemies.forEach(e => {
+                if (e !== b) { // Don't check against the Pantheon itself again
+                    const dist = Math.hypot(e.x - b.pillar.x, e.y - b.pillar.y);
+                    if (dist < e.r + b.pillar.r) {
+                        const angle = Math.atan2(e.y - b.pillar.y, e.x - b.pillar.x);
+                        e.x = b.pillar.x + Math.cos(angle) * (e.r + b.pillar.r);
+                        e.y = b.pillar.y + Math.sin(angle) * (e.r + b.pillar.r);
                     }
                 }
             });
@@ -1723,8 +1733,10 @@ export const bossData = [{
 
     },
     onDamage: (b, dmg, source, state, sP, play, stopLoopingSfx, gameHelpers) => { 
-        if (b.invulnerable) return;
-        b.hp -= dmg;
+        if (b.invulnerable) {
+            b.hp -= dmg;
+            return;
+        };
 
         const hpPercent = b.hp / b.maxHP;
         
