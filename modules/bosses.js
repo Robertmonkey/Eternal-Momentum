@@ -606,7 +606,7 @@ export const bossData = [{
     name: "The Annihilator",
     color: "#d63031",
     maxHP: 480,
-    init: (b, state, spawnEnemy, canvas) => {
+    init: b => {
         b.lastBeam = Date.now();
         b.isChargingBeam = false;
         b.pillar = {
@@ -1577,7 +1577,7 @@ export const bossData = [{
     id: "pantheon",
     name: "The Pantheon",
     color: "#ecf0f1",
-    maxHP: 1000,
+    maxHP: 3000,
     hasCustomMovement: true,
     hasCustomDraw: true,
     init: (b, state, spawnEnemy, canvas) => {
@@ -1632,6 +1632,9 @@ export const bossData = [{
                     const spawnParticlesCallback = (x, y, c, n, spd, life, r) => utils.spawnParticles(state.particles, x, y, c, n, spd, life, r);
                     b.getAspectData(aspectId).onDeath(b, state, gameHelpers.spawnEnemy, spawnParticlesCallback, gameHelpers.play, gameHelpers.stopLoopingSfx);
                 }
+                if (aspectId === 'architect') {
+                    b.pillars = [];
+                }
                 b.activeAspects.delete(aspectId);
             } else {
                 const aspectData = b.getAspectData(aspectId);
@@ -1641,7 +1644,6 @@ export const bossData = [{
             }
         });
 
-        // Handle collision with Architect pillars (PLAYER ONLY)
         if (b.pillars) {
             b.pillars.forEach(pillar => {
                 const playerDist = Math.hypot(state.player.x - pillar.x, state.player.y - pillar.y);
@@ -1653,33 +1655,15 @@ export const bossData = [{
             });
         }
 
-        // Handle collision with Annihilator pillar
         if (b.pillar) {
-            // Player collision
-            const playerDist = Math.hypot(state.player.x - b.pillar.x, state.player.y - b.pillar.y);
-            if (playerDist < state.player.r + b.pillar.r) {
-                const angle = Math.atan2(state.player.y - b.pillar.y, state.player.x - b.pillar.x);
-                state.player.x = b.pillar.x + Math.cos(angle) * (state.player.r + b.pillar.r);
-                state.player.y = b.pillar.y + Math.sin(angle) * (state.player.r + b.pillar.r);
-            }
-            
-            // Pantheon boss collision (to prevent breaking the beam mechanic)
-            const bossDist = Math.hypot(b.x - b.pillar.x, b.y - b.pillar.y);
-            if (bossDist < b.r + b.pillar.r) {
-                const angle = Math.atan2(b.y - b.pillar.y, b.x - b.pillar.x);
-                b.x = b.pillar.x + Math.cos(angle) * (b.r + b.pillar.r);
-                b.y = b.pillar.y + Math.sin(angle) * (b.r + b.pillar.r);
-            }
-
-            // Collision for OTHER enemies
-            state.enemies.forEach(e => {
-                if (e !== b) { // Don't check against the Pantheon itself again
-                    const dist = Math.hypot(e.x - b.pillar.x, e.y - b.pillar.y);
-                    if (dist < e.r + b.pillar.r) {
-                        const angle = Math.atan2(e.y - b.pillar.y, e.x - b.pillar.x);
-                        e.x = b.pillar.x + Math.cos(angle) * (e.r + b.pillar.r);
-                        e.y = b.pillar.y + Math.sin(angle) * (e.r + b.pillar.r);
-                    }
+            const allEntities = [state.player, ...state.enemies];
+            allEntities.forEach(entity => {
+                const dist = Math.hypot(entity.x - b.pillar.x, entity.y - b.pillar.y);
+                const entityRadius = entity.r || state.player.r;
+                if (dist < entityRadius + b.pillar.r) {
+                    const angle = Math.atan2(entity.y - b.pillar.y, entity.x - b.pillar.x);
+                    entity.x = b.pillar.x + Math.cos(angle) * (entityRadius + b.pillar.r);
+                    entity.y = b.pillar.y + Math.sin(angle) * (entityRadius + b.pillar.r);
                 }
             });
         }
@@ -1731,13 +1715,23 @@ export const bossData = [{
     },
     onDamage: (b, dmg, source, state, sP, play, stopLoopingSfx, gameHelpers) => { 
         if (b.invulnerable) return;
-        b.hp -= dmg;
-
+        
         const hpPercent = b.hp / b.maxHP;
         
-        if ((hpPercent < 0.67 && b.phase === 1) || (hpPercent < 0.34 && b.phase === 2)) {
-            b.phase++;
-            b.actionCooldown *= 0.75;
+        const phaseThresholds = [0.8, 0.6, 0.4, 0.2];
+        const currentPhase = b.phase || 1;
+        let nextPhase = -1;
+
+        for(let i = 0; i < phaseThresholds.length; i++) {
+            if (hpPercent <= phaseThresholds[i] && currentPhase === (i + 1)) {
+                nextPhase = i + 2;
+                break;
+            }
+        }
+
+        if (nextPhase !== -1) {
+            b.phase = nextPhase;
+            b.actionCooldown *= 0.85;
             b.invulnerable = true;
             utils.spawnParticles(state.particles, b.x, b.y, '#fff', 150, 8, 50);
             state.effects.push({ type: 'shockwave', caster: b, x: b.x, y: b.y, radius: 0, maxRadius: 1200, speed: 1000, startTime: Date.now(), hitEnemies: new Set(), damage: 50, color: 'rgba(255, 255, 255, 0.7)' });
