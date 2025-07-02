@@ -436,6 +436,7 @@ export function gameTick(mx, my) {
                     state.bossActive = false;
                     AudioManager.playSfx('bossDefeatSound');
                     AudioManager.fadeOutMusic();
+                    
                     if (state.arenaMode) {
                         showUnlockNotification("Timeline Forged!", "Victory");
                         setTimeout(() => {
@@ -790,6 +791,7 @@ export function gameTick(mx, my) {
         }
     }
 
+    // --- THIS ENTIRE LOOP WAS THE MISSING CODE BLOCK ---
     state.effects.forEach((effect, index) => {
         if (Date.now() > (effect.endTime || Infinity)) {
             if (effect.type === 'paradox_echo') stopLoopingSfx('paradoxTrailHum');
@@ -873,7 +875,7 @@ export function gameTick(mx, my) {
                     const angles = [effect.angle, effect.angle + (2 * Math.PI / 3), effect.angle - (2 * Math.PI / 3)];
                     angles.forEach(angle => { state.effects.push({ type: 'nova_bullet', x: caster.x, y: caster.y, r: effect.r || 4, dx: Math.cos(angle) * speed, dy: Math.sin(angle) * speed, color: effect.color, caster: caster }); });
                 } else {
-                    state.effects.push({ type: 'nova_bullet', x: caster.x, y: caster.y, r: effect.r || 4, dx: Math.cos(effect.angle) * speed, dy: Math.sin(angle) * speed, color: effect.color, caster: caster, damage: effect.damage }); 
+                    state.effects.push({ type: 'nova_bullet', x: caster.x, y: caster.y, r: effect.r || 4, dx: Math.cos(effect.angle) * speed, dy: Math.sin(effect.angle) * speed, color: effect.color, caster: caster, damage: effect.damage }); 
                 }
                 effect.angle += 0.5; 
             }
@@ -944,7 +946,6 @@ export function gameTick(mx, my) {
             const { source, pillar } = effect; if(!source || !pillar || source.hp <= 0) { state.effects.splice(index, 1); return; }
             
             const alpha = (effect.endTime - Date.now()) / 1200; 
-            ctx.fillStyle = `rgba(214, 48, 49, ${alpha * 0.7})`;
             
             ctx.save();
             ctx.fillStyle = `rgba(214, 48, 49, ${alpha * 0.7})`;
