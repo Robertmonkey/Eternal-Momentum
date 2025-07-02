@@ -189,7 +189,19 @@ export function spawnBossesForStage(stageNum) {
 }
 
 export function spawnEnemy(isBoss = false, bossId = null, location = null) {
-    const e = { x: location ? location.x : Math.random() * canvas.width, y: location ? location.y : Math.random() * canvas.height, dx: (Math.random() - 0.5) * 0.75, dy: (Math.random() - 0.5) * 0.75, r: isBoss ? 50 : 15, hp: isBoss ? 200 : 1, maxHP: isBoss ? 200 : 1, boss: isBoss, frozen: false, targetBosses: false };
+    const e = { 
+        x: location ? location.x : Math.random() * canvas.width, 
+        y: location ? location.y : Math.random() * canvas.height, 
+        dx: (Math.random() - 0.5) * 0.75, 
+        dy: (Math.random() - 0.5) * 0.75, 
+        r: isBoss ? 50 : 15, 
+        hp: isBoss ? 200 : 1, 
+        maxHP: isBoss ? 200 : 1, 
+        boss: isBoss, 
+        frozen: false, 
+        targetBosses: false,
+        instanceId: Date.now() + Math.random(), // <<< HEALTH BAR FIX
+    };
     if (isBoss) {
         const bd = bossData.find(b => b.id === bossId);
         if (!bd) { console.error("Boss data not found for id", bossId); return null; }
@@ -436,7 +448,6 @@ export function gameTick(mx, my) {
                     state.bossActive = false;
                     AudioManager.playSfx('bossDefeatSound');
                     AudioManager.fadeOutMusic();
-                    
                     if (state.arenaMode) {
                         showUnlockNotification("Timeline Forged!", "Victory");
                         setTimeout(() => {
@@ -791,7 +802,6 @@ export function gameTick(mx, my) {
         }
     }
 
-    // --- THIS ENTIRE LOOP WAS THE MISSING CODE BLOCK ---
     state.effects.forEach((effect, index) => {
         if (Date.now() > (effect.endTime || Infinity)) {
             if (effect.type === 'paradox_echo') stopLoopingSfx('paradoxTrailHum');
@@ -821,9 +831,7 @@ export function gameTick(mx, my) {
             });
             effect.x += effect.dx * speedMultiplier;
             effect.y += effect.dy * speedMultiplier;
-        }
-
-        if (effect.type === 'shockwave') {
+        } else if (effect.type === 'shockwave') {
             const elapsed = (Date.now() - effect.startTime) / 1000; effect.radius = elapsed * effect.speed;
             ctx.strokeStyle = effect.color || `rgba(255, 255, 255, ${1-(effect.radius/effect.maxRadius)})`; ctx.lineWidth = 10;
             ctx.beginPath(); ctx.arc(effect.x, effect.y, effect.radius, 0, 2 * Math.PI); ctx.stroke();
