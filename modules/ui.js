@@ -5,7 +5,6 @@ import { bossData } from './bosses.js';
 import { STAGE_CONFIG } from './config.js';
 import { getBossesForStage } from './gameLoop.js';
 
-// --- (Keep all existing constants like ascensionFill, etc.) ---
 const ascensionFill = document.getElementById('ascension-bar-fill');
 const ascensionText = document.getElementById('ascension-bar-text');
 const apDisplay = document.getElementById('ascension-points-display');
@@ -24,8 +23,6 @@ const confirmTitle = document.getElementById('custom-confirm-title');
 const confirmText = document.getElementById('custom-confirm-text');
 const confirmYesBtn = document.getElementById('confirm-yes');
 const confirmNoBtn = document.getElementById('confirm-no');
-
-// --- (Keep updateStatusEffectsUI, updateUI, showBossBanner, showUnlockNotification, populateLevelSelect, and showCustomConfirm functions exactly as they are) ---
 
 function updateStatusEffectsUI() {
     const now = Date.now();
@@ -243,7 +240,6 @@ export function showCustomConfirm(title, text, onConfirm) {
     customConfirm.style.display = 'flex';
 }
 
-// --- NEW FUNCTION TO POPULATE AND MANAGE THE ORRERY MENU ---
 export function populateOrreryMenu(onStart) {
     let totalEchoes = 0;
     if (state.player.highestStageBeaten >= 30) {
@@ -282,7 +278,7 @@ export function populateOrreryMenu(onStart) {
 
             item.innerHTML = `
                 <div class="orrery-boss-info">
-                    <span class="orrery-boss-icon">${bossData.find(b=>b.id===boss.id).color}</span>
+                    <span class="orrery-boss-icon">💀</span>
                     <span>${boss.name}</span>
                 </div>
                 <span class="orrery-boss-cost">${cost}</span>
@@ -302,8 +298,10 @@ export function populateOrreryMenu(onStart) {
             const boss = bossData.find(b => b.id === bossId);
             const item = document.createElement('div');
             item.className = 'orrery-selected-boss';
+            
             item.style.borderColor = boss.color;
-            item.innerHTML = `<span>${bossData.find(b=>b.id===boss.id).color}</span>`;
+            item.innerHTML = `<span>💀</span>`;
+
             item.title = boss.name;
             item.onclick = () => {
                 selectedBosses.splice(index, 1);
