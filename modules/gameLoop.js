@@ -32,7 +32,7 @@ export function addStatusEffect(name, emoji, duration) {
         const isBerserk = state.player.berserkUntil > now;
         const hasTalent = state.player.purchasedTalents.has('unstoppable-frenzy');
         if (isBerserk && hasTalent) {
-            return; 
+            return;
         }
     }
 
@@ -107,7 +107,7 @@ function getSafeSpawnLocation() {
             break;
         case 3: // Right
             x = canvas.width - edgeMargin;
-            y = Math.random() * canvas.height;
+            y = canvas.height - edgeMargin;
             break;
     }
     return { x, y };
@@ -292,7 +292,7 @@ export function gameTick(mx, my) {
         state.decoy.x += Math.cos(angle) * decoySpeed;
         state.decoy.y += Math.sin(angle) * decoySpeed;
         state.decoy.x = Math.max(state.decoy.r, Math.min(canvas.width - state.decoy.r, state.decoy.x));
-        state.decoy.y = Math.max(state.decoy.r, Math.min(canvas.height - state.decoy.y, state.decoy.y));
+        state.decoy.y = Math.max(state.decoy.r, Math.min(canvas.height - state.decoy.r, state.decoy.y));
     }
 
     if (state.gravityActive && Date.now() > state.gravityEnd) {
@@ -515,16 +515,15 @@ export function gameTick(mx, my) {
                     const currentPullRadius = effect.maxRadius * progress;
                     const dist = Math.hypot(e.x - effect.x, e.y - effect.y);
                     if (dist < currentPullRadius) {
-                        let pullStrength = e.boss ? 0.03 : 0.1;
-                        if (e.id === 'fractal_horror') {
-                            pullStrength = 0.1;
-                        }
-                        e.x += (effect.x - e.x) * pullStrength;
-                        e.y += (effect.y - e.y) * pullStrength;
-                        if (dist < effect.radius + e.r && Date.now() - (effect.lastDamage.get(e) || 0) > effect.damageRate) {
-                             e.hp -= e.boss ? effect.damage : 15;
-                             if(state.player.purchasedTalents.has('unstable-singularity')) e.hp -= 5 * state.player.talent_modifiers.damage_multiplier;
-                             effect.lastDamage.set(e, Date.now());
+                        if (e.id !== 'fractal_horror') {
+                            let pullStrength = e.boss ? 0.03 : 0.1;
+                            e.x += (effect.x - e.x) * pullStrength;
+                            e.y += (effect.y - e.y) * pullStrength;
+                            if (dist < effect.radius + e.r && Date.now() - (effect.lastDamage.get(e) || 0) > effect.damageRate) {
+                                e.hp -= e.boss ? effect.damage : 15;
+                                if(state.player.purchasedTalents.has('unstable-singularity')) e.hp -= 5 * state.player.talent_modifiers.damage_multiplier;
+                                effect.lastDamage.set(e, Date.now());
+                           }
                         }
                     }
                 }
