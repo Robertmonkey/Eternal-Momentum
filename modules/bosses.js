@@ -1095,6 +1095,7 @@ export const bossData = [{
     name: "The Fractal Horror",
     color: "#be2edd",
     maxHP: 15000,
+    r: 550, // <<< ADD THIS LINE
     hasCustomMovement: true,
     hasCustomDraw: true,
     init: (b, state) => {
@@ -1107,7 +1108,7 @@ export const bossData = [{
                 lastStateChange: Date.now()
             };
         }
-        b.r = b.r || 550;
+        //b.r = b.r || 550;
         b.generation = b.generation || 1;
         delete b.aiState;
         delete b.aiTimer;
