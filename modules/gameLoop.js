@@ -32,7 +32,7 @@ export function addStatusEffect(name, emoji, duration) {
         const isBerserk = state.player.berserkUntil > now;
         const hasTalent = state.player.purchasedTalents.has('unstoppable-frenzy');
         if (isBerserk && hasTalent) {
-            return;
+            return; 
         }
     }
 
@@ -113,23 +113,79 @@ function getSafeSpawnLocation() {
     return { x, y };
 }
 
-export function spawnBossesForStage(stageNum) {
-    const stageData = STAGE_CONFIG.find(s => s.stage === stageNum);
+// --- NEW HYBRID DETERMINISTIC BOSS GENERATION SYSTEM ---
+export function getBossesForStage(stageNum) {
+    // For stages 1-30, use the predefined config
+    if (stageNum <= 30) {
+        const stageData = STAGE_CONFIG.find(s => s.stage === stageNum);
+        return stageData ? stageData.bosses : [];
+    }
 
-    if (stageData && stageData.bosses) {
-        stageData.bosses.forEach(bossId => {
-            spawnEnemy(true, bossId, getSafeSpawnLocation());
-        });
-    } else if (stageNum > 30) {
-        const hardBosses = bossData.filter(b => b.maxHP >= 400 && b.id !== 'obelisk_conduit');
-        const bossCount = Math.min(3, Math.floor((stageNum - 30) / 5) + 1);
-        const bossIdsToSpawn = [];
-        for(let i=0; i < bossCount; i++) {
-            const randomBoss = hardBosses[Math.floor(Math.random() * hardBosses.length)];
-            if (!bossIdsToSpawn.includes(randomBoss.id)) {
-                bossIdsToSpawn.push(randomBoss.id);
+    // --- Data for Procedural Generation (Stages 31+) ---
+    const proceduralBossData = bossData.filter(b => b.difficulty_tier);
+
+    const bossPools = {
+        tier1: proceduralBossData.filter(b => b.difficulty_tier === 1),
+        tier2: proceduralBossData.filter(b => b.difficulty_tier === 2),
+        tier3: proceduralBossData.filter(b => b.difficulty_tier === 3)
+    };
+    
+    // --- STAGE BUDGET CALCULATION ---
+    // The challenge budget for the stage. Starts at 4 for Stage 31, increases by 1 every 2 stages.
+    let difficultyBudget = Math.floor((stageNum - 31) / 2) + 4;
+
+    const bossesToSpawn = new Set();
+    
+    // --- KEYSTONE BOSS SELECTION ---
+    // This rotation ensures every boss gets a chance to be the "main event" of a stage.
+    const keystoneBossIndex = (stageNum - 31) % proceduralBossData.length;
+    const keystoneBoss = proceduralBossData[keystoneBossIndex];
+    
+    if (keystoneBoss) {
+        bossesToSpawn.add(keystoneBoss.id);
+        difficultyBudget -= keystoneBoss.difficulty_tier;
+    }
+
+    // --- COMPANION BOSS SELECTION (FILL THE BUDGET) ---
+    const availableTiers = [bossPools.tier3, bossPools.tier2, bossPools.tier1].filter(pool => pool.length > 0);
+    let emergencyBreak = 0; 
+    while (difficultyBudget > 0 && emergencyBreak < 10) { // Loop to spend the budget
+        let bossSelectedInLoop = false;
+        // Try to select a boss, starting from the hardest tier that fits the budget
+        for (const pool of availableTiers) {
+            const tierCost = pool[0].difficulty_tier;
+            if (difficultyBudget >= tierCost) {
+                // Deterministically pick a boss from this tier that hasn't been picked yet
+                let candidateBoss = null;
+                for (let i = 0; i < pool.length; i++) {
+                    const bossIndex = (stageNum + bossesToSpawn.size + i) % pool.length;
+                    if (!bossesToSpawn.has(pool[bossIndex].id)) {
+                        candidateBoss = pool[bossIndex];
+                        break;
+                    }
+                }
+
+                if (candidateBoss) {
+                    bossesToSpawn.add(candidateBoss.id);
+                    difficultyBudget -= tierCost;
+                    bossSelectedInLoop = true;
+                    break; // Exit the tier-loop to restart the selection process for the next slot
+                }
             }
         }
+        if (!bossSelectedInLoop) {
+            break; // Break if no boss could be found to fit the remaining budget
+        }
+        emergencyBreak++;
+    }
+
+    return Array.from(bossesToSpawn);
+}
+
+export function spawnBossesForStage(stageNum) {
+    const bossIdsToSpawn = getBossesForStage(stageNum);
+
+    if (bossIdsToSpawn && bossIdsToSpawn.length > 0) {
         bossIdsToSpawn.forEach(bossId => {
             spawnEnemy(true, bossId, getSafeSpawnLocation());
         });
@@ -292,7 +348,7 @@ export function gameTick(mx, my) {
         state.decoy.x += Math.cos(angle) * decoySpeed;
         state.decoy.y += Math.sin(angle) * decoySpeed;
         state.decoy.x = Math.max(state.decoy.r, Math.min(canvas.width - state.decoy.r, state.decoy.x));
-        state.decoy.y = Math.max(state.decoy.r, Math.min(canvas.height - state.decoy.r, state.decoy.y));
+        state.decoy.y = Math.max(state.decoy.r, Math.min(canvas.height - state.decoy.y, state.decoy.y));
     }
 
     if (state.gravityActive && Date.now() > state.gravityEnd) {
@@ -883,13 +939,11 @@ export function gameTick(mx, my) {
             const alpha = (effect.endTime - Date.now()) / 1200; 
             ctx.fillStyle = `rgba(214, 48, 49, ${alpha * 0.7})`;
             
-            // --- FIX: This is the new, corrected drawing logic ---
             ctx.save();
             ctx.fillStyle = `rgba(214, 48, 49, ${alpha * 0.7})`;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
             const distToPillar = Math.hypot(pillar.x - source.x, pillar.y - source.y);
-            // Prevent division by zero or asin(>1) if the source is inside the pillar
             if (distToPillar > pillar.r) {
                 const angleToPillar = Math.atan2(pillar.y - source.y, pillar.x - source.x);
                 const angleToTangent = Math.asin(pillar.r / distToPillar);
@@ -921,13 +975,12 @@ export function gameTick(mx, my) {
                 ctx.closePath();
                 ctx.fill();
             }
-            ctx.restore(); // Restores fillStyle and globalCompositeOperation
-            // --- End of new drawing logic ---
+            ctx.restore();
 
             const allTargets = [state.player, ...state.enemies.filter(t => t !== source)];
             allTargets.forEach(target => {
                 const distToPillarCheck = Math.hypot(pillar.x - source.x, pillar.y - source.y);
-                if (distToPillarCheck <= pillar.r) return; // Don't fire if source is inside pillar
+                if (distToPillarCheck <= pillar.r) return;
 
                 const angleToPillarCheck = Math.atan2(pillar.y - source.y, pillar.x - source.x);
                 const angleToTangentCheck = Math.asin(pillar.r / distToPillarCheck);
