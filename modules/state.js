@@ -19,13 +19,12 @@ export const state = {
     unlockedDefensiveSlots: 1,
     infected: false, infectionEnd: 0, lastSpore: 0,
     
-    // --- NEW/MODIFIED PROPERTIES FOR TALENTS ---
     contingencyUsed: false,
     preordinanceUsed: false,
     
     talent_modifiers: {
         damage_multiplier: 1.0,
-        damage_taken_multiplier: 1.0, // For Overcharged Capacitors
+        damage_taken_multiplier: 1.0,
         pickup_radius_bonus: 0,
         essence_gain_modifier: 1.0,
         pull_resistance_modifier: 0,
@@ -58,6 +57,7 @@ export const state = {
   gravityActive:false, 
   gravityEnd:0,
   bossSpawnCooldownEnd: 0,
+  customOrreryBosses: [], // <<< NEW PROPERTY
 };
 
 export function savePlayerState() {
@@ -101,8 +101,7 @@ export function resetGame(isArena = false) {
     state.player.berserkUntil = 0;
     state.player.talent_states.phaseMomentum.lastDamageTime = Date.now();
     state.player.talent_states.reactivePlating.cooldownUntil = 0;
-
-    // --- RESET ONCE-PER-STAGE TALENTS ---
+    
     state.player.contingencyUsed = false;
     state.player.preordinanceUsed = false;
     
@@ -117,15 +116,13 @@ export function resetGame(isArena = false) {
         currentStage: isArena ? 1 : state.player.highestStageBeaten > 0 ? state.player.highestStageBeaten + 1 : 1,
         arenaMode: isArena, wave: 0, lastArenaSpawn: Date.now(),
         bossSpawnCooldownEnd: Date.now() + 3000, 
+        customOrreryBosses: [], // <<< RESET THE CUSTOM BOSS LIST
     });
     
-    // --- BUG FIX: Clean up Fractal Horror state variables on reset ---
     delete state.fractalHorrorSharedHp;
     delete state.fractalHorrorSplits;
-    delete state.fractalHorrorAi; // --- FIX: Clean up shared AI state ---
-    // --- END BUG FIX ---
+    delete state.fractalHorrorAi;
 
-    // --- Temporal Echo Talent Logic ---
     if (state.player.purchasedTalents.has('temporal-echo')) {
         const unlocked = [...state.player.unlockedPowers];
         if (unlocked.length > 0) {
@@ -136,7 +133,7 @@ export function resetGame(isArena = false) {
                 state.offensiveInventory[0] = powerType;
             } else if (!isOffensive && state.defensiveInventory[0] === null) {
                 state.defensiveInventory[0] = powerType;
-            } else { // Fallback if preferred slot is full
+            } else { 
                 if (state.offensiveInventory[0] === null) {
                     state.offensiveInventory[0] = powerType;
                 } else if (state.defensiveInventory[0] === null) {
