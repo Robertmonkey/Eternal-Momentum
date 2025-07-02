@@ -2,13 +2,12 @@
 import { state, resetGame, loadPlayerState, savePlayerState } from './modules/state.js';
 import { bossData } from './modules/bosses.js';
 import { AudioManager } from './modules/audio.js';
-import { updateUI, populateLevelSelect, showCustomConfirm } from './modules/ui.js';
+import { updateUI, populateLevelSelect, showCustomConfirm, populateOrreryMenu } from './modules/ui.js';
 import { gameTick, spawnBossesForStage, addStatusEffect, addEssence } from './modules/gameLoop.js';
 import { usePower } from './modules/powers.js';
 import * as utils from './modules/utils.js';
 import { renderAscensionGrid, applyAllTalentEffects } from './modules/ascension.js';
 
-// --- DEBUG FUNCTION (no changes) ---
 window.addAP = function(amount) {
     if (typeof amount !== 'number' || amount <= 0) {
         console.log("Please provide a positive number of AP to add.");
@@ -31,11 +30,8 @@ const loadingScreen = document.getElementById('loading-screen');
 const progressFill = document.getElementById('loading-progress-fill');
 const statusText = document.getElementById('loading-status-text');
 
-// --- CHANGE: New asset preloading function ---
 function preloadAssets() {
-    // This function returns a Promise that resolves when all assets are loaded.
     return new Promise((resolve, reject) => {
-        // Master list of all assets to preload
         const assetManifest = [
             './assets/home.mp4', './assets/load.png', './assets/bg.png',
             ...Array.from(document.querySelectorAll('audio')).map(el => el.src)
@@ -54,7 +50,7 @@ function preloadAssets() {
                 setTimeout(() => {
                     statusText.innerText = 'Momentum Stabilized!';
                     resolve();
-                }, 250); // Small delay for effect
+                }, 250);
             }
         };
 
@@ -68,7 +64,7 @@ function preloadAssets() {
                 img.onload = () => updateProgress(url);
                 img.onerror = () => {
                     console.error(`Failed to load image: ${url}`);
-                    updateProgress(url); // Still count it to not block loading
+                    updateProgress(url);
                 };
             } else if (isVideo) {
                 const video = document.getElementById('home-video-bg');
@@ -78,7 +74,7 @@ function preloadAssets() {
                     updateProgress(url);
                 }, { once: true });
                 video.load();
-            } else { // Audio
+            } else { 
                 const audioEl = Array.from(document.querySelectorAll('audio')).find(el => el.src.includes(url.split('/').pop()));
                 if (audioEl) {
                     audioEl.addEventListener('canplaythrough', () => updateProgress(url), { once: true });
@@ -93,11 +89,8 @@ function preloadAssets() {
     });
 }
 
-// --- CHANGE: Entire game initialization is now wrapped in the preloader ---
 window.addEventListener('load', () => {
     preloadAssets().then(() => {
-        // This code only runs AFTER all assets are loaded.
-        
         const canvas = document.getElementById("gameCanvas");
         const uiContainer = document.getElementById("ui-container");
         const soundBtn = document.getElementById("soundToggle");
@@ -112,12 +105,17 @@ window.addEventListener('load', () => {
         
         const levelSelectModal = document.getElementById("levelSelectModal");
         const closeLevelSelectBtn = document.getElementById("closeLevelSelectBtn");
-        const arenaBtn = document.getElementById("arenaBtn");
+        const arenaBtn = document.getElementById("arenaBtn"); // Now the Orrery Button
         const jumpToFrontierBtn = document.getElementById("jumpToFrontierBtn");
+        
         const ascensionGridModal = document.getElementById("ascensionGridModal");
         const closeAscensionBtn = document.getElementById("closeAscensionBtn");
         const apDisplayAscGrid = document.getElementById("ap-total-asc-grid");
         const clearSaveBtn = document.getElementById("clearSaveBtn");
+
+        // New Orrery Elements
+        const orreryModal = document.getElementById("orreryModal");
+        const closeOrreryBtn = document.getElementById("closeOrreryBtn");
 
         const gameOverMenu = document.getElementById('gameOverMenu');
         const restartStageBtn = document.getElementById('restartStageBtn');
@@ -177,7 +175,7 @@ window.addEventListener('load', () => {
             document.addEventListener('visibilitychange', () => AudioManager.handleVisibilityChange());
             soundBtn.addEventListener("click", () => AudioManager.toggleMute());
             
-            document.querySelectorAll('button, .stage-select-item').forEach(button => {
+            document.querySelectorAll('button, .stage-select-item, .orrery-boss-item').forEach(button => {
                 button.addEventListener('mouseenter', () => AudioManager.playSfx('uiHoverSound'));
                 button.addEventListener('click', () => AudioManager.playSfx('uiClickSound'));
             });
@@ -185,6 +183,13 @@ window.addEventListener('load', () => {
             levelSelectBtn.addEventListener("click", () => { 
                 state.isPaused = true; 
                 populateLevelSelect(startSpecificLevel);
+                // --- Orrery Button Visibility ---
+                if (state.player.highestStageBeaten >= 30) {
+                    arenaBtn.style.display = 'block';
+                    arenaBtn.innerText = "WEAVER'S ORRERY";
+                } else {
+                    arenaBtn.style.display = 'none';
+                }
                 levelSelectModal.style.display = 'flex'; 
                 AudioManager.playSfx('uiModalOpen');
             });
@@ -201,22 +206,31 @@ window.addEventListener('load', () => {
                 ascensionGridModal.style.display = 'flex';
                 AudioManager.playSfx('uiModalOpen');
             });
-
-            // --- BUG FIX STARTS HERE ---
+            
             closeAscensionBtn.addEventListener("click", () => {
                 ascensionGridModal.style.display = 'none';
                 AudioManager.playSfx('uiModalClose');
-                // If the game is over, we need to show the game over menu again.
-                // Otherwise, we unpause the game.
                 if (state.gameOver) {
                     gameOverMenu.style.display = 'flex';
                 } else {
                     state.isPaused = false;
                 }
             });
-            // --- BUG FIX ENDS HERE ---
 
-            arenaBtn.addEventListener("click", () => startNewGame(true));
+            // --- REPURPOSED ARENA BUTTON FOR ORRERY ---
+            arenaBtn.addEventListener("click", () => {
+                levelSelectModal.style.display = 'none';
+                populateOrreryMenu(startOrreryEncounter);
+                orreryModal.style.display = 'flex';
+                AudioManager.playSfx('uiModalOpen');
+            });
+
+            closeOrreryBtn.addEventListener("click", () => {
+                orreryModal.style.display = 'none';
+                levelSelectModal.style.display = 'flex'; // Go back to stage select
+                AudioManager.playSfx('uiModalClose');
+            });
+
             jumpToFrontierBtn.addEventListener("click", () => {
                 let frontierStage = (state.player.highestStageBeaten > 0 ? state.player.highestStageBeaten + 1 : 1);
                 startSpecificLevel(frontierStage);
@@ -242,17 +256,14 @@ window.addEventListener('load', () => {
                 levelSelectModal.style.display = 'flex';
                 AudioManager.playSfx('uiModalOpen');
             });
-
-            // --- BUG FIX STARTS HERE ---
+            
             ascensionMenuBtn.addEventListener("click", () => {
-                // Hide the game over menu so it doesn't appear behind the Ascension grid
                 gameOverMenu.style.display = 'none'; 
                 apDisplayAscGrid.innerText = state.player.ascensionPoints;
                 renderAscensionGrid();
                 ascensionGridModal.style.display = 'flex';
                 AudioManager.playSfx('uiModalOpen');
             });
-            // --- BUG FIX ENDS HERE ---
 
             function startGameFromHome() {
                 AudioManager.unlockAudio();
@@ -291,22 +302,6 @@ window.addEventListener('load', () => {
             }
             state.gameLoopId = requestAnimationFrame(loop);
         }
-
-        function arenaLoop() {
-            if (!gameTick(mx, my)) { if (state.gameLoopId) cancelAnimationFrame(state.gameLoopId); return; }
-            state.gameLoopId = requestAnimationFrame(arenaLoop);
-        }
-
-        const startNewGame = (isArena) => {
-            if (state.gameLoopId) cancelAnimationFrame(state.gameLoopId);
-            applyAllTalentEffects();
-            resetGame(isArena);
-            state.isPaused = false;
-            gameOverMenu.style.display = 'none';
-            levelSelectModal.style.display = 'none';
-            if (isArena) { arenaLoop(); } 
-            else { loop(); }
-        };
         
         const startSpecificLevel = (levelNum) => {
             if (state.gameLoopId) cancelAnimationFrame(state.gameLoopId);
@@ -319,8 +314,21 @@ window.addEventListener('load', () => {
             updateUI();
             loop();
         };
+
+        // --- NEW FUNCTION TO START A CUSTOM ORRERY ENCOUNTER ---
+        const startOrreryEncounter = (bossList) => {
+            if (state.gameLoopId) cancelAnimationFrame(state.gameLoopId);
+            applyAllTalentEffects();
+            resetGame(true); // Reset game in "arena mode" which prevents normal stage progression
+            state.customOrreryBosses = bossList; // Set the custom bosses
+            state.currentStage = 999; // Use a high stage number for scaling
+            gameOverMenu.style.display = 'none';
+            orreryModal.style.display = 'none';
+            state.isPaused = false;
+            updateUI();
+            loop();
+        };
         
-        // Fade out the loading screen and show the home screen
         setTimeout(() => {
             loadingScreen.style.opacity = '0';
             loadingScreen.addEventListener('transitionend', () => {
@@ -331,6 +339,6 @@ window.addEventListener('load', () => {
                 });
             }, { once: true });
             initialize();
-        }, 500); // Wait half a second after "stabilized" message
+        }, 500);
     });
 });
