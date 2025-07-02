@@ -1095,7 +1095,7 @@ export const bossData = [{
     name: "The Fractal Horror",
     color: "#be2edd",
     maxHP: 15000,
-    r: 550, // <<< ADD THIS LINE
+    r: 300, // <<< ADD THIS LINE
     hasCustomMovement: true,
     hasCustomDraw: true,
     init: (b, state) => {
