@@ -243,7 +243,11 @@ export function showCustomConfirm(title, text, onConfirm) {
 export function populateOrreryMenu(onStart) {
     let totalEchoes = 0;
     if (state.player.highestStageBeaten >= 30) {
+        // 1. Base amount for unlocking the Orrery
         totalEchoes += 10;
+        // 2. Incremental reward: +1 for each stage cleared past 30
+        totalEchoes += (state.player.highestStageBeaten - 30);
+        // 3. Large lump-sum rewards for clearing Epoch milestones
         if (state.player.highestStageBeaten >= 50) totalEchoes += 15;
         if (state.player.highestStageBeaten >= 70) totalEchoes += 20;
         if (state.player.highestStageBeaten >= 90) totalEchoes += 25;
