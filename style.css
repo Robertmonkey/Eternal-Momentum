@@ -957,6 +957,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.2s;
+    position: relative; /* For tooltip positioning */
 }
 .orrery-boss-item:hover {
     background: rgba(240, 0, 255, 0.15);
@@ -973,6 +974,14 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
 }
 .orrery-boss-icon {
     font-size: 1.5rem;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 2px solid;
+    flex-shrink: 0;
 }
 .orrery-boss-cost {
     font-size: 1.2rem;
@@ -991,6 +1000,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     border-radius: 50%;
     cursor: pointer;
     transition: background-color 0.2s;
+    position: relative; /* For tooltip positioning */
 }
 .orrery-selected-boss:hover {
     background: rgba(231, 76, 60, 0.3);
@@ -1056,4 +1066,36 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
 #orrery-boss-list-container::-webkit-scrollbar-thumb:hover,
 #orrery-selection-display::-webkit-scrollbar-thumb:hover {
     background: #ff40ff;
+}
+
+/* Tooltip styles for Orrery (similar to talents) */
+.orrery-boss-item .boss-tooltip,
+.orrery-selected-boss .boss-tooltip {
+    visibility: hidden;
+    width: 250px;
+    background-color: #101020;
+    color: #fff;
+    text-align: left;
+    border-radius: 6px;
+    padding: 10px;
+    position: absolute;
+    z-index: 105;
+    bottom: 110%;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity 0.3s;
+    border: 1px solid var(--secondary-glow);
+    font-size: 0.9rem;
+    pointer-events: none;
+}
+
+.orrery-boss-item:hover .boss-tooltip,
+.orrery-selected-boss:hover .boss-tooltip {
+    visibility: visible;
+    opacity: 1;
+}
+
+.orrery-boss-item .boss-tooltip .tooltip-header {
+    color: var(--secondary-glow);
 }
