@@ -1098,7 +1098,6 @@ export const bossData = [{
     hasCustomMovement: true,
     hasCustomDraw: true,
     init: (b, state) => {
-        // --- FIX: Initialize a shared AI state for all fractals ---
         if (state.fractalHorrorSharedHp === undefined) {
             state.fractalHorrorSharedHp = b.maxHP;
             state.fractalHorrorSplits = 0;
@@ -1110,7 +1109,6 @@ export const bossData = [{
         }
         b.r = b.r || 156;
         b.generation = b.generation || 1;
-        // Individual timers are no longer needed
         delete b.aiState;
         delete b.aiTimer;
         delete b.attackTarget;
@@ -1121,21 +1119,7 @@ export const bossData = [{
         }
         if (b.hp <= 0 || !state.fractalHorrorAi) return;
 
-        let isBeingPulled = false;
-        for (const effect of state.effects) {
-            if (effect.type === 'black_hole') {
-                const dist = Math.hypot(b.x - effect.x, b.y - effect.y);
-                const elapsed = Date.now() - effect.startTime;
-                const progress = Math.min(1, elapsed / effect.duration);
-                const currentPullRadius = effect.maxRadius * progress;
-                if (dist < currentPullRadius) {
-                    isBeingPulled = true;
-                    break;
-                }
-            }
-        }
-        
-        const target = state.decoy ? state.decoy : state.player;
+        const target = state.player;
         let allFractals = state.enemies.filter(e => e.id === 'fractal_horror');
         const hpPercent = state.fractalHorrorSharedHp / b.maxHP;
         const expectedSplits = Math.floor((1 - hpPercent) / 0.02);
@@ -1167,7 +1151,6 @@ export const bossData = [{
         const myIndex = allFractals.indexOf(b);
         const isLeader = myIndex === 0;
 
-        // --- FIX: Shared state transition logic, run only by the leader fractal ---
         if (isLeader) {
             const now = Date.now();
             const timeInState = now - state.fractalHorrorAi.lastStateChange;
@@ -1182,23 +1165,34 @@ export const bossData = [{
             }
         }
         
-        // --- FIX: Reworked movement logic for all fractals ---
-        if (!b.frozen && !isBeingPulled) {
+        if (!b.frozen) {
             if (state.fractalHorrorAi.state === 'positioning') {
                 if (myIndex !== -1) {
                     const totalFractals = allFractals.length;
+                    const surroundRadius = 350 + totalFractals * 12;
+
                     const targetAngle = (myIndex / totalFractals) * 2 * Math.PI;
-                    const surroundRadius = 250 + totalFractals * 10;
                     const targetX = target.x + surroundRadius * Math.cos(targetAngle);
                     const targetY = target.y + surroundRadius * Math.sin(targetAngle);
                     
-                    b.x += (targetX - b.x) * 0.02;
-                    b.y += (targetY - b.y) * 0.02;
+                    const baseVelX = (targetX - b.x) * 0.02;
+                    const baseVelY = (targetY - b.y) * 0.02;
+
+                    const distToPlayer = Math.hypot(b.x - state.player.x, b.y - state.player.y);
+                    const safetyRadius = 150;
+                    let slowingMultiplier = 1.0;
+
+                    if (distToPlayer < safetyRadius) {
+                        slowingMultiplier = Math.max(0.1, distToPlayer / safetyRadius);
+                    }
+
+                    b.x += baseVelX * slowingMultiplier;
+                    b.y += baseVelY * slowingMultiplier;
 
                     allFractals.forEach(other => {
                         if (b === other) return;
                         const dist = Math.hypot(b.x - other.x, b.y - other.y);
-                        const spacing = (b.r + other.r) * 0.8; // Use 80% of combined radius for spacing
+                        const spacing = (b.r + other.r) * 0.8;
                         if (dist < spacing) {
                             const angle = Math.atan2(b.y - other.y, b.x - other.x);
                             const force = (spacing - dist) * 0.1;
@@ -1210,12 +1204,13 @@ export const bossData = [{
             } else if (state.fractalHorrorAi.state === 'attacking') {
                 const attackTarget = state.fractalHorrorAi.attackTarget;
                 if (attackTarget) {
-                    const pullMultiplier = 0.01;
-                    const swirlForce = 1.0; 
+                    const pullMultiplier = 0.015;
 
                     const vecX = attackTarget.x - b.x;
                     const vecY = attackTarget.y - b.y;
                     const dist = Math.hypot(vecX, vecY) || 1;
+                    
+                    const swirlForce = dist * 0.03;
 
                     const pullX = vecX * pullMultiplier;
                     const pullY = vecY * pullMultiplier;
@@ -1237,7 +1232,7 @@ export const bossData = [{
         ctx.beginPath();
         ctx.arc(b.x, b.y, b.r + 4, 0, 2 * Math.PI);
         ctx.fill();
-        utils.drawCircle(ctx, b.x, b.y, b.r, b.color);
+        utils.drawCircle(ctx, b.x, b.y, b.color);
 
         if (b.frozen) {
             ctx.fillStyle = "rgba(173, 216, 230, 0.4)";
@@ -1256,7 +1251,7 @@ export const bossData = [{
         if (remaining.length === 0) {
             delete state.fractalHorrorSharedHp;
             delete state.fractalHorrorSplits;
-            delete state.fractalHorrorAi; // --- FIX: Clean up shared AI state on final death ---
+            delete state.fractalHorrorAi;
         }
     }
 }, {
