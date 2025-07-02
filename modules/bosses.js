@@ -1166,6 +1166,8 @@ export const bossData = [{
         }
         
         if (!b.frozen) {
+            let baseVelX, baseVelY;
+
             if (state.fractalHorrorAi.state === 'positioning') {
                 if (myIndex !== -1) {
                     const totalFractals = allFractals.length;
@@ -1175,19 +1177,8 @@ export const bossData = [{
                     const targetX = target.x + surroundRadius * Math.cos(targetAngle);
                     const targetY = target.y + surroundRadius * Math.sin(targetAngle);
                     
-                    const baseVelX = (targetX - b.x) * 0.02;
-                    const baseVelY = (targetY - b.y) * 0.02;
-
-                    const distToPlayer = Math.hypot(b.x - state.player.x, b.y - state.player.y);
-                    const safetyRadius = 150;
-                    let slowingMultiplier = 1.0;
-
-                    if (distToPlayer < safetyRadius) {
-                        slowingMultiplier = Math.max(0.1, distToPlayer / safetyRadius);
-                    }
-
-                    b.x += baseVelX * slowingMultiplier;
-                    b.y += baseVelY * slowingMultiplier;
+                    baseVelX = (targetX - b.x) * 0.02;
+                    baseVelY = (targetY - b.y) * 0.02;
 
                     allFractals.forEach(other => {
                         if (b === other) return;
@@ -1221,18 +1212,24 @@ export const bossData = [{
                     const swirlX = perpX * swirlForce * spiralDirection;
                     const swirlY = perpY * swirlForce * spiralDirection;
 
-                    b.x += pullX + swirlX;
-                    b.y += pullY + swirlY;
+                    baseVelX = pullX + swirlX;
+                    baseVelY = pullY + swirlY;
                 }
             }
+
+            const distToPlayer = Math.hypot(b.x - state.player.x, b.y - state.player.y);
+            const safetyRadius = 150;
+            let slowingMultiplier = 1.0;
+
+            if (distToPlayer < safetyRadius) {
+                slowingMultiplier = Math.max(0.1, distToPlayer / safetyRadius);
+            }
+            
+            if (baseVelX) b.x += baseVelX * slowingMultiplier;
+            if (baseVelY) b.y += baseVelY * slowingMultiplier;
         }
         
-        const alpha = 0.6 + Math.sin(Date.now() / 300) * 0.4;
-        ctx.fillStyle = `rgba(190, 46, 221, ${alpha * 0.5})`;
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, b.r + 4, 0, 2 * Math.PI);
-        ctx.fill();
-        utils.drawCircle(ctx, b.x, b.y, b.color);
+        utils.drawCircle(ctx, b.x, b.y, b.r, b.color);
 
         if (b.frozen) {
             ctx.fillStyle = "rgba(173, 216, 230, 0.4)";
