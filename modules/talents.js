@@ -21,7 +21,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '⚛️',
             maxRanks: 1,
             costPerRank: [50],
-            position: { x: 50, y: 85 },
+            position: { x: 50, y: 90 },
             prerequisites: ['phase-momentum', 'unstable-singularity', 'energetic-recycling'],
             isNexus: true,
         },
@@ -32,7 +32,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '✚',
             maxRanks: 9999,
             costPerRank: [5],
-            position: { x: 40, y: 95 },
+            position: { x: 42, y: 100 },
             prerequisites: ['overload-protocol'],
             isInfinite: true,
         },
@@ -43,7 +43,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '💨',
             maxRanks: 9999,
             costPerRank: [5],
-            position: { x: 50, y: 95 },
+            position: { x: 50, y: 100 },
             prerequisites: ['overload-protocol'],
             isInfinite: true,
         },
@@ -54,13 +54,13 @@ export const TALENT_GRID_CONFIG = {
             icon: '🔥',
             maxRanks: 9999,
             costPerRank: [5],
-            position: { x: 60, y: 95 },
+            position: { x: 58, y: 100 },
             prerequisites: ['overload-protocol'],
             isInfinite: true,
         },
     },
 
-    // --- AEGIS CONSTALLATION (LEFT BRANCH) ---
+    // --- AEGIS CONSTALLATION (LEFT) ---
     aegis: {
         color: 'var(--primary-glow)',
         'exo-weave-plating': {
@@ -70,7 +70,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '❤️',
             maxRanks: 3,
             costPerRank: [1, 2, 2],
-            position: { x: 35, y: 18 },
+            position: { x: 25, y: 25 },
             prerequisites: ['core-nexus'],
         },
         'aegis-shield': {
@@ -81,7 +81,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '🔋',
             maxRanks: 2,
             costPerRank: [1, 1],
-            position: { x: 30, y: 32 },
+            position: { x: 15, y: 40 },
             prerequisites: ['exo-weave-plating'],
         },
         'solar-wind': {
@@ -91,7 +91,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '🏃',
             maxRanks: 2,
             costPerRank: [1, 2],
-            position: { x: 40, y: 32 },
+            position: { x: 35, y: 40 },
             prerequisites: ['exo-weave-plating'],
         },
         'aegis-retaliation': {
@@ -102,7 +102,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '💥',
             maxRanks: 1,
             costPerRank: [2],
-            position: { x: 30, y: 46 },
+            position: { x: 15, y: 58 },
             prerequisites: ['aegis-shield'],
         },
         'cryo-shatter': {
@@ -113,8 +113,8 @@ export const TALENT_GRID_CONFIG = {
             icon: '❄️',
             maxRanks: 2,
             costPerRank: [2, 3],
-            position: { x: 35, y: 55 },
-            prerequisites: ['aegis-retaliation', 'kinetic-overload'], 
+            position: { x: 25, y: 50 },
+            prerequisites: ['aegis-shield', 'solar-wind'],
         },
         'kinetic-overload': {
             id: 'kinetic-overload',
@@ -124,7 +124,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '🖐️',
             maxRanks: 1,
             costPerRank: [3],
-            position: { x: 40, y: 46 },
+            position: { x: 35, y: 58 },
             prerequisites: ['solar-wind'],
         },
         'phase-momentum': {
@@ -134,12 +134,12 @@ export const TALENT_GRID_CONFIG = {
             icon: '👻',
             maxRanks: 1,
             costPerRank: [4],
-            position: { x: 35, y: 70 },
-            prerequisites: ['cryo-shatter'],
+            position: { x: 25, y: 78 },
+            prerequisites: ['aegis-retaliation', 'kinetic-overload'],
         }
     },
     
-    // --- HAVOC CONSTALLATION (RIGHT BRANCH) ---
+    // --- HAVOC CONSTALLATION (RIGHT) ---
     havoc: {
         color: '#ff8800',
         'high-frequency-emitters': {
@@ -149,7 +149,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '📈',
             maxRanks: 2,
             costPerRank: [1, 2],
-            position: { x: 65, y: 18 },
+            position: { x: 75, y: 25 },
             prerequisites: ['core-nexus'],
         },
         'stellar-detonation': {
@@ -160,8 +160,19 @@ export const TALENT_GRID_CONFIG = {
             icon: '💥',
             maxRanks: 2,
             costPerRank: [1, 1],
-            position: { x: 60, y: 32 },
+            position: { x: 65, y: 40 },
             prerequisites: ['high-frequency-emitters'],
+        },
+        'homing-shrapnel': {
+            id: 'homing-shrapnel',
+            name: 'Homing Shrapnel',
+            powerPrerequisite: 'missile',
+            description: () => 'Your Missile power now releases a volley of seeking shrapnel upon impact.',
+            icon: '🧭',
+            maxRanks: 1,
+            costPerRank: [2],
+            position: { x: 63, y: 55 },
+            prerequisites: ['stellar-detonation'],
         },
         'targeting-algorithm': {
             id: 'targeting-algorithm',
@@ -171,8 +182,19 @@ export const TALENT_GRID_CONFIG = {
             icon: '🛰️',
             maxRanks: 1,
             costPerRank: [2],
-            position: { x: 70, y: 32 },
+            position: { x: 85, y: 40 },
             prerequisites: ['high-frequency-emitters'],
+        },
+        'unstable-payload': {
+            id: 'unstable-payload',
+            name: 'Unstable Payload',
+            powerPrerequisite: 'ricochetShot',
+            description: () => 'Ricochet Shot projectiles grow larger and more damaging with each bounce.',
+            icon: '🔄',
+            maxRanks: 1,
+            costPerRank: [3],
+            position: { x: 87, y: 55 },
+            prerequisites: ['targeting-algorithm'],
         },
         'arc-cascade': {
             id: 'arc-cascade',
@@ -182,7 +204,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '⛓️',
             maxRanks: 2,
             costPerRank: [2, 2],
-            position: { x: 65, y: 46 },
+            position: { x: 75, y: 52 },
             prerequisites: ['stellar-detonation', 'targeting-algorithm'],
         },
         'volatile-finish': {
@@ -193,7 +215,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '💣',
             maxRanks: 1,
             costPerRank: [3],
-            position: { x: 63, y: 60 },
+            position: { x: 75, y: 65 },
             prerequisites: ['arc-cascade'],
         },
         'unstoppable-frenzy': {
@@ -204,30 +226,8 @@ export const TALENT_GRID_CONFIG = {
             icon: '💢',
             maxRanks: 1,
             costPerRank: [2],
-            position: { x: 75, y: 48 },
-            prerequisites: ['targeting-algorithm'], 
-        },
-        'unstable-payload': {
-            id: 'unstable-payload',
-            name: 'Unstable Payload',
-            powerPrerequisite: 'ricochetShot',
-            description: () => 'Ricochet Shot projectiles grow larger and more damaging with each bounce.',
-            icon: '🔄',
-            maxRanks: 1,
-            costPerRank: [3],
-            position: { x: 68, y: 60 },
-            prerequisites: ['arc-cascade'],
-        },
-        'homing-shrapnel': {
-            id: 'homing-shrapnel',
-            name: 'Homing Shrapnel',
-            powerPrerequisite: 'missile',
-            description: () => 'Your Missile power now releases a volley of seeking shrapnel upon impact.',
-            icon: '🧭',
-            maxRanks: 1,
-            costPerRank: [2],
-            position: { x: 58, y: 48 },
-            prerequisites: ['stellar-detonation'],
+            position: { x: 95, y: 25 },
+            prerequisites: ['high-frequency-emitters'],
         },
         'nova-pulsar': {
             id: 'nova-pulsar',
@@ -237,7 +237,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '💫',
             maxRanks: 1,
             costPerRank: [3],
-            position: { x: 73, y: 48 },
+            position: { x: 95, y: 45 },
             prerequisites: ['unstoppable-frenzy'],
         },
         'unstable-singularity': {
@@ -248,12 +248,12 @@ export const TALENT_GRID_CONFIG = {
             icon: '⚫',
             maxRanks: 1,
             costPerRank: [4],
-            position: { x: 65, y: 70 },
+            position: { x: 75, y: 78 },
             prerequisites: ['volatile-finish', 'unstable-payload'],
         },
     },
 
-    // --- FLUX CONSTALLATION (CENTER SPINE) ---
+    // --- FLUX CONSTALLATION (CENTER) ---
     flux: {
         color: 'var(--secondary-glow)',
         'essence-conduit': {
@@ -263,7 +263,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '💰',
             maxRanks: 2,
             costPerRank: [1, 2],
-            position: { x: 50, y: 20 },
+            position: { x: 50, y: 25 },
             prerequisites: ['core-nexus'],
         },
         'resonance-magnet': {
@@ -273,7 +273,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '🧲',
             maxRanks: 2,
             costPerRank: [1, 1],
-            position: { x: 50, y: 35 },
+            position: { x: 50, y: 40 },
             prerequisites: ['essence-conduit'],
         },
         'temporal-anomaly': {
@@ -283,7 +283,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '⏳',
             maxRanks: 2,
             costPerRank: [1, 2],
-            position: { x: 42, y: 48 }, 
+            position: { x: 40, y: 55 }, 
             prerequisites: ['resonance-magnet'],
         },
         'power-scavenger': {
@@ -293,7 +293,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '💎',
             maxRanks: 2,
             costPerRank: [2, 2],
-            position: { x: 58, y: 48 }, 
+            position: { x: 60, y: 55 }, 
             prerequisites: ['resonance-magnet'],
         },
         'preordinance': {
@@ -303,7 +303,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '🎲',
             maxRanks: 1,
             costPerRank: [4],
-            position: { x: 42, y: 60 }, 
+            position: { x: 40, y: 68 }, 
             prerequisites: ['temporal-anomaly'],
         },
         'quantum-duplicate': {
@@ -314,7 +314,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '👥',
             maxRanks: 1,
             costPerRank: [2],
-            position: { x: 58, y: 60 }, 
+            position: { x: 60, y: 68 }, 
             prerequisites: ['power-scavenger'],
         },
         'energetic-recycling': {
@@ -324,7 +324,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '♻️',
             maxRanks: 1,
             costPerRank: [4],
-            position: { x: 50, y: 70 },
+            position: { x: 50, y: 78 },
             prerequisites: ['preordinance', 'quantum-duplicate'],
         },
     }
