@@ -3,6 +3,7 @@ import { state } from './state.js';
 import { powers } from './powers.js';
 import { bossData } from './bosses.js';
 import { STAGE_CONFIG } from './config.js';
+import { getBossesForStage } from './gameLoop.js';
 
 const ascensionFill = document.getElementById('ascension-bar-fill');
 const ascensionText = document.getElementById('ascension-bar-text');
@@ -126,7 +127,7 @@ export function updateUI() {
         bar.style.width = `${(currentHp / boss.maxHP) * 100}%`;
         
         wrapper.appendChild(label);
-        wrapper.appendChild(bar); // Append bar directly to the wrapper
+        wrapper.appendChild(bar);
         bossContainer.appendChild(wrapper);
     });
     
@@ -158,13 +159,22 @@ export function populateLevelSelect(startSpecificLevel) {
     const maxStage = state.player.highestStageBeaten + 1;
 
     for (let i = 1; i <= maxStage; i++) {
-        const stageData = STAGE_CONFIG.find(s => s.stage === i);
-        if (!stageData) continue;
+        const bossIds = getBossesForStage(i);
+        let bossNames = '???';
+
+        if (bossIds && bossIds.length > 0) {
+            // Find the names of the bosses from their IDs
+            bossNames = bossIds.map(id => {
+                const boss = bossData.find(b => b.id === id);
+                return boss ? boss.name : 'Unknown';
+            }).join(' & '); // Join multiple boss names with an ampersand
+        } else {
+            // This case should ideally not be hit with the new system, but it's a safe fallback.
+            continue; 
+        }
 
         const item = document.createElement('div');
         item.className = 'stage-select-item';
-        
-        let bossNames = stageData.displayName;
         
         item.innerHTML = `
             <span class="stage-select-number">STAGE ${i}</span>
