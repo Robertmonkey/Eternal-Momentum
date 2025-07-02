@@ -1,7 +1,7 @@
 // modules/talents.js
 
 export const TALENT_GRID_CONFIG = {
-    // --- CORE CONSTALLATION (Remains the same) ---
+    // --- CORE CONSTALLATION ---
     core: {
         'core-nexus': {
             id: 'core-nexus',
@@ -10,7 +10,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '💠',
             maxRanks: 1,
             costPerRank: [1],
-            position: { x: 50, y: 5 },
+            position: { x: 50, y: 0 }, // SHIFTED
             prerequisites: [],
             isNexus: true,
         },
@@ -21,11 +21,10 @@ export const TALENT_GRID_CONFIG = {
             icon: '⚛️',
             maxRanks: 1,
             costPerRank: [50],
-            position: { x: 50, y: 95 },
+            position: { x: 50, y: 88 }, // SHIFTED
             prerequisites: ['phase-momentum', 'unstable-singularity', 'energetic-recycling'],
             isNexus: true,
         },
-        // --- NEW ENDLESS TALENTS START HERE ---
         'core-reinforcement': {
             id: 'core-reinforcement',
             name: 'Core Reinforcement',
@@ -33,9 +32,9 @@ export const TALENT_GRID_CONFIG = {
             icon: '✚',
             maxRanks: 9999,
             costPerRank: [5],
-            position: { x: 40, y: 110 },
+            position: { x: 40, y: 100 }, // Positioned below capstone
             prerequisites: ['overload-protocol'],
-            isInfinite: true, // New property for endless talents
+            isInfinite: true,
         },
         'momentum-drive': {
             id: 'momentum-drive',
@@ -44,7 +43,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '💨',
             maxRanks: 9999,
             costPerRank: [5],
-            position: { x: 50, y: 110 },
+            position: { x: 50, y: 100 }, // Positioned below capstone
             prerequisites: ['overload-protocol'],
             isInfinite: true,
         },
@@ -55,14 +54,13 @@ export const TALENT_GRID_CONFIG = {
             icon: '🔥',
             maxRanks: 9999,
             costPerRank: [5],
-            position: { x: 60, y: 110 },
+            position: { x: 60, y: 100 }, // Positioned below capstone
             prerequisites: ['overload-protocol'],
             isInfinite: true,
         },
-        // --- NEW ENDLESS TALENTS END HERE ---
     },
 
-    // --- AEGIS CONSTALLATION (Defense & Survival) - Reworked for more branching ---
+    // --- AEGIS CONSTALLATION ---
     aegis: {
         color: 'var(--primary-glow)',
         'exo-weave-plating': {
@@ -72,7 +70,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '❤️',
             maxRanks: 3,
             costPerRank: [1, 2, 2],
-            position: { x: 30, y: 25 },
+            position: { x: 30, y: 20 }, // SHIFTED
             prerequisites: ['core-nexus'],
         },
         'solar-wind': {
@@ -82,7 +80,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '🏃',
             maxRanks: 2,
             costPerRank: [1, 2],
-            position: { x: 45, y: 40 },
+            position: { x: 45, y: 35 }, // SHIFTED
             prerequisites: ['exo-weave-plating'],
         },
         'aegis-shield': {
@@ -93,7 +91,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '🔋',
             maxRanks: 2,
             costPerRank: [1, 1],
-            position: { x: 15, y: 40 },
+            position: { x: 15, y: 35 }, // SHIFTED
             prerequisites: ['exo-weave-plating'],
         },
         'kinetic-overload': {
@@ -104,7 +102,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '🖐️',
             maxRanks: 1,
             costPerRank: [3],
-            position: { x: 45, y: 60 },
+            position: { x: 45, y: 55 }, // SHIFTED
             prerequisites: ['solar-wind'],
         },
         'aegis-retaliation': {
@@ -115,7 +113,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '💥',
             maxRanks: 1,
             costPerRank: [2],
-            position: { x: 15, y: 60 },
+            position: { x: 15, y: 55 }, // SHIFTED
             prerequisites: ['aegis-shield'],
         },
         'cryo-shatter': {
@@ -126,8 +124,8 @@ export const TALENT_GRID_CONFIG = {
             icon: '❄️',
             maxRanks: 2,
             costPerRank: [2, 3],
-            position: { x: 30, y: 65 },
-            prerequisites: ['aegis-retaliation', 'solar-wind'], // Cross-branch requirement
+            position: { x: 30, y: 60 }, // SHIFTED
+            prerequisites: ['aegis-retaliation', 'solar-wind'], 
         },
         'phase-momentum': {
             id: 'phase-momentum',
@@ -136,12 +134,12 @@ export const TALENT_GRID_CONFIG = {
             icon: '👻',
             maxRanks: 1,
             costPerRank: [4],
-            position: { x: 30, y: 85 },
+            position: { x: 30, y: 78 }, // SHIFTED
             prerequisites: ['kinetic-overload', 'cryo-shatter'],
         }
     },
     
-    // --- HAVOC CONSTALLATION (Offense & Destruction) - Reworked for more branching ---
+    // --- HAVOC CONSTALLATION ---
     havoc: {
         color: '#ff8800',
         'high-frequency-emitters': {
@@ -151,7 +149,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '📈',
             maxRanks: 2,
             costPerRank: [1, 2],
-            position: { x: 70, y: 25 },
+            position: { x: 70, y: 20 }, // SHIFTED
             prerequisites: ['core-nexus'],
         },
         'stellar-detonation': {
@@ -162,7 +160,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '💥',
             maxRanks: 2,
             costPerRank: [1, 1],
-            position: { x: 60, y: 40 },
+            position: { x: 60, y: 35 }, // SHIFTED
             prerequisites: ['high-frequency-emitters'],
         },
         'homing-shrapnel': {
@@ -173,7 +171,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '🧭',
             maxRanks: 1,
             costPerRank: [2],
-            position: { x: 55, y: 55 },
+            position: { x: 55, y: 50 }, // SHIFTED
             prerequisites: ['stellar-detonation'],
         },
         'targeting-algorithm': {
@@ -184,7 +182,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '🛰️',
             maxRanks: 1,
             costPerRank: [2],
-            position: { x: 80, y: 40 },
+            position: { x: 80, y: 35 }, // SHIFTED
             prerequisites: ['high-frequency-emitters'],
         },
         'unstable-payload': {
@@ -195,7 +193,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '🔄',
             maxRanks: 1,
             costPerRank: [3],
-            position: { x: 85, y: 55 },
+            position: { x: 85, y: 50 }, // SHIFTED
             prerequisites: ['targeting-algorithm'],
         },
         'arc-cascade': {
@@ -206,8 +204,8 @@ export const TALENT_GRID_CONFIG = {
             icon: '⛓️',
             maxRanks: 2,
             costPerRank: [2, 2],
-            position: { x: 70, y: 65 },
-            prerequisites: ['homing-shrapnel', 'unstable-payload'], // Cross-branch requirement
+            position: { x: 70, y: 60 }, // SHIFTED
+            prerequisites: ['homing-shrapnel', 'unstable-payload'],
         },
         'volatile-finish': {
             id: 'volatile-finish',
@@ -217,7 +215,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '💣',
             maxRanks: 1,
             costPerRank: [3],
-            position: { x: 65, y: 80 },
+            position: { x: 65, y: 73 }, // SHIFTED
             prerequisites: ['arc-cascade'],
         },
         'unstoppable-frenzy': {
@@ -228,8 +226,8 @@ export const TALENT_GRID_CONFIG = {
             icon: '💢',
             maxRanks: 1,
             costPerRank: [2],
-            position: { x: 90, y: 20 },
-            prerequisites: ['high-frequency-emitters'], // New independent branch for Frenzy
+            position: { x: 90, y: 15 }, // SHIFTED
+            prerequisites: ['high-frequency-emitters'],
         },
         'nova-pulsar': {
             id: 'nova-pulsar',
@@ -239,8 +237,8 @@ export const TALENT_GRID_CONFIG = {
             icon: '💫',
             maxRanks: 1,
             costPerRank: [3],
-            position: { x: 95, y: 45 },
-            prerequisites: ['unstoppable-frenzy', 'targeting-algorithm'], // Another cross-branch
+            position: { x: 95, y: 40 }, // SHIFTED
+            prerequisites: ['unstoppable-frenzy', 'targeting-algorithm'],
         },
         'unstable-singularity': {
             id: 'unstable-singularity',
@@ -250,12 +248,12 @@ export const TALENT_GRID_CONFIG = {
             icon: '⚫',
             maxRanks: 1,
             costPerRank: [4],
-            position: { x: 80, y: 85 },
-            prerequisites: ['volatile-finish', 'nova-pulsar'], // Merges the two major sub-trees
+            position: { x: 80, y: 78 }, // SHIFTED
+            prerequisites: ['volatile-finish', 'nova-pulsar'],
         },
     },
 
-    // --- FLUX CONSTALLATION (Utility & Mastery) - Reworked for more branching feel ---
+    // --- FLUX CONSTALLATION ---
     flux: {
         color: 'var(--secondary-glow)',
         'essence-conduit': {
@@ -265,7 +263,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '💰',
             maxRanks: 2,
             costPerRank: [1, 2],
-            position: { x: 50, y: 25 },
+            position: { x: 50, y: 20 }, // SHIFTED
             prerequisites: ['core-nexus'],
         },
         'resonance-magnet': {
@@ -275,7 +273,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '🧲',
             maxRanks: 2,
             costPerRank: [1, 1],
-            position: { x: 50, y: 40 },
+            position: { x: 50, y: 35 }, // SHIFTED
             prerequisites: ['essence-conduit'],
         },
         'temporal-anomaly': {
@@ -285,7 +283,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '⏳',
             maxRanks: 2,
             costPerRank: [1, 2],
-            position: { x: 38, y: 55 }, // Spaced out
+            position: { x: 38, y: 50 }, // SHIFTED
             prerequisites: ['resonance-magnet'],
         },
         'preordinance': {
@@ -295,7 +293,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '🎲',
             maxRanks: 1,
             costPerRank: [4],
-            position: { x: 42, y: 70 }, // Spaced out
+            position: { x: 42, y: 63 }, // SHIFTED
             prerequisites: ['temporal-anomaly'],
         },
         'power-scavenger': {
@@ -305,7 +303,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '💎',
             maxRanks: 2,
             costPerRank: [2, 2],
-            position: { x: 62, y: 55 }, // Spaced out
+            position: { x: 62, y: 50 }, // SHIFTED
             prerequisites: ['resonance-magnet'],
         },
         'quantum-duplicate': {
@@ -316,7 +314,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '👥',
             maxRanks: 1,
             costPerRank: [2],
-            position: { x: 58, y: 70 }, // Spaced out
+            position: { x: 58, y: 63 }, // SHIFTED
             prerequisites: ['power-scavenger'],
         },
         'energetic-recycling': {
@@ -326,7 +324,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '♻️',
             maxRanks: 1,
             costPerRank: [4],
-            position: { x: 50, y: 85 },
+            position: { x: 50, y: 78 }, // SHIFTED
             prerequisites: ['preordinance', 'quantum-duplicate'],
         },
     }
