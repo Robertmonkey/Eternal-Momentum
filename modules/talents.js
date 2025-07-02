@@ -24,7 +24,42 @@ export const TALENT_GRID_CONFIG = {
             position: { x: 50, y: 95 },
             prerequisites: ['phase-momentum', 'unstable-singularity', 'energetic-recycling'],
             isNexus: true,
-        }
+        },
+        // --- NEW ENDLESS TALENTS START HERE ---
+        'core-reinforcement': {
+            id: 'core-reinforcement',
+            name: 'Core Reinforcement',
+            description: (rank) => `Permanently reinforce your core structure, increasing Max Health by 5. Current Bonus: +${(rank - 1) * 5} Health.`,
+            icon: '✚',
+            maxRanks: 9999,
+            costPerRank: [5],
+            position: { x: 40, y: 110 },
+            prerequisites: ['overload-protocol'],
+            isInfinite: true, // New property for endless talents
+        },
+        'momentum-drive': {
+            id: 'momentum-drive',
+            name: 'Momentum Drive',
+            description: (rank) => `Permanently harmonize with the temporal flux, increasing Movement Speed by 1%. Current Bonus: +${rank - 1}% Speed.`,
+            icon: '💨',
+            maxRanks: 9999,
+            costPerRank: [5],
+            position: { x: 50, y: 110 },
+            prerequisites: ['overload-protocol'],
+            isInfinite: true,
+        },
+        'weapon-calibration': {
+            id: 'weapon-calibration',
+            name: 'Weapon Calibration',
+            description: (rank) => `Permanently overcharge your weapon systems, increasing all Damage by 1%. Current Bonus: +${rank - 1}% Damage.`,
+            icon: '🔥',
+            maxRanks: 9999,
+            costPerRank: [5],
+            position: { x: 60, y: 110 },
+            prerequisites: ['overload-protocol'],
+            isInfinite: true,
+        },
+        // --- NEW ENDLESS TALENTS END HERE ---
     },
 
     // --- AEGIS CONSTALLATION (Defense & Survival) - Reworked for more branching ---
