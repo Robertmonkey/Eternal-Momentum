@@ -9,6 +9,7 @@ export const bossData = [{
     maxHP: 96,
     difficulty_tier: 1,
     archetype: 'swarm',
+    description: "A fragile construct that shatters upon defeat, releasing waves of smaller entities.",
     onDeath: (b, state, spawnEnemy, spawnParticles, play) => {
         play('splitterOnDeath');
         spawnParticles(state.particles, b.x, b.y, "#ff4500", 100, 6, 40, 5);
@@ -34,6 +35,7 @@ export const bossData = [{
     maxHP: 120,
     difficulty_tier: 1,
     archetype: 'specialist',
+    description: "Cycles between vulnerable and shielded states. Attacking while its Reflective Shield is active will turn your own power against you.",
     init: b => {
         b.phase = "idle";
         b.last = Date.now();
@@ -81,6 +83,7 @@ export const bossData = [{
     maxHP: 144,
     difficulty_tier: 1,
     archetype: 'aggressor',
+    description: "A parasitic entity that rapidly regenerates vitality if left untouched. Sustained assault is the only path to victory.",
     init: b => {
         b.lastHit = Date.now();
         b.lastHeal = Date.now();
@@ -120,6 +123,7 @@ export const bossData = [{
     maxHP: 168,
     difficulty_tier: 1,
     archetype: 'field_control',
+    description: "Warps the battlefield with a ring of gravitational wells that impede movement.",
     init: b => {
         b.wells = [];
         for (let i = 0; i < 8; i++) {
@@ -150,6 +154,7 @@ export const bossData = [{
     maxHP: 200,
     difficulty_tier: 1,
     archetype: 'swarm',
+    description: "The alpha of a massive hive mind, its colossal, damaging tail follows its every move.",
     init: b => {
         b.chain = [];
         for (let i = 0; i < 150; i++) b.chain.push({
@@ -183,6 +188,7 @@ export const bossData = [{
     maxHP: 240,
     difficulty_tier: 1,
     archetype: 'specialist',
+    description: "A master of illusion that creates identical phantoms, constantly shifting its consciousness between them to evade destruction.",
     init: (b, state, spawnEnemy, canvas) => {
         b.clones = [];
         for (let i = 0; i < 5; i++) b.clones.push({
@@ -212,6 +218,7 @@ export const bossData = [{
     maxHP: 260,
     difficulty_tier: 1,
     archetype: 'specialist',
+    description: "Periodically releases a massive electromagnetic pulse that wipes all collected powers and briefly stuns.",
     init: b => {
         b.lastEMP = Date.now();
         b.bolts = [];
@@ -255,6 +262,7 @@ export const bossData = [{
     maxHP: 280,
     difficulty_tier: 1,
     archetype: 'field_control',
+    description: "A terraforming intelligence that reshapes the arena with impassable pillars, forcing a battle within its own creation.",
     init: b => {
         b.pillars = [];
         b.lastBuild = 0;
@@ -293,6 +301,7 @@ export const bossData = [{
     maxHP: 280,
     difficulty_tier: 1,
     archetype: 'aggressor',
+    description: "Two bonded entities, one swift and one resilient. The true challenge begins when one is vanquished, causing the survivor to enter a state of absolute rage.",
     init: (b, state, spawnEnemy) => {
         const partner = state.enemies.find(e => e.id === 'aethel_and_umbra' && e !== b);
         b.r = 50;
@@ -358,6 +367,7 @@ export const bossData = [{
     maxHP: 320,
     difficulty_tier: 1,
     archetype: 'specialist',
+    description: "An unstable being that defies spacetime, erratically teleporting across the arena.",
     init: b => {
         b.lastTeleport = 0;
     },
@@ -380,6 +390,7 @@ export const bossData = [{
     maxHP: 360,
     difficulty_tier: 2,
     archetype: 'aggressor',
+    description: "A relentless force of nature. It periodically charges with immense speed, growing faster as it takes damage.",
     init: b => {
         b.lastCharge = Date.now();
         b.isCharging = false;
@@ -438,6 +449,7 @@ export const bossData = [{
     maxHP: 320,
     difficulty_tier: 2,
     archetype: 'swarm',
+    description: "Corrupts lesser entities with its influence, turning your own enemies into powerful, puppeted minions.",
     init: b => {
         b.lastConvert = Date.now();
     },
@@ -486,6 +498,7 @@ export const bossData = [{
     maxHP: 336,
     difficulty_tier: 2,
     archetype: 'specialist',
+    description: "A living error in reality. Its erratic teleportation leaves behind unstable Glitch Zones that invert motor functions.",
     hasCustomDraw: true,
     init: b => {
         b.lastTeleport = Date.now();
@@ -526,6 +539,7 @@ export const bossData = [{
     maxHP: 400,
     difficulty_tier: 2,
     archetype: 'aggressor',
+    description: "Two guardians locked in a deadly bond. They generate a lethal energy beam between them, forcing constant repositioning.",
     hasCustomMovement: true,
     init: (b, state, spawnEnemy) => {
         if (!state.enemies.find(e => e.id === 'sentinel_pair' && e !== b)) {
@@ -613,6 +627,7 @@ export const bossData = [{
     maxHP: 384,
     difficulty_tier: 2,
     archetype: 'field_control',
+    description: "Its presence crystallizes spacetime, generating expanding Stasis Fields that petrify any who linger within.",
     init: (b, state, spawnEnemy, canvas) => {
         b.petrifyZones = [];
         const w = canvas.width;
@@ -655,6 +670,7 @@ export const bossData = [{
     maxHP: 480,
     difficulty_tier: 2,
     archetype: 'field_control',
+    description: "Creates an unassailable Obelisk and unleashes an Annihilation Beam that erases anything not shielded by the pillar's shadow.",
     init: (b, state, spawnEnemy, canvas) => {
         b.lastBeam = Date.now();
         b.isChargingBeam = false;
@@ -705,6 +721,7 @@ export const bossData = [{
     maxHP: 416,
     difficulty_tier: 2,
     archetype: 'swarm',
+    description: "A virulent entity that spreads a debilitating infection on contact, causing its host to spawn hostile spores.",
     onCollision: (b, p, addStatusEffect) => {
         if (!p.infected) addStatusEffect('Infected', '☣️', 10000);
         p.infected = true;
@@ -733,6 +750,7 @@ export const bossData = [{
     maxHP: 360,
     difficulty_tier: 2,
     archetype: 'specialist',
+    description: "Phases between realities, creating quantum echoes of itself. It is only vulnerable when it collapses its wave function to a single location.",
     hasCustomDraw: true,
     init: b => {
         b.phase = 'seeking';
@@ -829,6 +847,7 @@ export const bossData = [{
     maxHP: 440,
     difficulty_tier: 2,
     archetype: 'field_control',
+    description: "Devours time, creating zones of temporal distortion that drastically slow all matter and consume any powers or entities within.",
     init: b => {
         b.lastAbility = Date.now();
     },
@@ -854,6 +873,7 @@ export const bossData = [{
     maxHP: 600,
     difficulty_tier: 2,
     archetype: 'specialist',
+    description: "The convergence of multiple timelines. Its combat patterns are an unpredictable amalgamation of other powerful entities.",
     init: (b, state, spawnEnemy) => {
         b.phase = 1;
         b.lastAction = 0;
@@ -981,6 +1001,7 @@ export const bossData = [{
     maxHP: 400,
     difficulty_tier: 3,
     archetype: 'field_control',
+    description: "Fills the arena with a toxic Miasma, dealing constant damage unless its purifying vents are overloaded.",
     init: (b, state, spawnEnemy, canvas) => {
         b.vents = [{x: canvas.width * 0.2, y: canvas.height * 0.2}, {x: canvas.width * 0.8, y: canvas.height * 0.2}, {x: canvas.width * 0.2, y: canvas.height * 0.8}, {x: canvas.width * 0.8, y: canvas.height * 0.8}].map(v => ({...v, cooldownUntil: 0}));
         b.isGasActive = false;
@@ -1055,6 +1076,7 @@ export const bossData = [{
     maxHP: 420,
     difficulty_tier: 3,
     archetype: 'specialist',
+    description: "Leaves a deadly trail of its own history. Its past self becomes a tangible, lethal threat that must be avoided at all costs.",
     hasCustomDraw: true,
     init: (b) => {
         b.playerHistory = [];
@@ -1093,6 +1115,7 @@ export const bossData = [{
     maxHP: 450,
     difficulty_tier: 3,
     archetype: 'specialist',
+    description: "Targets and drains power directly, stealing your most powerful offensive ability and unleashing a corrupted version of it.",
     init: (b) => { b.lastSyphon = Date.now(); b.isCharging = false; },
     logic: (b, ctx, state, utils, gameHelpers) => {
         if (!b.isCharging && Date.now() - b.lastSyphon > 7500) {
@@ -1114,6 +1137,7 @@ export const bossData = [{
     maxHP: 480,
     difficulty_tier: 3,
     archetype: 'field_control',
+    description: "Constructs a shrinking prison of energy walls, forcing a desperate battle in an ever-constricting space.",
     init: (b) => {
         b.lastWallSummon = 0;
     },
@@ -1145,6 +1169,7 @@ export const bossData = [{
     maxHP: 15000,
     difficulty_tier: 3,
     archetype: 'swarm',
+    description: "A being of infinite complexity that splits into smaller, autonomous fragments as it takes damage, overwhelming its foe with sheer numbers.",
     hasCustomMovement: true,
     hasCustomDraw: true,
     init: (b, state) => {
@@ -1308,6 +1333,7 @@ export const bossData = [{
     maxHP: 800,
     difficulty_tier: 3,
     archetype: 'field_control',
+    description: "An invulnerable monument powered by three remote Conduits. It cannot be damaged until its power sources are severed.",
     hasCustomDraw: true,
     hasCustomMovement: true,
     init: (b, state, spawnEnemy, canvas) => {
@@ -1471,6 +1497,7 @@ export const bossData = [{
     maxHP: 500,
     difficulty_tier: 3,
     archetype: 'swarm',
+    description: "Unleashes relentless, spiraling waves of projectiles. The number of active helices increases as its integrity fails.",
     hasCustomMovement: true,
     init: (b, state, spawnEnemy, canvas) => {
         b.x = canvas.width / 2;
@@ -1516,6 +1543,7 @@ export const bossData = [{
     maxHP: 550,
     difficulty_tier: 3,
     archetype: 'aggressor',
+    description: "Warps causality, generating a Dilation Field behind it where time moves slower. It can rewind its own timeline to negate recent damage.",
     init: (b) => {
         b.lastDilation = Date.now();
         b.damageWindow = 0;
@@ -1587,6 +1615,7 @@ export const bossData = [{
     maxHP: 600,
     difficulty_tier: 3,
     archetype: 'specialist',
+    description: "Foretells its attacks by manifesting reality-altering Runes. The player's position relative to the Runes determines the Shaper's next devastating assault.",
     init: (b) => {
         b.phase = 'idle';
         b.phaseTimer = Date.now() + 3000;
@@ -1691,6 +1720,7 @@ export const bossData = [{
     maxHP: 3000,
     difficulty_tier: 3,
     archetype: 'aggressor',
+    description: "An ultimate being that channels the Aspects of other powerful entities, cycling through their abilities to create an unpredictable, multi-faceted threat.",
     hasCustomMovement: true,
     hasCustomDraw: true,
     init: (b, state, spawnEnemy, canvas) => {
