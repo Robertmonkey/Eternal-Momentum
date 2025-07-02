@@ -2,7 +2,7 @@
 import { state, savePlayerState } from './state.js';
 import { TALENT_GRID_CONFIG } from './talents.js';
 import { updateUI } from './ui.js';
-import { AudioManager } from './audio.js'; // --- CHANGE: Import AudioManager
+import { AudioManager } from './audio.js';
 
 const gridContainer = document.querySelector("#ascensionGridModal .ascension-content");
 
@@ -101,7 +101,16 @@ function createTalentNode(talent, constellationColor) {
 
     const purchasedRank = state.player.purchasedTalents.get(talent.id) || 0;
     const isMaxRank = purchasedRank >= talent.maxRanks;
-    const cost = isMaxRank ? Infinity : (talent.costPerRank[purchasedRank] || Infinity);
+
+    // --- UPDATED COST LOGIC for ENDLESS TALENTS ---
+    let cost;
+    if (isMaxRank) {
+        cost = Infinity;
+    } else if (talent.isInfinite) {
+        cost = talent.costPerRank[0]; // Infinite talents always use the first cost value
+    } else {
+        cost = talent.costPerRank[purchasedRank] || Infinity;
+    }
     
     const prereqsMetForPurchase = talent.prerequisites.every(p => {
         const prereqTalent = allTalents[p];
@@ -116,6 +125,9 @@ function createTalentNode(talent, constellationColor) {
     if (talent.isNexus) {
         node.classList.add('nexus-node');
     }
+     if (talent.isInfinite) {
+        node.classList.add('nexus-node'); // Use same styling for emphasis
+    }
     
     if (isMaxRank) {
         node.classList.add('maxed');
@@ -127,7 +139,7 @@ function createTalentNode(talent, constellationColor) {
         node.classList.add('can-purchase');
     }
 
-    const rankText = talent.maxRanks > 1 ? `<span>Rank: ${purchasedRank}/${talent.maxRanks}</span>` : '<span>Mastery</span>';
+    const rankText = talent.maxRanks > 1 ? `<span>Rank: ${purchasedRank}/${talent.isInfinite ? '∞' : talent.maxRanks}</span>` : '<span>Mastery</span>';
     const costText = !isMaxRank ? `<span>Cost: ${cost} AP</span>` : '<span>MAXED</span>';
     
     const descriptionText = talent.description(purchasedRank + 1, isMaxRank);
@@ -185,7 +197,13 @@ function purchaseTalent(talentId) {
     const currentRank = state.player.purchasedTalents.get(talent.id) || 0;
     if (currentRank >= talent.maxRanks) return;
 
-    const cost = talent.costPerRank[currentRank];
+    // --- UPDATED COST LOGIC for ENDLESS TALENTS ---
+    let cost;
+    if (talent.isInfinite) {
+        cost = talent.costPerRank[0];
+    } else {
+        cost = talent.costPerRank[currentRank];
+    }
     
     const prereqsMet = talent.prerequisites.every(p => {
         const prereqTalent = allTalents[p];
@@ -199,7 +217,7 @@ function purchaseTalent(talentId) {
         state.player.ascensionPoints -= cost;
         state.player.purchasedTalents.set(talent.id, currentRank + 1);
         
-        AudioManager.playSfx('talentPurchase'); // --- CHANGE: Play sound on success
+        AudioManager.playSfx('talentPurchase');
         
         applyAllTalentEffects();
         savePlayerState();
@@ -209,7 +227,7 @@ function purchaseTalent(talentId) {
         updateUI();
 
     } else {
-        AudioManager.playSfx('talentError'); // --- CHANGE: Play sound on failure
+        AudioManager.playSfx('talentError');
         console.log("Cannot purchase talent! Not enough AP or prerequisites not met.");
     }
 }
@@ -224,6 +242,7 @@ export function applyAllTalentEffects() {
     let basePullResistance = 0;
 
     state.player.purchasedTalents.forEach((rank, id) => {
+        // --- EXISTING TALENTS ---
         if (id === 'exo-weave-plating') {
             const values = [15, 20, 25];
             for (let i = 0; i < rank; i++) baseMaxHealth += values[i];
@@ -246,6 +265,17 @@ export function applyAllTalentEffects() {
         if (id === 'overcharged-capacitors') {
             baseDamageMultiplier += 0.15;
             baseDamageTakenMultiplier += 0.15;
+        }
+
+        // --- NEW ENDLESS TALENTS ---
+        if (id === 'core-reinforcement') {
+            baseMaxHealth += rank * 5;
+        }
+        if (id === 'momentum-drive') {
+            baseSpeed *= Math.pow(1.01, rank);
+        }
+        if (id === 'weapon-calibration') {
+            baseDamageMultiplier *= Math.pow(1.01, rank);
         }
     });
 
