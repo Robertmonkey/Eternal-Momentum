@@ -1,4 +1,3 @@
-/* All previous styles remain the same */
 :root {
   --primary-glow: #00ffff;
   --secondary-glow: #f000ff;
@@ -988,7 +987,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     align-items: center;
     justify-content: center;
     background: rgba(0,0,0,0.5);
-    border: 1px solid var(--secondary-glow);
+    border: 2px solid; /* Use border-color on the element */
     border-radius: 50%;
     cursor: pointer;
     transition: background-color 0.2s;
@@ -1008,6 +1007,19 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     color: var(--primary-glow);
 }
 
+#orrery-start-btn, #orrery-reset-btn {
+    width: auto;
+    padding: 10px 20px;
+}
+
+#orrery-reset-btn {
+    background-color: rgba(255, 136, 0, 0.2);
+    border-color: #ff8800;
+}
+#orrery-reset-btn:hover {
+    background-color: rgba(255, 136, 0, 0.4);
+}
+
 #orrery-start-btn {
     background-color: var(--primary-glow);
     color: var(--dark-bg);
@@ -1019,6 +1031,12 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     cursor: not-allowed;
     background-color: var(--disabled-color);
     color: var(--font-color);
+}
+
+.ascension-footer > div {
+    display: flex;
+    gap: 10px;
+    align-items: center;
 }
 
 #orrery-boss-list-container::-webkit-scrollbar,
