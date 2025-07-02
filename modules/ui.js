@@ -5,6 +5,7 @@ import { bossData } from './bosses.js';
 import { STAGE_CONFIG } from './config.js';
 import { getBossesForStage } from './gameLoop.js';
 
+// --- (Keep all existing constants like ascensionFill, etc.) ---
 const ascensionFill = document.getElementById('ascension-bar-fill');
 const ascensionText = document.getElementById('ascension-bar-text');
 const apDisplay = document.getElementById('ascension-points-display');
@@ -23,6 +24,8 @@ const confirmTitle = document.getElementById('custom-confirm-title');
 const confirmText = document.getElementById('custom-confirm-text');
 const confirmYesBtn = document.getElementById('confirm-yes');
 const confirmNoBtn = document.getElementById('confirm-no');
+
+// --- (Keep updateStatusEffectsUI, updateUI, showBossBanner, showUnlockNotification, populateLevelSelect, and showCustomConfirm functions exactly as they are) ---
 
 function updateStatusEffectsUI() {
     const now = Date.now();
@@ -104,13 +107,11 @@ export function updateUI() {
         }
     }
 
-    // --- NEW BOSS BAR LOGIC ---
     bossContainer.innerHTML = '';
     const allBosses = state.enemies.filter(e => e.boss);
     const renderedBossTypes = new Set();
     const bossesToDisplay = [];
 
-    // First, create a clean list of the bars we need to render, handling shared health groups
     allBosses.forEach(boss => {
         const sharedHealthIds = ['sentinel_pair', 'fractal_horror'];
         if (sharedHealthIds.includes(boss.id)) {
@@ -123,7 +124,6 @@ export function updateUI() {
         }
     });
 
-    // Next, apply the correct layout class based on the number of bars
     const GRID_THRESHOLD = 4;
     if (bossesToDisplay.length >= GRID_THRESHOLD) {
         bossContainer.classList.add('grid-layout');
@@ -131,7 +131,6 @@ export function updateUI() {
         bossContainer.classList.remove('grid-layout');
     }
 
-    // Finally, render the bars from our clean list
     bossesToDisplay.forEach(boss => {
         const wrapper = document.createElement('div');
         wrapper.className = 'boss-hp-bar-wrapper';
@@ -242,4 +241,93 @@ export function showCustomConfirm(title, text, onConfirm) {
     confirmNoBtn.addEventListener('click', handleNo);
 
     customConfirm.style.display = 'flex';
+}
+
+// --- NEW FUNCTION TO POPULATE AND MANAGE THE ORRERY MENU ---
+export function populateOrreryMenu(onStart) {
+    let totalEchoes = 0;
+    if (state.player.highestStageBeaten >= 30) {
+        totalEchoes += 10;
+        if (state.player.highestStageBeaten >= 50) totalEchoes += 15;
+        if (state.player.highestStageBeaten >= 70) totalEchoes += 20;
+        if (state.player.highestStageBeaten >= 90) totalEchoes += 25;
+    }
+
+    const pointsDisplay = document.getElementById('orrery-points-total');
+    const bossListContainer = document.getElementById('orrery-boss-list-container');
+    const selectionContainer = document.getElementById('orrery-selection-display');
+    const costDisplay = document.getElementById('orrery-current-cost');
+    const startBtn = document.getElementById('orrery-start-btn');
+    const resetBtn = document.getElementById('orrery-reset-btn');
+    
+    let selectedBosses = [];
+    let currentCost = 0;
+
+    const costs = { 1: 2, 2: 5, 3: 8 };
+
+    function render() {
+        pointsDisplay.innerText = totalEchoes - currentCost;
+        bossListContainer.innerHTML = '';
+        selectionContainer.innerHTML = '';
+
+        const availableBosses = bossData.filter(b => b.difficulty_tier).sort((a,b) => a.difficulty_tier - b.difficulty_tier);
+        
+        availableBosses.forEach(boss => {
+            const cost = costs[boss.difficulty_tier];
+            const item = document.createElement('div');
+            item.className = 'orrery-boss-item';
+            
+            const canAfford = (totalEchoes - currentCost) >= cost;
+            item.classList.toggle('disabled', !canAfford);
+
+            item.innerHTML = `
+                <div class="orrery-boss-info">
+                    <span class="orrery-boss-icon">${bossData.find(b=>b.id===boss.id).color}</span>
+                    <span>${boss.name}</span>
+                </div>
+                <span class="orrery-boss-cost">${cost}</span>
+            `;
+
+            if (canAfford) {
+                item.onclick = () => {
+                    selectedBosses.push(boss.id);
+                    currentCost += cost;
+                    render();
+                };
+            }
+            bossListContainer.appendChild(item);
+        });
+
+        selectedBosses.forEach((bossId, index) => {
+            const boss = bossData.find(b => b.id === bossId);
+            const item = document.createElement('div');
+            item.className = 'orrery-selected-boss';
+            item.style.borderColor = boss.color;
+            item.innerHTML = `<span>${bossData.find(b=>b.id===boss.id).color}</span>`;
+            item.title = boss.name;
+            item.onclick = () => {
+                selectedBosses.splice(index, 1);
+                currentCost -= costs[boss.difficulty_tier];
+                render();
+            };
+            selectionContainer.appendChild(item);
+        });
+
+        costDisplay.innerText = currentCost;
+        if (selectedBosses.length > 0) {
+            startBtn.classList.remove('disabled');
+            startBtn.onclick = () => onStart(selectedBosses);
+        } else {
+            startBtn.classList.add('disabled');
+            startBtn.onclick = null;
+        }
+    }
+
+    resetBtn.onclick = () => {
+        selectedBosses = [];
+        currentCost = 0;
+        render();
+    };
+
+    render();
 }
