@@ -1,54 +1,3 @@
-// modules/ui.js
-import { state } from './state.js';
-import { powers } from './powers.js';
-import { bossData } from './bosses.js';
-import { STAGE_CONFIG } from './config.js';
-import { getBossesForStage } from './gameLoop.js';
-
-const ascensionFill = document.getElementById('ascension-bar-fill');
-const ascensionText = document.getElementById('ascension-bar-text');
-const apDisplay = document.getElementById('ascension-points-display');
-const healthBarValue = document.getElementById('health-bar-value');
-const healthBarText = document.getElementById('health-bar-text');
-const shieldBar = document.getElementById('shield-bar-overlay');
-const offSlot = document.getElementById('slot-off-0');
-const defSlot = document.getElementById('slot-def-0');
-const bossContainer = document.getElementById("bossHpContainer");
-const statusBar = document.getElementById('status-effects-bar');
-const bossBannerEl = document.getElementById("bossBanner");
-const levelSelectList = document.getElementById("level-select-list");
-const notificationBanner = document.getElementById('unlock-notification');
-const customConfirm = document.getElementById('custom-confirm');
-const confirmTitle = document.getElementById('custom-confirm-title');
-const confirmText = document.getElementById('custom-confirm-text');
-const confirmYesBtn = document.getElementById('confirm-yes');
-const confirmNoBtn = document.getElementById('confirm-no');
-
-function updateStatusEffectsUI() {
-    const now = Date.now();
-    state.player.statusEffects = state.player.statusEffects.filter(effect => now < effect.endTime);
-    
-    statusBar.classList.toggle('visible', state.player.statusEffects.length > 0);
-    statusBar.innerHTML = '';
-
-    state.player.statusEffects.forEach(effect => {
-        const remaining = effect.endTime - now;
-        const duration = effect.endTime - effect.startTime;
-        const progress = Math.max(0, remaining) / duration;
-        const iconEl = document.createElement('div');
-        iconEl.className = 'status-icon';
-        iconEl.setAttribute('data-tooltip-text', `${effect.name} (${(remaining / 1000).toFixed(1)}s)`);
-        const emojiEl = document.createElement('span');
-        emojiEl.innerText = effect.emoji;
-        const overlayEl = document.createElement('div');
-        overlayEl.className = 'cooldown-overlay';
-        overlayEl.style.transform = `scaleY(${1 - progress})`;
-        iconEl.appendChild(emojiEl);
-        iconEl.appendChild(overlayEl);
-        statusBar.appendChild(iconEl);
-    });
-}
-
 export function updateUI() {
     const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
     document.querySelectorAll('.ability-key').forEach(el => { el.style.display = isTouchDevice ? 'none' : 'block'; });
@@ -104,14 +53,35 @@ export function updateUI() {
         }
     }
 
+    // --- NEW BOSS BAR LOGIC ---
     bossContainer.innerHTML = '';
+    const allBosses = state.enemies.filter(e => e.boss);
     const renderedBossTypes = new Set();
-    state.enemies.filter(e => e.boss).forEach(boss => {
-        if (boss.id === 'sentinel_pair' || boss.id === 'fractal_horror') {
-             if (renderedBossTypes.has(boss.id)) return;
-             renderedBossTypes.add(boss.id);
-        }
+    const bossesToDisplay = [];
 
+    // First, create a clean list of the bars we need to render, handling shared health groups
+    allBosses.forEach(boss => {
+        const sharedHealthIds = ['sentinel_pair', 'fractal_horror'];
+        if (sharedHealthIds.includes(boss.id)) {
+            if (!renderedBossTypes.has(boss.id)) {
+                bossesToDisplay.push(boss);
+                renderedBossTypes.add(boss.id);
+            }
+        } else {
+            bossesToDisplay.push(boss);
+        }
+    });
+
+    // Next, apply the correct layout class based on the number of bars
+    const GRID_THRESHOLD = 4;
+    if (bossesToDisplay.length >= GRID_THRESHOLD) {
+        bossContainer.classList.add('grid-layout');
+    } else {
+        bossContainer.classList.remove('grid-layout');
+    }
+
+    // Finally, render the bars from our clean list
+    bossesToDisplay.forEach(boss => {
         const wrapper = document.createElement('div');
         wrapper.className = 'boss-hp-bar-wrapper';
         const label = document.createElement('div');
@@ -124,7 +94,7 @@ export function updateUI() {
         const currentHp = boss.id === 'fractal_horror' ? (state.fractalHorrorSharedHp ?? 0) : boss.hp;
         
         bar.style.backgroundColor = boss.color;
-        bar.style.width = `${(currentHp / boss.maxHP) * 100}%`;
+        bar.style.width = `${Math.max(0, currentHp / boss.maxHP) * 100}%`;
         
         wrapper.appendChild(label);
         wrapper.appendChild(bar);
@@ -132,95 +102,4 @@ export function updateUI() {
     });
     
     updateStatusEffectsUI();
-}
-
-export function showBossBanner(boss){ 
-    bossBannerEl.innerText="🚨 "+boss.name+" 🚨"; 
-    bossBannerEl.style.opacity=1; 
-    setTimeout(()=>bossBannerEl.style.opacity=0,2500); 
-}
-
-export function showUnlockNotification(text, subtext = '') {
-    let content = `<span class="unlock-name">${text}</span>`;
-    if (subtext) {
-        content = `<span class="unlock-title">${subtext}</span>` + content;
-    }
-    notificationBanner.innerHTML = content;
-    notificationBanner.classList.add('show');
-    setTimeout(() => {
-        notificationBanner.classList.remove('show');
-    }, 3500);
-}
-
-export function populateLevelSelect(startSpecificLevel) {
-    if (!levelSelectList) return;
-    levelSelectList.innerHTML = '';
-
-    const maxStage = state.player.highestStageBeaten + 1;
-
-    for (let i = 1; i <= maxStage; i++) {
-        const bossIds = getBossesForStage(i);
-        let bossNames = '???';
-
-        if (bossIds && bossIds.length > 0) {
-            // Find the names of the bosses from their IDs
-            bossNames = bossIds.map(id => {
-                const boss = bossData.find(b => b.id === id);
-                return boss ? boss.name : 'Unknown';
-            }).join(' & '); // Join multiple boss names with an ampersand
-        } else {
-            // This case should ideally not be hit with the new system, but it's a safe fallback.
-            continue; 
-        }
-
-        const item = document.createElement('div');
-        item.className = 'stage-select-item';
-        
-        item.innerHTML = `
-            <span class="stage-select-number">STAGE ${i}</span>
-            <span class="stage-select-bosses">${bossNames}</span>
-        `;
-        
-        item.onclick = () => {
-            startSpecificLevel(i);
-        };
-
-        const bossNameElement = item.querySelector('.stage-select-bosses');
-        item.addEventListener('mouseenter', () => {
-            if (bossNameElement.scrollWidth > bossNameElement.clientWidth) {
-                bossNameElement.classList.add('is-scrolling');
-            }
-        });
-        item.addEventListener('mouseleave', () => {
-            bossNameElement.classList.remove('is-scrolling');
-        });
-
-        levelSelectList.appendChild(item);
-    }
-    levelSelectList.parentElement.scrollTop = levelSelectList.parentElement.scrollHeight;
-}
-
-export function showCustomConfirm(title, text, onConfirm) {
-    confirmTitle.innerText = title;
-    confirmText.innerText = text;
-
-    const close = () => {
-        customConfirm.style.display = 'none';
-        confirmYesBtn.removeEventListener('click', handleYes);
-        confirmNoBtn.removeEventListener('click', handleNo);
-    }
-
-    const handleYes = () => {
-        onConfirm();
-        close();
-    }
-
-    const handleNo = () => {
-        close();
-    }
-
-    confirmYesBtn.addEventListener('click', handleYes);
-    confirmNoBtn.addEventListener('click', handleNo);
-
-    customConfirm.style.display = 'flex';
 }
