@@ -4,6 +4,7 @@ import { powers } from './powers.js';
 import { bossData } from './bosses.js';
 import { STAGE_CONFIG } from './config.js';
 import { getBossesForStage } from './gameLoop.js';
+import { AudioManager } from './audio.js';
 
 const ascensionFill = document.getElementById('ascension-bar-fill');
 const ascensionText = document.getElementById('ascension-bar-text');
@@ -104,12 +105,15 @@ export function updateUI() {
         }
     }
 
-    bossContainer.innerHTML = '';
+    // --- REFACTORED BOSS BAR LOGIC TO FIX UPDATE BUG ---
     const allBosses = state.enemies.filter(e => e.boss);
     const renderedBossTypes = new Set();
     const bossesToDisplay = [];
+    const currentBossIdsOnScreen = new Set();
 
+    // 1. Create a clean list of boss instances to display, handling shared health groups.
     allBosses.forEach(boss => {
+        currentBossIdsOnScreen.add(boss.instanceId);
         const sharedHealthIds = ['sentinel_pair', 'fractal_horror'];
         if (sharedHealthIds.includes(boss.id)) {
             if (!renderedBossTypes.has(boss.id)) {
@@ -121,6 +125,14 @@ export function updateUI() {
         }
     });
 
+    // 2. Remove health bars for bosses that are no longer active.
+    for (const child of Array.from(bossContainer.children)) {
+        if (!currentBossIdsOnScreen.has(child.dataset.instanceId)) {
+            bossContainer.removeChild(child);
+        }
+    }
+    
+    // 3. Apply the correct layout class based on the number of bars.
     const GRID_THRESHOLD = 4;
     if (bossesToDisplay.length >= GRID_THRESHOLD) {
         bossContainer.classList.add('grid-layout');
@@ -128,24 +140,34 @@ export function updateUI() {
         bossContainer.classList.remove('grid-layout');
     }
 
+    // 4. Update existing bars or create new ones for active bosses.
     bossesToDisplay.forEach(boss => {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'boss-hp-bar-wrapper';
-        const label = document.createElement('div');
-        label.className = 'boss-hp-label';
-        label.innerText = boss.name;
+        let wrapper = document.getElementById('boss-hp-' + boss.instanceId);
         
-        const bar = document.createElement('div');
-        bar.className = 'boss-hp-bar';
-        
+        if (!wrapper) {
+            // Create the bar if it doesn't exist
+            wrapper = document.createElement('div');
+            wrapper.className = 'boss-hp-bar-wrapper';
+            wrapper.id = 'boss-hp-' + boss.instanceId;
+            wrapper.dataset.instanceId = boss.instanceId;
+
+            const label = document.createElement('div');
+            label.className = 'boss-hp-label';
+            label.innerText = boss.name;
+            
+            const bar = document.createElement('div');
+            bar.className = 'boss-hp-bar';
+            
+            wrapper.appendChild(label);
+            wrapper.appendChild(bar);
+            bossContainer.appendChild(wrapper);
+        }
+
+        // Update the health percentage
+        const bar = wrapper.querySelector('.boss-hp-bar');
         const currentHp = boss.id === 'fractal_horror' ? (state.fractalHorrorSharedHp ?? 0) : boss.hp;
-        
         bar.style.backgroundColor = boss.color;
         bar.style.width = `${Math.max(0, currentHp / boss.maxHP) * 100}%`;
-        
-        wrapper.appendChild(label);
-        wrapper.appendChild(bar);
-        bossContainer.appendChild(wrapper);
     });
     
     updateStatusEffectsUI();
@@ -243,11 +265,8 @@ export function showCustomConfirm(title, text, onConfirm) {
 export function populateOrreryMenu(onStart) {
     let totalEchoes = 0;
     if (state.player.highestStageBeaten >= 30) {
-        // 1. Base amount for unlocking the Orrery
         totalEchoes += 10;
-        // 2. Incremental reward: +1 for each stage cleared past 30
         totalEchoes += (state.player.highestStageBeaten - 30);
-        // 3. Large lump-sum rewards for clearing Epoch milestones
         if (state.player.highestStageBeaten >= 50) totalEchoes += 15;
         if (state.player.highestStageBeaten >= 70) totalEchoes += 20;
         if (state.player.highestStageBeaten >= 90) totalEchoes += 25;
@@ -280,20 +299,33 @@ export function populateOrreryMenu(onStart) {
             const canAfford = (totalEchoes - currentCost) >= cost;
             item.classList.toggle('disabled', !canAfford);
 
+            const tooltipHtml = `
+                <div class="boss-tooltip">
+                    <div class="tooltip-header">
+                        <span class="tooltip-icon">${boss.name}</span>
+                    </div>
+                    <div class="tooltip-desc">${boss.description}</div>
+                </div>
+            `;
+
             item.innerHTML = `
                 <div class="orrery-boss-info">
-                    <span class="orrery-boss-icon">💀</span>
+                    <span class="orrery-boss-icon" style="border-color: ${boss.color};">💀</span>
                     <span>${boss.name}</span>
                 </div>
                 <span class="orrery-boss-cost">${cost}</span>
+                ${tooltipHtml}
             `;
 
             if (canAfford) {
                 item.onclick = () => {
+                    AudioManager.playSfx('talentPurchase');
                     selectedBosses.push(boss.id);
                     currentCost += cost;
                     render();
                 };
+            } else {
+                 item.onclick = () => AudioManager.playSfx('talentError');
             }
             bossListContainer.appendChild(item);
         });
@@ -304,10 +336,18 @@ export function populateOrreryMenu(onStart) {
             item.className = 'orrery-selected-boss';
             
             item.style.borderColor = boss.color;
-            item.innerHTML = `<span>💀</span>`;
+            item.innerHTML = `<span>💀</span>
+                <div class="boss-tooltip">
+                    <div class="tooltip-header">
+                        <span class="tooltip-icon">${boss.name}</span>
+                    </div>
+                    <div class="tooltip-desc">${boss.description}</div>
+                </div>
+            `;
 
             item.title = boss.name;
             item.onclick = () => {
+                AudioManager.playSfx('uiClickSound');
                 selectedBosses.splice(index, 1);
                 currentCost -= costs[boss.difficulty_tier];
                 render();
@@ -326,6 +366,7 @@ export function populateOrreryMenu(onStart) {
     }
 
     resetBtn.onclick = () => {
+        AudioManager.playSfx('uiClickSound');
         selectedBosses = [];
         currentCost = 0;
         render();
