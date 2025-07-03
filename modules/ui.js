@@ -105,7 +105,6 @@ export function updateUI() {
         }
     }
 
-    // --- REFACTORED BOSS BAR LOGIC TO FIX UPDATE BUG ---
     const allBosses = state.enemies.filter(e => e.boss);
     const renderedBossTypes = new Set();
     const bossesToDisplay = [];
@@ -113,7 +112,8 @@ export function updateUI() {
 
     // 1. Create a clean list of boss instances to display, handling shared health groups.
     allBosses.forEach(boss => {
-        currentBossIdsOnScreen.add(boss.instanceId);
+        // --- BUG FIX: Add ID as a string to the set for correct comparison with dataset property ---
+        currentBossIdsOnScreen.add(boss.instanceId.toString());
         const sharedHealthIds = ['sentinel_pair', 'fractal_horror'];
         if (sharedHealthIds.includes(boss.id)) {
             if (!renderedBossTypes.has(boss.id)) {
@@ -149,7 +149,7 @@ export function updateUI() {
             wrapper = document.createElement('div');
             wrapper.className = 'boss-hp-bar-wrapper';
             wrapper.id = 'boss-hp-' + boss.instanceId;
-            wrapper.dataset.instanceId = boss.instanceId;
+            wrapper.dataset.instanceId = boss.instanceId.toString();
 
             const label = document.createElement('div');
             label.className = 'boss-hp-label';
@@ -174,7 +174,7 @@ export function updateUI() {
 }
 
 export function showBossBanner(boss){ 
-    bossBannerEl.innerText="🚨 "+boss.name+" 🚨"; 
+    bossBannerEl.innerText="圷 "+boss.name+" 圷"; 
     bossBannerEl.style.opacity=1; 
     setTimeout(()=>bossBannerEl.style.opacity=0,2500); 
 }
@@ -278,6 +278,7 @@ export function populateOrreryMenu(onStart) {
     const costDisplay = document.getElementById('orrery-current-cost');
     const startBtn = document.getElementById('orrery-start-btn');
     const resetBtn = document.getElementById('orrery-reset-btn');
+    const orreryContent = document.getElementById('orrery-modal-content');
     
     let selectedBosses = [];
     let currentCost = 0;
@@ -310,7 +311,7 @@ export function populateOrreryMenu(onStart) {
 
             item.innerHTML = `
                 <div class="orrery-boss-info">
-                    <span class="orrery-boss-icon" style="border-color: ${boss.color};">💀</span>
+                    <span class="orrery-boss-icon" style="border-color: ${boss.color};">逐</span>
                     <span>${boss.name}</span>
                 </div>
                 <span class="orrery-boss-cost">${cost}</span>
@@ -327,6 +328,20 @@ export function populateOrreryMenu(onStart) {
             } else {
                  item.onclick = () => AudioManager.playSfx('talentError');
             }
+
+            // --- BUG FIX: Add dynamic tooltip positioning ---
+            const tooltip = item.querySelector('.boss-tooltip');
+            item.addEventListener('mouseenter', () => {
+                requestAnimationFrame(() => {
+                    const tooltipRect = tooltip.getBoundingClientRect();
+                    const containerRect = orreryContent.getBoundingClientRect();
+                    tooltip.classList.remove('show-bottom');
+                    if (tooltipRect.top < containerRect.top + 10) {
+                        tooltip.classList.add('show-bottom');
+                    }
+                });
+            });
+
             bossListContainer.appendChild(item);
         });
 
@@ -336,7 +351,7 @@ export function populateOrreryMenu(onStart) {
             item.className = 'orrery-selected-boss';
             
             item.style.borderColor = boss.color;
-            item.innerHTML = `<span>💀</span>
+            item.innerHTML = `<span>逐</span>
                 <div class="boss-tooltip">
                     <div class="tooltip-header">
                         <span class="tooltip-icon">${boss.name}</span>
@@ -352,6 +367,19 @@ export function populateOrreryMenu(onStart) {
                 currentCost -= costs[boss.difficulty_tier];
                 render();
             };
+
+            const tooltip = item.querySelector('.boss-tooltip');
+            item.addEventListener('mouseenter', () => {
+                requestAnimationFrame(() => {
+                    const tooltipRect = tooltip.getBoundingClientRect();
+                    const containerRect = orreryContent.getBoundingClientRect();
+                    tooltip.classList.remove('show-bottom');
+                    if (tooltipRect.top < containerRect.top + 10) {
+                        tooltip.classList.add('show-bottom');
+                    }
+                });
+            });
+
             selectionContainer.appendChild(item);
         });
 
