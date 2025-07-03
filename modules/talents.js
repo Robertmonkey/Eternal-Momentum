@@ -6,7 +6,7 @@ export const TALENT_GRID_CONFIG = {
         'core-nexus': {
             id: 'core-nexus',
             name: 'Core Nexus',
-            description: (rank, maxed) => 'The heart of the Ascension Conduit. Unlocks the primary constellations.',
+            description: (rank, maxed) => "This is not merely an upgrade grid; it is the very heart of your being as the Conduit. It serves as the interface through which you reclaim and integrate the fragmented source code of collapsed realities. Each unlocked talent is a piece of a forgotten world, re-woven into your own existence to grant you the strength needed to face the Unraveling.",
             icon: '💠',
             maxRanks: 1,
             costPerRank: [1],
