@@ -1214,7 +1214,7 @@ export const bossData = [{
     id: "fractal_horror",
     name: "The Fractal Horror",
     color: "#be2edd",
-    maxHP: 15000,
+    maxHP: 10000,
     difficulty_tier: 3,
     archetype: 'swarm',
     description: "A being of infinite complexity that splits into smaller, autonomous fragments as it takes damage, overwhelming its foe with sheer numbers.",
