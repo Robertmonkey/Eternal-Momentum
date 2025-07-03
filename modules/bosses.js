@@ -319,7 +319,7 @@ export const bossData = [{
     archetype: 'aggressor',
     description: "Two bonded entities, one swift and one resilient. The true challenge begins when one is vanquished, causing the survivor to enter a state of absolute rage.",
     lore: "In their timeline, bonds of loyalty were a tangible, physical force. Aethel & Umbra were a bonded pair of guardians. The Unraveling severed the metaphysical link between them, but not their consciousness. They now fight as two separate bodies with one shared, agonized soul, their rage amplifying when one is forced to witness the other's demise... again.",
-    mechanics_desc: "A duo boss. Aethel is faster but more fragile; Umbra is slower but much tougher. When one is defeated, the survivor becomes enraged, gaining significantly enhanced stats and abilities. It is often wise to focus them down evenly.",
+    mechanics_desc: "A duo boss where one is faster and fragile (Aethel) and the other is slower but much tougher (Umbra). When one is defeated, the survivor becomes enraged, gaining significantly enhanced stats and abilities. It is often wise to focus them down evenly.",
     init: (b, state, spawnEnemy) => {
         const partner = state.enemies.find(e => e.id === 'aethel_and_umbra' && e !== b);
         b.r = 50;
