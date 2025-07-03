@@ -229,8 +229,8 @@ export function populateLevelSelect(startSpecificLevel) {
 
     const maxStage = state.player.highestStageBeaten + 1;
 
-    for (let i = 1; i <= 30; i++) {
-        if (i > maxStage) break;
+    // --- BUG FIX: Loop up to the max unlocked stage, not just 30 ---
+    for (let i = 1; i <= maxStage; i++) {
         const bossIds = getBossesForStage(i);
         if (!bossIds || bossIds.length === 0) continue;
         
@@ -344,7 +344,6 @@ export function populateOrreryMenu(onStart) {
             const canAfford = (totalEchoes - currentCost) >= cost;
             item.classList.toggle('disabled', !canAfford);
 
-            // --- CHANGE: Logic to handle Pantheon's prismatic icon ---
             const isPantheon = boss.id === 'pantheon';
             const iconStyle = isPantheon ? '' : `background-color: ${boss.color};`;
             const iconClass = isPantheon ? 'orrery-boss-icon pantheon-icon-bg' : 'orrery-boss-icon';
@@ -389,7 +388,6 @@ export function populateOrreryMenu(onStart) {
             const item = document.createElement('div');
             item.className = 'orrery-selected-boss';
 
-            // --- CHANGE: Set background color for selected icons ---
             if (boss.id === 'pantheon') {
                 item.classList.add('pantheon-icon-bg');
             } else {
