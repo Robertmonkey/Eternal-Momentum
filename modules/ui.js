@@ -187,10 +187,10 @@ function showBossInfo(bossIds, type) {
 
     if (type === 'lore') {
         title += ' - Lore ℹ️';
-        content = bosses.map(b => `<p>${b.lore}</p>`).join('<hr>');
+        content = bosses.map(b => `<h3>${b.name}</h3><p>${b.lore}</p>`).join('<hr style="border-color: rgba(255,255,255,0.2); margin: 15px 0;">');
     } else {
         title += ' - Mechanics ❔';
-        content = bosses.map(b => `<p>${b.mechanics_desc}</p>`).join('<hr>');
+        content = bosses.map(b => `<h3>${b.name}</h3><p>${b.mechanics_desc}</p>`).join('<hr style="border-color: rgba(255,255,255,0.2); margin: 15px 0;">');
     }
 
     bossInfoTitle.innerHTML = title;
@@ -229,7 +229,8 @@ export function populateLevelSelect(startSpecificLevel) {
 
     const maxStage = state.player.highestStageBeaten + 1;
 
-    for (let i = 1; i <= maxStage; i++) {
+    for (let i = 1; i <= 30; i++) {
+        if (i > maxStage) break;
         const bossIds = getBossesForStage(i);
         if (!bossIds || bossIds.length === 0) continue;
         
@@ -343,9 +344,14 @@ export function populateOrreryMenu(onStart) {
             const canAfford = (totalEchoes - currentCost) >= cost;
             item.classList.toggle('disabled', !canAfford);
 
+            // --- CHANGE: Logic to handle Pantheon's prismatic icon ---
+            const isPantheon = boss.id === 'pantheon';
+            const iconStyle = isPantheon ? '' : `background-color: ${boss.color};`;
+            const iconClass = isPantheon ? 'orrery-boss-icon pantheon-icon-bg' : 'orrery-boss-icon';
+
             item.innerHTML = `
                 <div class="orrery-boss-info">
-                    <span class="orrery-boss-icon" style="border-color: ${boss.color};">逐</span>
+                    <span class="${iconClass}" style="${iconStyle}"></span>
                     <span class="orrery-boss-name">${boss.name}</span>
                 </div>
                 <div class="stage-item-actions">
@@ -382,9 +388,14 @@ export function populateOrreryMenu(onStart) {
             const boss = bossData.find(b => b.id === bossId);
             const item = document.createElement('div');
             item.className = 'orrery-selected-boss';
+
+            // --- CHANGE: Set background color for selected icons ---
+            if (boss.id === 'pantheon') {
+                item.classList.add('pantheon-icon-bg');
+            } else {
+                item.style.backgroundColor = boss.color;
+            }
             
-            item.style.borderColor = boss.color;
-            item.innerHTML = `<span>逐</span>`;
             item.title = boss.name;
 
             item.onclick = () => {
