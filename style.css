@@ -1099,3 +1099,9 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
 .orrery-boss-item .boss-tooltip .tooltip-header {
     color: var(--secondary-glow);
 }
+
+/* --- FIX: Added class to show tooltip on the bottom --- */
+.boss-tooltip.show-bottom {
+    bottom: auto;
+    top: 110%;
+}
