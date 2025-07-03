@@ -2,7 +2,7 @@
 import { state, resetGame, loadPlayerState, savePlayerState } from './modules/state.js';
 import { bossData } from './modules/bosses.js';
 import { AudioManager } from './modules/audio.js';
-import { updateUI, populateLevelSelect, showCustomConfirm, populateOrreryMenu } from './modules/ui.js';
+import { updateUI, populateLevelSelect, showCustomConfirm, populateOrreryMenu, showBossInfo } from './modules/ui.js';
 import { gameTick, spawnBossesForStage, addStatusEffect, addEssence } from './modules/gameLoop.js';
 import { usePower } from './modules/powers.js';
 import * as utils from './modules/utils.js';
@@ -106,6 +106,7 @@ window.addEventListener('load', () => {
         const levelSelectModal = document.getElementById("levelSelectModal");
         const closeLevelSelectBtn = document.getElementById("closeLevelSelectBtn");
         const arenaBtn = document.getElementById("arenaBtn"); // Now the Orrery Button
+        const storyBtn = document.getElementById("storyBtn");
         const jumpToFrontierBtn = document.getElementById("jumpToFrontierBtn");
         
         const ascensionGridModal = document.getElementById("ascensionGridModal");
@@ -113,7 +114,11 @@ window.addEventListener('load', () => {
         const apDisplayAscGrid = document.getElementById("ap-total-asc-grid");
         const clearSaveBtn = document.getElementById("clearSaveBtn");
 
-        // New Orrery Elements
+        const bossInfoModal = document.getElementById('bossInfoModal');
+        const bossInfoTitle = document.getElementById('bossInfoModalTitle');
+        const bossInfoContent = document.getElementById('bossInfoModalContent');
+        const closeBossInfoBtn = document.getElementById('closeBossInfoModalBtn');
+
         const orreryModal = document.getElementById("orreryModal");
         const closeOrreryBtn = document.getElementById("closeOrreryBtn");
 
@@ -183,7 +188,6 @@ window.addEventListener('load', () => {
             levelSelectBtn.addEventListener("click", () => { 
                 state.isPaused = true; 
                 populateLevelSelect(startSpecificLevel);
-                // --- Orrery Button Visibility ---
                 if (state.player.highestStageBeaten >= 30) {
                     arenaBtn.style.display = 'block';
                     arenaBtn.innerText = "WEAVER'S ORRERY";
@@ -217,7 +221,44 @@ window.addEventListener('load', () => {
                 }
             });
 
-            // --- REPURPOSED ARENA BUTTON FOR ORRERY ---
+            storyBtn.addEventListener("click", () => {
+                const storyTitle = "ETERNAL MOMENTUM";
+                const storyContent = `
+                    <h3>The Unraveling</h3>
+                    <p>Reality is not a single thread, but an infinite, shimmering tapestry of timelines. This tapestry is fraying.</p>
+                    <p>A formless, silent entropy named the <strong>Unraveling</strong> consumes existence, timeline by timeline. It is a cosmic error causing reality to decohere into paradox and chaos. As each world's fundamental laws are overwritten, its echoes are twisted into monstrous <strong>Aberrations</strong>—nightmarish amalgamations of what once was, their very existence a violation of natural law.</p>
+                    
+                    <h3>The Conduit</h3>
+                    <p>Amidst the universal decay, you exist. You are the <strong>Conduit</strong>, an impossible being capable of maintaining a stable presence across fracturing realities, immune to the chaos of the Unraveling. You are the final, desperate immune response of a dying multiverse.</p>
+                    <p>Your very existence warps the battlefield on a fundamental level. You passively project a field of <strong>Quantum Friction</strong>, an extension of your own impossible stability. As matter and Aberrations draw near, they enter this aura and are forced to adhere to a stricter set of physical laws. Their chaotic energy dampens, their momentum slows—a localized reality where the multiverse itself grows dense and resistant in your presence.</p>
+                    <p>Your consciousness is imbued with <strong>Eternal Momentum</strong>—an innate, unyielding drive to push forward, to resist the decay, and to preserve the flickering embers of spacetime.</p>
+                    
+                    <h3>The Mission</h3>
+                    <p>Your journey is a desperate pilgrimage through the collapsing remnants of countless worlds. Each "stage" is a pocket of spacetime you temporarily stabilize through sheer force of will. The <strong>Ascension Conduit</strong> is your means of survival and growth.</p>
+                    <p>By defeating Aberrations, you are not merely destroying them; you are reclaiming lost fragments of reality's source code. By integrating these fragments into your own being through the Conduit, you grow stronger, turning the weapons of your enemy into the keys to your salvation.</p>
+                    
+                    <h3>The Weaver's Orrery</h3>
+                    <p>The <strong>Weaver's Orrery</strong> is your greatest tool. A mysterious device left by a precursor race, it allows you to manipulate the <strong>Echoes of Creation</strong>—the residual energy left by powerful Aberrations.</p>
+                    <p>With the Orrery, you can forge custom timelines, simulating encounters against the multiverse's most dangerous threats. This is not mere practice; it is a way to hone your skills and prepare for the ultimate confrontation against the silent, all-consuming heart of the Unraveling.</p>
+            
+                    <hr style="border-color: rgba(255,255,255,0.2); margin: 15px 0;">
+                    <p><em>You are the final anchor in a storm of nonexistence. Hold the line. Maintain your momentum.</em></p>
+                `;
+                
+                levelSelectModal.style.display = 'none';
+                bossInfoTitle.innerHTML = storyTitle;
+                bossInfoContent.innerHTML = storyContent;
+                bossInfoModal.style.display = 'flex';
+                AudioManager.playSfx('uiModalOpen');
+
+                const closeStoryHandler = () => {
+                    bossInfoModal.style.display = 'none';
+                    levelSelectModal.style.display = 'flex';
+                    closeBossInfoBtn.removeEventListener('click', closeStoryHandler);
+                };
+                closeBossInfoBtn.addEventListener('click', closeStoryHandler, { once: true });
+            });
+
             arenaBtn.addEventListener("click", () => {
                 levelSelectModal.style.display = 'none';
                 populateOrreryMenu(startOrreryEncounter);
@@ -227,7 +268,7 @@ window.addEventListener('load', () => {
 
             closeOrreryBtn.addEventListener("click", () => {
                 orreryModal.style.display = 'none';
-                levelSelectModal.style.display = 'flex'; // Go back to stage select
+                levelSelectModal.style.display = 'flex';
                 AudioManager.playSfx('uiModalClose');
             });
 
@@ -315,13 +356,12 @@ window.addEventListener('load', () => {
             loop();
         };
 
-        // --- NEW FUNCTION TO START A CUSTOM ORRERY ENCOUNTER ---
         const startOrreryEncounter = (bossList) => {
             if (state.gameLoopId) cancelAnimationFrame(state.gameLoopId);
             applyAllTalentEffects();
-            resetGame(true); // Reset game in "arena mode" which prevents normal stage progression
-            state.customOrreryBosses = bossList; // Set the custom bosses
-            state.currentStage = 999; // Use a high stage number for scaling
+            resetGame(true); 
+            state.customOrreryBosses = bossList; 
+            state.currentStage = 999; 
             gameOverMenu.style.display = 'none';
             orreryModal.style.display = 'none';
             state.isPaused = false;
