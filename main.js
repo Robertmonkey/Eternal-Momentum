@@ -106,7 +106,7 @@ window.addEventListener('load', () => {
         const levelSelectModal = document.getElementById("levelSelectModal");
         const closeLevelSelectBtn = document.getElementById("closeLevelSelectBtn");
         const arenaBtn = document.getElementById("arenaBtn"); // Now the Orrery Button
-        const storyBtn = document.getElementById("storyBtn");
+        const storyBtn = document.getElementById("loreCodexBtn");
         const jumpToFrontierBtn = document.getElementById("jumpToFrontierBtn");
         
         const ascensionGridModal = document.getElementById("ascensionGridModal");
