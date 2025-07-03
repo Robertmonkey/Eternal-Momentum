@@ -171,7 +171,7 @@ export function updateUI() {
     updateStatusEffectsUI();
 }
 
-function showBossInfo(bossIds, type) {
+export function showBossInfo(bossIds, type) {
     let title = '';
     let content = '';
 
