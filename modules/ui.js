@@ -206,7 +206,7 @@ closeBossInfoBtn.addEventListener('click', () => {
 
 
 export function showBossBanner(boss){ 
-    bossBannerEl.innerText="圷 "+boss.name+" 圷"; 
+    bossBannerEl.innerText="🚨 "+boss.name+" 🚨"; 
     bossBannerEl.style.opacity=1; 
     setTimeout(()=>bossBannerEl.style.opacity=0,2500); 
 }
