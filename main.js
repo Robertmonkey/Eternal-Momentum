@@ -2,7 +2,7 @@
 import { state, resetGame, loadPlayerState, savePlayerState } from './modules/state.js';
 import { bossData } from './modules/bosses.js';
 import { AudioManager } from './modules/audio.js';
-import { updateUI, populateLevelSelect, showCustomConfirm, populateOrreryMenu, showBossInfo } from './modules/ui.js';
+import { updateUI, populateLevelSelect, showCustomConfirm, populateOrreryMenu } from './modules/ui.js';
 import { gameTick, spawnBossesForStage, addStatusEffect, addEssence } from './modules/gameLoop.js';
 import { usePower } from './modules/powers.js';
 import * as utils from './modules/utils.js';
