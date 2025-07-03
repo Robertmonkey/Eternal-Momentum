@@ -318,10 +318,18 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
 #level-select-list-container::-webkit-scrollbar-thumb:hover {
     background: #fff;
 }
-#modal-actions { display: flex; justify-content: center; gap: 15px; margin-top: 20px; }
+#modal-actions { display: flex; justify-content: center; gap: 15px; margin-top: 20px; flex-wrap: wrap; }
 #modal-actions button { width: auto; height: auto; padding: 10px 20px; font-size: 1rem; }
 #arenaBtn { background: rgba(155, 89, 182, 0.4); border-color: rgba(155, 89, 182, 1); }
 #arenaBtn:hover { background: rgba(155, 89, 182, 0.6); }
+
+#storyBtn {
+    background-color: rgba(155, 89, 182, 0.4);
+    border-color: rgba(155, 89, 182, 1);
+}
+#storyBtn:hover {
+    background-color: rgba(155, 89, 182, 0.6);
+}
 
 #jumpToFrontierBtn {
     background: var(--primary-glow);
