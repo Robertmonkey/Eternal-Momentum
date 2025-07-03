@@ -25,6 +25,11 @@ const confirmText = document.getElementById('custom-confirm-text');
 const confirmYesBtn = document.getElementById('confirm-yes');
 const confirmNoBtn = document.getElementById('confirm-no');
 
+const bossInfoModal = document.getElementById('bossInfoModal');
+const bossInfoTitle = document.getElementById('bossInfoModalTitle');
+const bossInfoContent = document.getElementById('bossInfoModalContent');
+const closeBossInfoBtn = document.getElementById('closeBossInfoModalBtn');
+
 function updateStatusEffectsUI() {
     const now = Date.now();
     state.player.statusEffects = state.player.statusEffects.filter(effect => now < effect.endTime);
@@ -110,9 +115,7 @@ export function updateUI() {
     const bossesToDisplay = [];
     const currentBossIdsOnScreen = new Set();
 
-    // 1. Create a clean list of boss instances to display, handling shared health groups.
     allBosses.forEach(boss => {
-        // --- BUG FIX: Add ID as a string to the set for correct comparison with dataset property ---
         currentBossIdsOnScreen.add(boss.instanceId.toString());
         const sharedHealthIds = ['sentinel_pair', 'fractal_horror'];
         if (sharedHealthIds.includes(boss.id)) {
@@ -125,14 +128,12 @@ export function updateUI() {
         }
     });
 
-    // 2. Remove health bars for bosses that are no longer active.
     for (const child of Array.from(bossContainer.children)) {
         if (!currentBossIdsOnScreen.has(child.dataset.instanceId)) {
             bossContainer.removeChild(child);
         }
     }
     
-    // 3. Apply the correct layout class based on the number of bars.
     const GRID_THRESHOLD = 4;
     if (bossesToDisplay.length >= GRID_THRESHOLD) {
         bossContainer.classList.add('grid-layout');
@@ -140,12 +141,10 @@ export function updateUI() {
         bossContainer.classList.remove('grid-layout');
     }
 
-    // 4. Update existing bars or create new ones for active bosses.
     bossesToDisplay.forEach(boss => {
         let wrapper = document.getElementById('boss-hp-' + boss.instanceId);
         
         if (!wrapper) {
-            // Create the bar if it doesn't exist
             wrapper = document.createElement('div');
             wrapper.className = 'boss-hp-bar-wrapper';
             wrapper.id = 'boss-hp-' + boss.instanceId;
@@ -163,7 +162,6 @@ export function updateUI() {
             bossContainer.appendChild(wrapper);
         }
 
-        // Update the health percentage
         const bar = wrapper.querySelector('.boss-hp-bar');
         const currentHp = boss.id === 'fractal_horror' ? (state.fractalHorrorSharedHp ?? 0) : boss.hp;
         bar.style.backgroundColor = boss.color;
@@ -172,6 +170,40 @@ export function updateUI() {
     
     updateStatusEffectsUI();
 }
+
+function showBossInfo(bossIds, type) {
+    let title = '';
+    let content = '';
+
+    const bosses = bossIds.map(id => bossData.find(b => b.id === id)).filter(b => b);
+
+    if (bosses.length === 0) return;
+
+    if (bosses.length > 1) {
+        title = bosses.map(b => b.name).join(' & ');
+    } else {
+        title = bosses[0].name;
+    }
+
+    if (type === 'lore') {
+        title += ' - Lore ℹ️';
+        content = bosses.map(b => `<p>${b.lore}</p>`).join('<hr>');
+    } else {
+        title += ' - Mechanics ❔';
+        content = bosses.map(b => `<p>${b.mechanics_desc}</p>`).join('<hr>');
+    }
+
+    bossInfoTitle.innerHTML = title;
+    bossInfoContent.innerHTML = content;
+    bossInfoModal.style.display = 'flex';
+    AudioManager.playSfx('uiModalOpen');
+}
+
+closeBossInfoBtn.addEventListener('click', () => {
+    bossInfoModal.style.display = 'none';
+    AudioManager.playSfx('uiModalClose');
+});
+
 
 export function showBossBanner(boss){ 
     bossBannerEl.innerText="圷 "+boss.name+" 圷"; 
@@ -199,27 +231,39 @@ export function populateLevelSelect(startSpecificLevel) {
 
     for (let i = 1; i <= maxStage; i++) {
         const bossIds = getBossesForStage(i);
-        let bossNames = '???';
-
-        if (bossIds && bossIds.length > 0) {
-            bossNames = bossIds.map(id => {
-                const boss = bossData.find(b => b.id === id);
-                return boss ? boss.name : 'Unknown';
-            }).join(' & ');
-        } else {
-            continue; 
-        }
-
+        if (!bossIds || bossIds.length === 0) continue;
+        
+        let bossNames = bossIds.map(id => {
+            const boss = bossData.find(b => b.id === id);
+            return boss ? boss.name : 'Unknown';
+        }).join(' & ');
+        
         const item = document.createElement('div');
         item.className = 'stage-select-item';
         
         item.innerHTML = `
-            <span class="stage-select-number">STAGE ${i}</span>
-            <span class="stage-select-bosses">${bossNames}</span>
+            <div class="stage-item-main">
+                <span class="stage-select-number">STAGE ${i}</span>
+                <span class="stage-select-bosses">${bossNames}</span>
+            </div>
+            <div class="stage-item-actions">
+                <button class="info-btn mechanics-btn" title="Mechanics">❔</button>
+                <button class="info-btn lore-btn" title="Lore">ℹ️</button>
+            </div>
         `;
         
-        item.onclick = () => {
+        item.querySelector('.stage-item-main').onclick = () => {
             startSpecificLevel(i);
+        };
+
+        item.querySelector('.mechanics-btn').onclick = (e) => {
+            e.stopPropagation();
+            showBossInfo(bossIds, 'mechanics');
+        };
+
+        item.querySelector('.lore-btn').onclick = (e) => {
+            e.stopPropagation();
+            showBossInfo(bossIds, 'lore');
         };
 
         const bossNameElement = item.querySelector('.stage-select-bosses');
@@ -278,7 +322,6 @@ export function populateOrreryMenu(onStart) {
     const costDisplay = document.getElementById('orrery-current-cost');
     const startBtn = document.getElementById('orrery-start-btn');
     const resetBtn = document.getElementById('orrery-reset-btn');
-    const orreryContent = document.getElementById('orrery-modal-content');
     
     let selectedBosses = [];
     let currentCost = 0;
@@ -300,47 +343,37 @@ export function populateOrreryMenu(onStart) {
             const canAfford = (totalEchoes - currentCost) >= cost;
             item.classList.toggle('disabled', !canAfford);
 
-            const tooltipHtml = `
-                <div class="boss-tooltip">
-                    <div class="tooltip-header">
-                        <span class="tooltip-icon">${boss.name}</span>
-                    </div>
-                    <div class="tooltip-desc">${boss.description}</div>
-                </div>
-            `;
-
             item.innerHTML = `
                 <div class="orrery-boss-info">
                     <span class="orrery-boss-icon" style="border-color: ${boss.color};">逐</span>
-                    <span>${boss.name}</span>
+                    <span class="orrery-boss-name">${boss.name}</span>
                 </div>
-                <span class="orrery-boss-cost">${cost}</span>
-                ${tooltipHtml}
+                <div class="stage-item-actions">
+                     <button class="info-btn mechanics-btn" title="Mechanics">❔</button>
+                     <button class="info-btn lore-btn" title="Lore">ℹ️</button>
+                     <span class="orrery-boss-cost">${cost}</span>
+                </div>
             `;
-
-            if (canAfford) {
-                item.onclick = () => {
+            
+            item.querySelector('.orrery-boss-info').onclick = () => {
+                 if (canAfford) {
                     AudioManager.playSfx('talentPurchase');
                     selectedBosses.push(boss.id);
                     currentCost += cost;
                     render();
-                };
-            } else {
-                 item.onclick = () => AudioManager.playSfx('talentError');
-            }
+                } else {
+                    AudioManager.playSfx('talentError');
+                }
+            };
 
-            // --- BUG FIX: Add dynamic tooltip positioning ---
-            const tooltip = item.querySelector('.boss-tooltip');
-            item.addEventListener('mouseenter', () => {
-                requestAnimationFrame(() => {
-                    const tooltipRect = tooltip.getBoundingClientRect();
-                    const containerRect = orreryContent.getBoundingClientRect();
-                    tooltip.classList.remove('show-bottom');
-                    if (tooltipRect.top < containerRect.top + 10) {
-                        tooltip.classList.add('show-bottom');
-                    }
-                });
-            });
+            item.querySelector('.mechanics-btn').onclick = (e) => {
+                e.stopPropagation();
+                showBossInfo([boss.id], 'mechanics');
+            };
+            item.querySelector('.lore-btn').onclick = (e) => {
+                e.stopPropagation();
+                showBossInfo([boss.id], 'lore');
+            };
 
             bossListContainer.appendChild(item);
         });
@@ -351,35 +384,15 @@ export function populateOrreryMenu(onStart) {
             item.className = 'orrery-selected-boss';
             
             item.style.borderColor = boss.color;
-            item.innerHTML = `<span>逐</span>
-                <div class="boss-tooltip">
-                    <div class="tooltip-header">
-                        <span class="tooltip-icon">${boss.name}</span>
-                    </div>
-                    <div class="tooltip-desc">${boss.description}</div>
-                </div>
-            `;
-
+            item.innerHTML = `<span>逐</span>`;
             item.title = boss.name;
+
             item.onclick = () => {
                 AudioManager.playSfx('uiClickSound');
                 selectedBosses.splice(index, 1);
                 currentCost -= costs[boss.difficulty_tier];
                 render();
             };
-
-            const tooltip = item.querySelector('.boss-tooltip');
-            item.addEventListener('mouseenter', () => {
-                requestAnimationFrame(() => {
-                    const tooltipRect = tooltip.getBoundingClientRect();
-                    const containerRect = orreryContent.getBoundingClientRect();
-                    tooltip.classList.remove('show-bottom');
-                    if (tooltipRect.top < containerRect.top + 10) {
-                        tooltip.classList.add('show-bottom');
-                    }
-                });
-            });
-
             selectionContainer.appendChild(item);
         });
 
