@@ -229,7 +229,6 @@ export function populateLevelSelect(startSpecificLevel) {
 
     const maxStage = state.player.highestStageBeaten + 1;
 
-    // --- BUG FIX: Loop up to the max unlocked stage, not just 30 ---
     for (let i = 1; i <= maxStage; i++) {
         const bossIds = getBossesForStage(i);
         if (!bossIds || bossIds.length === 0) continue;
@@ -244,7 +243,7 @@ export function populateLevelSelect(startSpecificLevel) {
         
         item.innerHTML = `
             <div class="stage-item-main">
-                <span class="stage-select-number">STAGE ${i}</span>
+                <span class="stage-select-number">STAGE ${i > 30 ? `F-${i - 30}` : i}</span>
                 <span class="stage-select-bosses">${bossNames}</span>
             </div>
             <div class="stage-item-actions">
