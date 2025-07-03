@@ -243,7 +243,7 @@ export function populateLevelSelect(startSpecificLevel) {
         
         item.innerHTML = `
             <div class="stage-item-main">
-                <span class="stage-select-number">STAGE ${i > 30 ? `F-${i - 30}` : i}</span>
+                <span class="stage-select-number">STAGE ${i}</span>
                 <span class="stage-select-bosses">${bossNames}</span>
             </div>
             <div class="stage-item-actions">
