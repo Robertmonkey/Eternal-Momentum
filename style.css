@@ -250,7 +250,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     gap: 8px;
 }
 .stage-select-item {
-    padding: 12px 15px;
+    padding: 8px 15px;
     background: rgba(0, 255, 255, 0.1);
     border: 1px solid var(--border-color);
     border-radius: 5px;
@@ -269,6 +269,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     flex-direction: column;
     flex-grow: 1;
     min-width: 0;
+    cursor: pointer;
 }
 .stage-item-actions {
     display: flex;
@@ -972,11 +973,10 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px;
+    padding: 8px 10px;
     background: rgba(240, 0, 255, 0.05);
     border: 1px solid var(--secondary-glow);
     border-radius: 5px;
-    cursor: pointer;
     transition: background-color 0.2s;
 }
 .orrery-boss-item:hover {
@@ -993,6 +993,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     gap: 10px;
     flex-grow: 1;
     min-width: 0;
+    cursor: pointer;
 }
 .orrery-boss-name {
     white-space: nowrap;
@@ -1007,29 +1008,46 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    border: 2px solid;
+    border: 2px solid rgba(0,0,0,0.2);
     flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
 }
 .orrery-boss-cost {
     font-size: 1.2rem;
     font-weight: bold;
     color: var(--primary-glow);
+    margin-left: 10px;
 }
 .orrery-selected-boss {
     width: 48px;
     height: 48px;
-    font-size: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     background: rgba(0,0,0,0.5);
-    border: 2px solid;
     border-radius: 50%;
     cursor: pointer;
     transition: background-color 0.2s;
+    position: relative;
+    overflow: hidden;
 }
 .orrery-selected-boss:hover {
     background: rgba(231, 76, 60, 0.3);
+}
+
+@keyframes spin-gradient {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.pantheon-icon-bg::before {
+    content: '';
+    position: absolute;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: conic-gradient(
+    from 0deg, 
+    #ff0000, #ff8800, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+    );
+    animation: spin-gradient 4s linear infinite;
 }
 
 #orrery-cost-display {
@@ -1110,7 +1128,6 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     border-radius: 15px;
     border: 2px solid var(--primary-glow);
     box-shadow: 0 0 25px var(--primary-glow);
-    text-align: center;
     max-width: 500px;
     width: 90%;
     max-height: 80vh;
@@ -1123,6 +1140,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     margin: 0 0 20px 0;
     padding-bottom: 15px;
     border-bottom: 1px solid var(--border-color);
+    text-align: left;
 }
 #bossInfoModalContent {
     font-size: 1rem;
@@ -1134,6 +1152,13 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     overflow-y: auto;
     padding-right: 10px;
 }
+#bossInfoModalContent h3 {
+    margin: 10px 0 5px 0;
+    color: var(--secondary-glow);
+}
+#bossInfoModalContent p {
+    margin-top: 0;
+}
 #bossInfoModalContent::-webkit-scrollbar { width: 8px; }
 #bossInfoModalContent::-webkit-scrollbar-track { background: rgba(0,0,0,0.5); border-radius: 4px; }
 #bossInfoModalContent::-webkit-scrollbar-thumb { background: var(--primary-glow); border-radius: 4px; }
@@ -1141,4 +1166,6 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     margin-top: auto;
     padding-top: 15px;
     border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
 }
