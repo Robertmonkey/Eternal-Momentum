@@ -1343,7 +1343,7 @@ export const bossData = [{
             }
 
             const distToPlayer = Math.hypot(b.x - state.player.x, b.y - state.player.y);
-            const safetyRadius = 300;
+            const safetyRadius = 500;
             let slowingMultiplier = 1.0;
 
             if (distToPlayer < safetyRadius) {
