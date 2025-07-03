@@ -10,6 +10,8 @@ export const bossData = [{
     difficulty_tier: 1,
     archetype: 'swarm',
     description: "A fragile construct that shatters upon defeat, releasing waves of smaller entities.",
+    lore: "From a reality woven from pure mathematics, this entity was a prime number given form—a concept of indivisible unity. The Unraveling fractured its very definition, forcing it into a horrifying, paradoxical state of constant, agonizing division. It shatters, yet each fragment believes it is the original, seeking to reclaim its impossible wholeness.",
+    mechanics_desc: "Upon defeat, the Sentinel shatters into two waves of smaller enemies that spawn in expanding circles. Prioritize clearing the first wave before the second appears to avoid being overwhelmed.",
     onDeath: (b, state, spawnEnemy, spawnParticles, play) => {
         play('splitterOnDeath');
         spawnParticles(state.particles, b.x, b.y, "#ff4500", 100, 6, 40, 5);
@@ -36,6 +38,8 @@ export const bossData = [{
     difficulty_tier: 1,
     archetype: 'specialist',
     description: "Cycles between vulnerable and shielded states. Attacking while its Reflective Shield is active will turn your own power against you.",
+    lore: "The last automated guardian of a crystalline archive-world where physics demanded perfect energy conservation. Its reality has long since shattered, but its core directive remains. It perceives all incoming force as a violation of physical law, which it must dutifully and instantly return to its source.",
+    mechanics_desc: "The Warden moves relentlessly and periodically surrounds itself with a bright, reflective shield. Attacking while the shield is active will heal the boss and reflect significant damage back to you. Restraint is crucial; only attack during the brief windows when its shield is down.",
     init: b => {
         b.phase = "idle";
         b.last = Date.now();
@@ -84,6 +88,8 @@ export const bossData = [{
     difficulty_tier: 1,
     archetype: 'aggressor',
     description: "A parasitic entity that rapidly regenerates vitality if left untouched. Sustained assault is the only path to victory.",
+    lore: "A symbiotic organism from a timeline where life evolved without death, only the endless transfer of vitality. The Unraveling severed its connection to its ecosystem, leaving it in a state of perpetual starvation. It now drains the life force of anything it touches, not out of malice, but from a desperate, instinctual need to mend a wound that can never heal.",
+    mechanics_desc: "Rapidly regenerates health if it hasn't taken damage for a few seconds. A sustained, constant assault is required to defeat it. Occasionally drops health pickups when hit.",
     init: b => {
         b.lastHit = Date.now();
         b.lastHeal = Date.now();
@@ -124,6 +130,8 @@ export const bossData = [{
     difficulty_tier: 1,
     archetype: 'field_control',
     description: "Warps the battlefield with a ring of gravitational wells that impede movement.",
+    lore: "The tormented ghost of a lead scientist who, in a desperate attempt to halt the Unraveling, tried to anchor their reality by creating a supermassive black hole. The experiment failed catastrophically, collapsing their universe and binding the scientist's consciousness to the resulting gravitational anomalies.",
+    mechanics_desc: "Constantly surrounded by a ring of gravitational wells. These wells will significantly slow your movement and pull you towards their center if you enter their radius.",
     init: b => {
         b.wells = [];
         for (let i = 0; i < 8; i++) {
@@ -155,6 +163,8 @@ export const bossData = [{
     difficulty_tier: 1,
     archetype: 'swarm',
     description: "The alpha of a massive hive mind, its colossal, damaging tail follows its every move.",
+    lore: "This was the alpha of a hive-mind that experienced reality as a single, shared consciousness across trillions of bodies. When the Unraveling consumed their timeline, the alpha's mind was the last to fade. Its colossal tail is a psychic scar—a phantom limb reaching for its lost hive.",
+    mechanics_desc: "Followed by a long, invulnerable tail made of smaller segments. Colliding with any part of the tail will cause rapid, continuous damage. Keep your distance from both the main body and its tail.",
     init: b => {
         b.chain = [];
         for (let i = 0; i < 150; i++) b.chain.push({
@@ -189,6 +199,8 @@ export const bossData = [{
     difficulty_tier: 1,
     archetype: 'specialist',
     description: "A master of illusion that creates identical phantoms, constantly shifting its consciousness between them to evade destruction.",
+    lore: "Hailing from a universe of pure thought, this being could exist in multiple places at once. The Unraveling has pinned its fractured consciousness to physical space, forcing it to 'swap' its true self between tangible, fragile illusions in a panicked attempt to evade permanent decoherence.",
+    mechanics_desc: "Creates multiple identical clones of itself. Only the true Mirage can be damaged. It will periodically and instantly swap positions with one of its clones, forcing you to reacquire the correct target.",
     init: (b, state, spawnEnemy, canvas) => {
         b.clones = [];
         for (let i = 0; i < 5; i++) b.clones.push({
@@ -219,6 +231,8 @@ export const bossData = [{
     difficulty_tier: 1,
     archetype: 'specialist',
     description: "Periodically releases a massive electromagnetic pulse that wipes all collected powers and briefly stuns.",
+    lore: "The core of a planet-wide AI that governed all energy and information. As its world collapsed, it experienced an eternity of system errors and logic failures in a single instant. The resulting crash corrupted its very being, turning it into a walking electromagnetic catastrophe that periodically purges all systems—including your own.",
+    mechanics_desc: "Periodically unleashes a massive electromagnetic pulse across the entire arena. This pulse will destroy **all** of your currently held power-ups and will briefly stun and slow you.",
     init: b => {
         b.lastEMP = Date.now();
         b.bolts = [];
@@ -263,6 +277,8 @@ export const bossData = [{
     difficulty_tier: 1,
     archetype: 'field_control',
     description: "A terraforming intelligence that reshapes the arena with impassable pillars, forcing a battle within its own creation.",
+    lore: "A terraforming intelligence from a world where reality was programmable. Its purpose was to build, to create stable structures from raw data. Now, its code corrupted by the Unraveling, it compulsively builds nonsensical, impassable prisons, trapping others in a desperate, fleeting attempt to impose order on the chaos that consumed it.",
+    mechanics_desc: "Periodically reshapes the battlefield by creating impassable pillar formations. These pillars will block both your movement and projectiles. Be prepared to navigate tight corridors and restricted spaces.",
     init: b => {
         b.pillars = [];
         b.lastBuild = 0;
@@ -302,6 +318,8 @@ export const bossData = [{
     difficulty_tier: 1,
     archetype: 'aggressor',
     description: "Two bonded entities, one swift and one resilient. The true challenge begins when one is vanquished, causing the survivor to enter a state of absolute rage.",
+    lore: "In their timeline, bonds of loyalty were a tangible, physical force. Aethel & Umbra were a bonded pair of guardians. The Unraveling severed the metaphysical link between them, but not their consciousness. They now fight as two separate bodies with one shared, agonized soul, their rage amplifying when one is forced to witness the other's demise... again.",
+    mechanics_desc: "A duo boss. Aethel is faster but more fragile; Umbra is slower but much tougher. When one is defeated, the survivor becomes enraged, gaining significantly enhanced stats and abilities. It is often wise to focus them down evenly.",
     init: (b, state, spawnEnemy) => {
         const partner = state.enemies.find(e => e.id === 'aethel_and_umbra' && e !== b);
         b.r = 50;
@@ -368,6 +386,8 @@ export const bossData = [{
     difficulty_tier: 1,
     archetype: 'specialist',
     description: "An unstable being that defies spacetime, erratically teleporting across the arena.",
+    lore: "An anomaly from a timeline that did not perceive time as linear. To this being, past, present, and future were all the same. The Unraveling has forced it into a linear existence, a state of being so alien and painful that it violently lurches between points in spacetime to escape the unbearable agony of 'now.'",
+    mechanics_desc: "Teleports to a random location on the battlefield every few seconds. The teleportation frequency increases as it takes damage, making it a highly mobile and unpredictable target.",
     init: b => {
         b.lastTeleport = 0;
     },
@@ -391,6 +411,8 @@ export const bossData = [{
     difficulty_tier: 2,
     archetype: 'aggressor',
     description: "A relentless force of nature. It periodically charges with immense speed, growing faster as it takes damage.",
+    lore: "A creature of pure, unstoppable biological drive from a world where evolution's only law was 'survival of the strongest.' As its reality decayed, it was locked in a perpetual charge against an enemy it could never reach: the Unraveling itself. The more its existence frays (as it takes damage), the more desperate and reckless its charge becomes.",
+    mechanics_desc: "A highly aggressive boss that moves faster as its health gets lower. Periodically, it will stop and charge a high-speed dash towards you that is difficult to avoid and deals heavy collision damage.",
     init: b => {
         b.lastCharge = Date.now();
         b.isCharging = false;
@@ -450,6 +472,8 @@ export const bossData = [{
     difficulty_tier: 2,
     archetype: 'swarm',
     description: "Corrupts lesser entities with its influence, turning your own enemies into powerful, puppeted minions.",
+    lore: "Once a benevolent 'Dream Weaver,' this entity could soothe and guide the collective unconscious of its reality. The Unraveling inverted its abilities, transforming its guidance into corruption. It now 'converts' lesser beings, not to control them, but out of a twisted, instinctual loneliness, trying to rebuild a collective from the broken fragments it finds.",
+    mechanics_desc: "Does not attack directly. Instead, it converts the farthest non-boss enemy on screen into a powerful, puppeted minion with increased health and speed. Eliminate its puppets quickly before their numbers become overwhelming.",
     init: b => {
         b.lastConvert = Date.now();
     },
@@ -499,6 +523,8 @@ export const bossData = [{
     difficulty_tier: 2,
     archetype: 'specialist',
     description: "A living error in reality. Its erratic teleportation leaves behind unstable Glitch Zones that invert motor functions.",
+    lore: "Not a being, but a living wound in spacetime where multiple corrupted data-streams from digital realities intersect. Its erratic movements are the result of conflicting positional data, and its very presence overwrites local physical laws, causing the sensory confusion you experience. It is an error message given lethal form.",
+    mechanics_desc: "Erratic and unpredictable. It teleports frequently, leaving behind Glitch Zones on the ground. Entering a zone will temporarily invert your movement controls, so watch your positioning carefully.",
     hasCustomDraw: true,
     init: b => {
         b.lastTeleport = Date.now();
@@ -540,6 +566,8 @@ export const bossData = [{
     difficulty_tier: 2,
     archetype: 'aggressor',
     description: "Two guardians locked in a deadly bond. They generate a lethal energy beam between them, forcing constant repositioning.",
+    lore: "These guardians were forged to be the twin poles of a planetary shield generator. Their perfect symmetry and constant distance were the source of their world's protection. The Unraveling destroyed their planet but not them, locking them in a deadly dance where the energy beam that once protected their home has become a weapon of indiscriminate destruction.",
+    mechanics_desc: "Two bosses that share a single health pool and are connected by a constant, lethal energy beam. The beam will damage you on contact. The bosses will attempt to reposition themselves to keep the beam on you.",
     hasCustomMovement: true,
     init: (b, state, spawnEnemy) => {
         if (!state.enemies.find(e => e.id === 'sentinel_pair' && e !== b)) {
@@ -628,6 +656,8 @@ export const bossData = [{
     difficulty_tier: 2,
     archetype: 'field_control',
     description: "Its presence crystallizes spacetime, generating expanding Stasis Fields that petrify any who linger within.",
+    lore: "The collective memory of a race that had transcended physical form, existing as living history. To prevent their memories from being erased by the Unraveling, they attempted to crystallize their entire timeline into a static, unchanging moment. They are now trapped in that moment, their very presence slowing spacetime to a crawl as a defense mechanism.",
+    mechanics_desc: "Generates large Stasis Fields in the four quadrants of the arena that grow larger as the Basilisk loses health. Standing inside an active field will rapidly build a stun meter; if it fills, you will be petrified for a few seconds.",
     init: (b, state, spawnEnemy, canvas) => {
         b.petrifyZones = [];
         const w = canvas.width;
@@ -671,6 +701,8 @@ export const bossData = [{
     difficulty_tier: 2,
     archetype: 'field_control',
     description: "Creates an unassailable Obelisk and unleashes an Annihilation Beam that erases anything not shielded by the pillar's shadow.",
+    lore: "In its timeline, the Obelisk was a monument of salvation—a device that could cast a 'reality shadow' to shield its world from the Unraveling. The Annihilator was its sworn guardian. When the Obelisk failed, the guardian's mind shattered, inverting its purpose. It now endlessly recreates its catastrophic failure, attempting to erase the universe that its sacred pillar could not save.",
+    mechanics_desc: "Creates a permanent, impassable Obelisk in the center of the arena. It will periodically charge and fire an arena-wide Annihilation Beam. The Obelisk is the only safe place; use it to block the beam's line of sight.",
     init: (b, state, spawnEnemy, canvas) => {
         b.lastBeam = Date.now();
         b.isChargingBeam = false;
@@ -722,6 +754,8 @@ export const bossData = [{
     difficulty_tier: 2,
     archetype: 'swarm',
     description: "A virulent entity that spreads a debilitating infection on contact, causing its host to spawn hostile spores.",
+    lore: "From a virulent ecosystem where every lifeform was a host for another, this being was the apex of symbiosis. When its timeline collapsed, it was left alone. It now seeks to spread its 'gift' of infection, desperately trying to create a new symbiotic ecosystem to escape the crushing silence of solitude.",
+    mechanics_desc: "Inflicts a long-lasting Infection on contact with you or other enemies. While you are infected, you will periodically spawn hostile spores from your own body. The Infection spreads between enemies on contact.",
     onCollision: (b, p, addStatusEffect) => {
         if (!p.infected) addStatusEffect('Infected', '☣️', 10000);
         p.infected = true;
@@ -751,6 +785,8 @@ export const bossData = [{
     difficulty_tier: 2,
     archetype: 'specialist',
     description: "Phases between realities, creating quantum echoes of itself. It is only vulnerable when it collapses its wave function to a single location.",
+    lore: "This entity existed in a state of quantum superposition, a being of pure potential spread across all possibilities. The Unraveling is forcing it to collapse into a single, defined state—a process that is the conceptual equivalent of death for it. It flickers between its potential forms, only becoming truly 'real' and vulnerable for brief, agonizing moments.",
+    mechanics_desc: "Phasing in and out of reality makes it invulnerable for long periods. It will periodically create multiple echoes of itself before collapsing its wave function to the location of one of them. It is only vulnerable for a short time after collapsing. The other echoes will explode.",
     hasCustomDraw: true,
     init: b => {
         b.phase = 'seeking';
@@ -848,6 +884,8 @@ export const bossData = [{
     difficulty_tier: 2,
     archetype: 'field_control',
     description: "Devours time, creating zones of temporal distortion that drastically slow all matter and consume any powers or entities within.",
+    lore: "In a timeline where time itself was a consumable resource, this creature was a predator that fed on moments to sustain its existence. Now that its native temporal stream has been devoured by the Unraveling, it is ravenous, creating pockets of distorted time to 'tenderize' reality before consuming it and anything caught within.",
+    mechanics_desc: "Creates multiple zones of temporal distortion that drift around the arena. These zones will drastically slow you, your projectiles, and any enemies inside them. Power-ups that drift into these zones will be consumed, healing the boss.",
     init: b => {
         b.lastAbility = Date.now();
     },
@@ -874,6 +912,8 @@ export const bossData = [{
     difficulty_tier: 2,
     archetype: 'specialist',
     description: "The convergence of multiple timelines. Its combat patterns are an unpredictable amalgamation of other powerful entities.",
+    lore: "The focal point where a dozen timelines collapsed simultaneously. It is not a single entity but a chaotic amalgamation—the gravitational pull of the Gravity Tyrant, the teleporting agony of the Looping Eye, the infectious despair of the Parasite. It is a legion of lost worlds condensed into a single point of failure.",
+    mechanics_desc: "A multi-phase encounter that mimics other bosses. Its abilities will change as its health is depleted, incorporating mechanics from the Gravity Tyrant, The Glitch, and The Parasite in increasingly dangerous combinations.",
     init: (b, state, spawnEnemy) => {
         b.phase = 1;
         b.lastAction = 0;
@@ -1002,6 +1042,8 @@ export const bossData = [{
     difficulty_tier: 3,
     archetype: 'field_control',
     description: "Fills the arena with a toxic Miasma, dealing constant damage unless its purifying vents are overloaded.",
+    lore: "The collective consciousness of a vibrant forest-world that, in its final moments, attempted to merge with its own toxic flora to survive the Unraveling. The attempt failed, leaving only a cycle of poison and purification. It suffocates the arena with its toxic grief, and only by overloading the last remnants of its purifying vents can you make it vulnerable.",
+    mechanics_desc: "Periodically fills the entire arena with a toxic gas that deals constant damage to you. To stop the gas, you must lure the Miasma near one of the four purifying vents and damage the vent while the boss is on top of it. While the gas is active, the Miasma is immune to damage.",
     init: (b, state, spawnEnemy, canvas) => {
         b.vents = [{x: canvas.width * 0.2, y: canvas.height * 0.2}, {x: canvas.width * 0.8, y: canvas.height * 0.2}, {x: canvas.width * 0.2, y: canvas.height * 0.8}, {x: canvas.width * 0.8, y: canvas.height * 0.8}].map(v => ({...v, cooldownUntil: 0}));
         b.isGasActive = false;
@@ -1076,7 +1118,9 @@ export const bossData = [{
     maxHP: 420,
     difficulty_tier: 3,
     archetype: 'specialist',
-    description: "Leaves a deadly trail of its own history. Its past self becomes a tangible, lethal threat that must be avoided at all costs.",
+    description: "This Aberration weaponizes causality by pulling your own movements from parallel timelines. These after-images are not ghosts; they are tangible matter from another reality. Occupying the same space as one of these echoes will create a fatal paradox.",
+    lore: "Once a 'historian' entity that could perceive and walk through its own past, it tried to flee the Unraveling by hiding in a previous point in its own timeline. The Unraveling followed, corrupting its ability. Now, it doesn't leave an echo of its own past, but rips a lethal 'snapshot' of YOURS from a parallel reality and forces it into the present.",
+    mechanics_desc: "The Paradox periodically creates a 'Paradox Echo,' a recording of your recent movements. The echo will then replay your path, leaving a deadly, damaging trail behind it. You must avoid your own ghost and its trail at all costs.",
     hasCustomDraw: true,
     init: (b) => {
         b.playerHistory = [];
@@ -1116,6 +1160,8 @@ export const bossData = [{
     difficulty_tier: 3,
     archetype: 'specialist',
     description: "Targets and drains power directly, stealing your most powerful offensive ability and unleashing a corrupted version of it.",
+    lore: "In its universe, abstract concepts like knowledge and power were tangible energies that could be 'siphoned.' This Aberration was a librarian-priest, a guardian of sacred powers. Corrupted by the Unraveling, its instinct to 'archive' has become a hungry desire to steal and corrupt the powers of others, unleashing twisted versions of their own strengths.",
+    mechanics_desc: "Targets you with a telegraphed cone attack. If you are hit, it will steal your primary offensive power-up and unleash a powerful, corrupted version of it. Evade the cone to protect your abilities.",
     init: (b) => { b.lastSyphon = Date.now(); b.isCharging = false; },
     logic: (b, ctx, state, utils, gameHelpers) => {
         if (!b.isCharging && Date.now() - b.lastSyphon > 7500) {
@@ -1138,6 +1184,8 @@ export const bossData = [{
     difficulty_tier: 3,
     archetype: 'field_control',
     description: "Constructs a shrinking prison of energy walls, forcing a desperate battle in an ever-constricting space.",
+    lore: "The warden of a prison reality designed to contain conceptual threats. Its walls were made of absolute law. When the Unraveling broke the prison from the outside, the Centurion's logic shattered. It now identifies everything, including you and itself, as a threat to be contained, relentlessly shrinking its prison of light in an attempt to enforce an order that no longer exists.",
+    mechanics_desc: "Periodically summons a massive, shrinking energy box that traps you inside. The box has a single, randomly placed gap for you to escape through before it fully constricts.",
     init: (b) => {
         b.lastWallSummon = 0;
     },
@@ -1170,6 +1218,8 @@ export const bossData = [{
     difficulty_tier: 3,
     archetype: 'swarm',
     description: "A being of infinite complexity that splits into smaller, autonomous fragments as it takes damage, overwhelming its foe with sheer numbers.",
+    lore: "This being was once a 'Mathematician,' an entity that perceived all of existence as a single, elegant equation. In a desperate attempt to comprehend the Unraveling—a variable it could not solve—it began to recursively analyze its own consciousness. The process never stopped. It is now an equation devouring itself, an infinite fractal of self-doubt given monstrous form. The whole is the sum of its broken parts.",
+    mechanics_desc: "Shares a single, massive health pool among all its fragments. As its health depletes, the largest fragments will split into smaller, more numerous copies. The swarm's movement patterns will shift between surrounding you and aggressively attacking.",
     hasCustomMovement: true,
     hasCustomDraw: true,
     init: (b, state) => {
@@ -1334,6 +1384,8 @@ export const bossData = [{
     difficulty_tier: 3,
     archetype: 'field_control',
     description: "An invulnerable monument powered by three remote Conduits. It cannot be damaged until its power sources are severed.",
+    lore: "An automated planetary defense system from a hyper-advanced civilization. The central Obelisk was invulnerable, powered by three remote Conduits that drew energy from different dimensions. The Unraveling severed the Obelisk's connection to its masters, leaving it to run its final, frantic defense protocol on an endless loop against a threat it cannot comprehend.",
+    mechanics_desc: "An invulnerable boss powered by three orbital Conduits. You cannot damage the Obelisk until all three Conduits are destroyed. Each Conduit has its own unique attack pattern and aura effect. Once the conduits are gone, the Obelisk becomes vulnerable and will attack with a sweeping beam.",
     hasCustomDraw: true,
     hasCustomMovement: true,
     init: (b, state, spawnEnemy, canvas) => {
@@ -1498,6 +1550,8 @@ export const bossData = [{
     difficulty_tier: 3,
     archetype: 'swarm',
     description: "Unleashes relentless, spiraling waves of projectiles. The number of active helices increases as its integrity fails.",
+    lore: "This machine was designed to weave the very fabric of spacetime, repairing minor tears in its home reality. Overwhelmed by the Unraveling, its repair protocols overloaded and inverted. It now mindlessly *unweaves* reality, firing off the spiraling threads of spacetime it pulls apart as relentless projectiles.",
+    mechanics_desc: "Remains stationary in the center of the arena while firing relentless, spiraling waves of projectiles. The number of projectile helices increases as its health decreases, creating an intense bullet-hell environment.",
     hasCustomMovement: true,
     init: (b, state, spawnEnemy, canvas) => {
         b.x = canvas.width / 2;
@@ -1544,6 +1598,8 @@ export const bossData = [{
     difficulty_tier: 3,
     archetype: 'aggressor',
     description: "Warps causality, generating a Dilation Field behind it where time moves slower. It can rewind its own timeline to negate recent damage.",
+    lore: "A Chronomancer who foresaw the Unraveling and attempted to escape it by creating a personal time-loop. The paradox of its own existence now acts as a shield, allowing it to rewind its own state to negate injury. The field it projects is a wake of distorted causality, a field of 'slow time' left behind by its constant temporal manipulation.",
+    mechanics_desc: "Projects a Dilation Field behind it where you and your projectiles are slowed. After taking a significant amount of damage, the boss will rewind time, restoring its health and position to a previous state. This rewind has a long cooldown.",
     init: (b) => {
         b.lastDilation = Date.now();
         b.damageWindow = 0;
@@ -1616,6 +1672,8 @@ export const bossData = [{
     difficulty_tier: 3,
     archetype: 'specialist',
     description: "Foretells its attacks by manifesting reality-altering Runes. The player's position relative to the Runes determines the Shaper's next devastating assault.",
+    lore: "This being did not experience time but rather saw all potential futures as tangible 'Runes' of possibility. The Unraveling shattered its omniscience, leaving it with only fragmented glimpses of what might be. It projects these shattered prophecies onto the battlefield, and your interaction with them forces one of a thousand devastating futures into reality.",
+    mechanics_desc: "Creates three Runes on the field, each corresponding to a different attack. The Rune you are closest to when they disappear determines which powerful ability the Shaper will use. You can influence its next move by positioning yourself carefully.",
     init: (b) => {
         b.phase = 'idle';
         b.phaseTimer = Date.now() + 3000;
@@ -1721,6 +1779,8 @@ export const bossData = [{
     difficulty_tier: 3,
     archetype: 'aggressor',
     description: "An ultimate being that channels the Aspects of other powerful entities, cycling through their abilities to create an unpredictable, multi-faceted threat.",
+    lore: "At the precipice of total non-existence, the final consciousnesses of a thousand collapsing timelines merged into a single, gestalt being to survive. The Pantheon is not one entity, but a chorus of dying gods, heroes, and monsters screaming in unison. It wields the memories and powers of the worlds it has lost, making it an unpredictable and tragic echo of a thousand apocalypses.",
+    mechanics_desc: "Does not have its own attacks. Instead, it channels the Aspects of other Aberrations, cycling through their primary abilities. Pay close attention to the visual cues of its active Aspects, as its attack patterns will change completely throughout the fight.",
     hasCustomMovement: true,
     hasCustomDraw: true,
     init: (b, state, spawnEnemy, canvas) => {
