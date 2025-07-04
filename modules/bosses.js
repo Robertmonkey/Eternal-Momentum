@@ -1232,7 +1232,7 @@ export const bossData = [{
                 lastStateChange: Date.now()
             };
         }
-        b.r = 150;
+        b.r = 110;
         b.generation = b.generation || 1;
         delete b.aiState;
         delete b.aiTimer;
