@@ -814,10 +814,7 @@ export function gameTick(mx, my) {
     for (let i = state.effects.length - 1; i >= 0; i--) {
         const effect = state.effects[i];
         
-        // This outer save/restore ensures that any single effect's drawing
-        // cannot corrupt the canvas state for other effects or the next frame.
         ctx.save();
-
         try {
             if (Date.now() > (effect.endTime || Infinity)) {
                 if (effect.type === 'paradox_echo') stopLoopingSfx('paradoxTrailHum');
@@ -848,7 +845,6 @@ export function gameTick(mx, my) {
                 effect.x += effect.dx * speedMultiplier;
                 effect.y += effect.dy * speedMultiplier;
             }
-
 
             if (effect.type === 'shockwave') {
                 const elapsed = (Date.now() - effect.startTime) / 1000; effect.radius = elapsed * effect.speed;
@@ -982,9 +978,9 @@ export function gameTick(mx, my) {
                 const { source, pillar } = effect; if(!source || !pillar || source.hp <= 0) { state.effects.splice(i, 1); continue; }
                 
                 const alpha = (effect.endTime - Date.now()) / 1200; 
-                
                 ctx.fillStyle = `rgba(214, 48, 49, ${alpha * 0.7})`;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.globalCompositeOperation = 'destination-out';
                 
                 const distToPillar = Math.hypot(pillar.x - source.x, pillar.y - source.y);
                 if (distToPillar > pillar.r) {
@@ -1005,11 +1001,9 @@ export function gameTick(mx, my) {
                     const p2x = t2x + maxDist * Math.cos(angle2);
                     const p2y = t2y + maxDist * Math.sin(angle2);
                     
-                    ctx.globalCompositeOperation = 'destination-out';
                     ctx.beginPath();
                     ctx.arc(pillar.x, pillar.y, pillar.r, 0, 2 * Math.PI);
                     ctx.fill();
-
                     ctx.beginPath();
                     ctx.moveTo(t1x, t1y);
                     ctx.lineTo(p1x, p1y);
