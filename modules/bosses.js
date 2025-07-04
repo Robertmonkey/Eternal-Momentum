@@ -1787,20 +1787,21 @@ export const bossData = [{
         b.phase = 1;
         b.actionCooldown = 8000;
         b.nextActionTime = Date.now() + 3000;
+        
         b.activeAspects = new Map();
+
         b.aspectPools = {
             primary: ['juggernaut', 'annihilator', 'syphon', 'centurion'],
             ambient: ['swarm', 'basilisk', 'architect', 'glitch'],
             projectile: ['helix_weaver', 'emp', 'puppeteer', 'vampire', 'looper', 'mirror'],
         };
+        
         b.getAspectData = (aspectId) => bossData.find(boss => boss.id === aspectId);
     },
     logic: (b, ctx, state, utils, gameHelpers) => {
         const now = Date.now();
 
         // --- PART 1: STATE AND MECHANICS LOGIC ---
-        // This section handles the "invisible" logic: updating timers, spawning effects, and changing states. It does NOT draw to the canvas.
-
         // Add new aspects if the Pantheon is ready and has space
         if (now > b.nextActionTime && b.activeAspects.size < 3) {
             let availablePools = ['primary', 'ambient', 'projectile'].filter(p => !Array.from(b.activeAspects.values()).some(asp => asp.type === p));
@@ -1824,10 +1825,6 @@ export const bossData = [{
             b.nextActionTime = now + b.actionCooldown;
         }
 
-        // Create a null-context to run aspect logic without drawing anything
-        const noDrawCtx = new Proxy(ctx, { get: (target, prop) => (prop in target && typeof target[prop] === 'function') ? () => {} : target[prop] });
-        const noDrawUtils = { ...utils, drawCircle: () => {}, drawLightning: () => {}, drawCrystal: () => {} };
-
         // Update the state for all active aspects
         b.activeAspects.forEach((aspectState, aspectId) => {
             if (now > aspectState.endTime) { // Cleanup expired aspects
@@ -1841,8 +1838,9 @@ export const bossData = [{
             
             const aspectData = b.getAspectData(aspectId);
             if (aspectData?.logic) {
-                // FIX: Call the correct function from aspectData
-                aspectData.logic(b, noDrawCtx, state, noDrawUtils, gameHelpers);
+                 ctx.save();
+                 aspectData.logic(b, ctx, state, utils, gameHelpers);
+                 ctx.restore();
             }
         });
 
@@ -1851,17 +1849,10 @@ export const bossData = [{
             const target = state.player;
             b.x += (target.x - b.x) * 0.005;
             b.y += (target.y - b.y) * 0.005;
-        } else {
-             // Juggernaut aspect controls movement
-             b.x += b.dx;
-             b.y += b.dy;
-             if(b.x < b.r || b.x > ctx.canvas.width-b.r) { b.x = Math.max(b.r, Math.min(ctx.canvas.width - b.r, b.x)); b.dx *= -1; }
-             if(b.y < b.r || b.y > ctx.canvas.height-b.r) { b.y = Math.max(b.r, Math.min(ctx.canvas.height - b.r, b.y)); b.dy *= -1; }
         }
-
+        // Juggernaut aspect's own logic handles movement
 
         // --- PART 2: DRAWING LOGIC ---
-        // This section handles all visible output, ensuring it's safe and consistent.
         ctx.save();
 
         // Draw Pantheon Core
@@ -1870,53 +1861,6 @@ export const bossData = [{
         const hue = (now / 20) % 360;
         utils.drawCircle(ctx, b.x, b.y, coreRadius, `hsl(${hue}, 100%, 70%)`);
         utils.drawCircle(ctx, b.x, b.y, coreRadius * 0.7, `hsl(${(hue + 40) % 360}, 100%, 80%)`);
-        
-        // Draw Aspect Visuals
-        const aspectKeys = Array.from(b.activeAspects.keys());
-        aspectKeys.forEach((aspectId, index) => {
-            const aspectData = b.getAspectData(aspectId);
-            if (!aspectData) return;
-
-            // Draw the visual ring for every aspect
-            ctx.save();
-            ctx.globalCompositeOperation = 'lighter';
-            ctx.globalAlpha = 0.8;
-            ctx.lineWidth = 10;
-            const radius = coreRadius + 10 + (index * 15) + Math.sin(now / (300 + index * 50)) * 3;
-            const rotationSpeed = (index % 2 === 0 ? 1 : -1) * (6000 + index * 1000);
-            const angle = now / rotationSpeed;
-            ctx.strokeStyle = aspectData.color;
-            ctx.shadowColor = aspectData.color;
-            ctx.shadowBlur = 15;
-            ctx.beginPath();
-            ctx.arc(b.x, b.y, radius, angle, angle + Math.PI * 1.5);
-            ctx.stroke();
-            ctx.restore();
-
-            // Draw additional thematic visuals for certain aspects
-            if (aspectId === 'architect' && b.pillars) {
-                b.pillars.forEach(p => utils.drawCircle(ctx, p.x, p.y, p.r, "#444"));
-            }
-            if (aspectId === 'swarm' && b.chain) {
-                 let prev = b;
-                 b.chain.forEach(c => {
-                    c.x += (prev.x - c.x) * 0.2;
-                    c.y += (prev.y - c.y) * 0.2;
-                    utils.drawCircle(ctx, c.x, c.y, 8, "orange");
-                    prev = c;
-                 });
-            }
-             if (aspectId === 'basilisk' && b.petrifyZones) {
-                 b.petrifyZones.forEach(zone => {
-                    const zoneX = zone.x - zone.sizeW / 2;
-                    const zoneY = zone.y - zone.sizeH / 2;
-                    ctx.save();
-                    ctx.fillStyle = `rgba(0, 184, 148, 0.2)`;
-                    ctx.fillRect(zoneX, zoneY, zone.sizeW, zone.sizeH);
-                    ctx.restore();
-                 });
-            }
-        });
         
         ctx.restore();
     },
