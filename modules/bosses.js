@@ -1893,10 +1893,10 @@ export const bossData = [{
         }
         
         ctx.save();
-
+        
         const numRays = 20;
         for (let i = 0; i < numRays; i++) {
-            const hue = (now / 15 + i * (360 / numRays)) % 360;
+            const hue = (now / 20 + i * (360 / numRays)) % 360;
             const color = `hsl(${hue}, 100%, 75%)`;
             
             ctx.beginPath();
@@ -1920,19 +1920,19 @@ export const bossData = [{
         });
 
         if (aspectColors.length > 0) {
-            ctx.globalAlpha = 0.9;
+            ctx.globalAlpha = 0.8;
             aspectColors.forEach((color, i) => {
                 ctx.beginPath();
-                const radius = b.r * 0.8 + i * 20;
-                const rotationSpeed = - (3000 + i * 800);
+                const radius = b.r * 0.9 + i * 15;
+                const rotationSpeed = - (2500 + i * 800);
                 const angle = now / rotationSpeed;
                 
-                ctx.lineWidth = 14 - i * 4;
+                ctx.lineWidth = 12 - i * 3;
                 ctx.strokeStyle = color;
                 ctx.shadowColor = color;
-                ctx.shadowBlur = 30;
+                ctx.shadowBlur = 25;
 
-                ctx.arc(b.x, b.y, radius, angle, angle + Math.PI * 1.7);
+                ctx.arc(b.x, b.y, radius, angle, angle + Math.PI * 1.8);
                 ctx.stroke();
             });
         }
