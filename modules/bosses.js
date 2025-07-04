@@ -1935,6 +1935,7 @@ export const bossData = [{
         
         // 2. Draw the SEMI-TRANSPARENT Aspect Rings on TOP
         ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = 1.0; // FIX: Defensively reset alpha before drawing rings
         
         let aspectColors = [];
         b.activeAspects.forEach(aspect => {
