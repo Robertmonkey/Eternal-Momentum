@@ -1893,29 +1893,47 @@ export const bossData = [{
         }
         
         ctx.save();
-        utils.drawCircle(ctx, b.x, b.y, b.r, '#000');
         
+        const numRays = 15;
+        for (let i = 0; i < numRays; i++) {
+            const hue = (now / 20 + i * (360 / numRays)) % 360;
+            const color = `hsl(${hue}, 100%, 70%)`;
+            
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 4;
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 20;
+
+            const angle = (now / (3000 + i * 100)) + (i * Math.PI * 2 / numRays);
+            const length = b.r * 1.2;
+
+            ctx.arc(b.x, b.y, length, angle, angle + Math.PI / 4);
+            ctx.stroke();
+        }
+
         let aspectColors = [];
-        b.activeAspects.forEach((aspectState, aspectId) => {
-            const aspectData = b.getAspectData(aspectId);
+        b.activeAspects.forEach(aspect => {
+            const aspectData = b.getAspectData(aspect.id);
             if (aspectData) aspectColors.push(aspectData.color);
         });
 
         if (aspectColors.length > 0) {
-            for (let i = 0; i < 3; i++) {
+            ctx.globalAlpha = 0.8;
+            aspectColors.forEach((color, i) => {
                 ctx.beginPath();
-                const radius = b.r + i * 8 + 5;
-                const angle = now / (2000 + i * 500);
-                const color = aspectColors[i % aspectColors.length];
-
-                ctx.lineWidth = 3 + (2-i)*2;
+                const radius = b.r * 0.9 + i * 15;
+                const rotationSpeed = - (2500 + i * 800);
+                const angle = now / rotationSpeed;
+                
+                ctx.lineWidth = 12 - i * 3;
                 ctx.strokeStyle = color;
                 ctx.shadowColor = color;
-                ctx.shadowBlur = 15;
-                
-                ctx.arc(b.x, b.y, radius, angle, angle + Math.PI * 1.5);
+                ctx.shadowBlur = 25;
+
+                ctx.arc(b.x, b.y, radius, angle, angle + Math.PI * 1.8);
                 ctx.stroke();
-            }
+            });
         }
         ctx.restore();
     },
