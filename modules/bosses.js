@@ -389,13 +389,13 @@ export const bossData = [{
     lore: "An anomaly from a timeline that did not perceive time as linear. To this being, past, present, and future were all the same. The Unraveling has forced it into a linear existence, a state of being so alien and painful that it violently lurches between points in spacetime to escape the unbearable agony of 'now.'",
     mechanics_desc: "Teleports to a random location on the battlefield every few seconds. The teleportation frequency increases as it takes damage, making it a highly mobile and unpredictable target.",
     init: b => {
-        b.lastTeleport = 0;
+        b.looperLastTeleport = 0; // FIX: Use a unique property name
     },
     logic: (b, ctx, state, utils, gameHelpers) => {
         const canvas = ctx.canvas;
         const interval = b.hp < b.maxHP * 0.25 ? 1500 : (b.hp < b.maxHP * 0.5 ? 2000 : 2500);
-        if (Date.now() - b.lastTeleport > interval) {
-            b.lastTeleport = Date.now();
+        if (Date.now() - b.looperLastTeleport > interval) { // FIX: Use a unique property name
+            b.looperLastTeleport = Date.now(); // FIX: Use a unique property name
             gameHelpers.play('mirrorSwap');
             utils.spawnParticles(state.particles, b.x, b.y, "#fff", 30, 4, 20);
             b.x = Math.random() * canvas.width;
@@ -1554,8 +1554,7 @@ export const bossData = [{
     mechanics_desc: "Remains stationary in the center of the arena while firing relentless, spiraling waves of projectiles. The number of projectile helices increases as its health decreases, creating an intense bullet-hell environment.",
     hasCustomMovement: true,
     init: (b, state, spawnEnemy, canvas) => {
-        b.x = canvas.width / 2;
-        b.y = canvas.height / 2;
+        // FIX: Do not modify the main boss's position when activated as an aspect
         b.angle = 0;
         b.lastShot = 0;
         b.activeArms = 1;
