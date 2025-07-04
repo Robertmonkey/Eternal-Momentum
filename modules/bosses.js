@@ -1895,7 +1895,6 @@ export const bossData = [{
         ctx.save();
         
         // --- NEW VISUAL LOGIC ---
-
         // 1. Draw Aspect Rings (behind the core)
         let aspectColors = [];
         b.activeAspects.forEach(aspect => {
@@ -1920,30 +1919,21 @@ export const bossData = [{
                 ctx.stroke();
             });
         }
-
-        // 2. Draw Psychedelic Core
-        const corePulse = Math.sin(now / 500) * 5;
-        const coreRadius = b.r + corePulse;
         
-        // Outer glow
-        const outerHue = (now / 25) % 360;
-        const outerColor = `hsl(${outerHue}, 100%, 70%)`;
-        const outerGradient = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, coreRadius);
-        outerGradient.addColorStop(0, outerColor);
-        outerGradient.addColorStop(1, 'transparent');
-        ctx.fillStyle = outerGradient;
-        ctx.globalAlpha = 0.8;
-        utils.drawCircle(ctx, b.x, b.y, coreRadius, ctx.fillStyle);
+        // 2. Draw Psychedelic Core
+        const corePulse = Math.sin(now / 400) * 5;
+        const coreRadius = b.r + corePulse;
+        const hue = (now / 20) % 360;
+        const color = `hsl(${hue}, 100%, 70%)`;
 
-        // Inner core
-        const innerHue = (now / 25 + 180) % 360; // Opposite color
-        const innerColor = `hsl(${innerHue}, 100%, 80%)`;
-        const innerGradient = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, coreRadius * 0.5);
-        innerGradient.addColorStop(0, innerColor);
-        innerGradient.addColorStop(1, 'transparent');
-        ctx.fillStyle = innerGradient;
-        ctx.globalAlpha = 1.0;
-        utils.drawCircle(ctx, b.x, b.y, coreRadius * 0.5, ctx.fillStyle);
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 30;
+        utils.drawCircle(ctx, b.x, b.y, coreRadius, color);
+        
+        // Inner Core
+        ctx.shadowColor = '#fff';
+        ctx.shadowBlur = 20;
+        utils.drawCircle(ctx, b.x, b.y, coreRadius * 0.6, `hsl(${(hue + 180) % 360}, 100%, 80%)`);
         
         ctx.restore();
     },
