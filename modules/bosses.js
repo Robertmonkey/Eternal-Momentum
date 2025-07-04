@@ -1839,8 +1839,30 @@ export const bossData = [{
                 b.activeAspects.delete(aspectId);
             } else {
                 const aspectData = b.getAspectData(aspectId);
-                if (aspectData && aspectData.id !== 'glitch') {
-                    if(aspectData.logic) aspectData.logic(b, ctx, state, utils, gameHelpers);
+                if (aspectData) {
+                    // Special case for Glitch: only run mechanics, not its original drawing logic
+                    if (aspectId === 'glitch') {
+                        const canvas = ctx.canvas;
+                        if (Date.now() - (b.lastTeleport || 0) > 3000) {
+                            b.lastTeleport = Date.now();
+                            gameHelpers.play('glitchSound');
+                            utils.spawnParticles(state.particles, b.x, b.y, "#fd79a8", 40, 4, 30);
+                            const oldX = b.x;
+                            const oldY = b.y;
+                            b.x = Math.random() * canvas.width;
+                            b.y = Math.random() * canvas.height;
+                            state.effects.push({
+                                type: 'glitch_zone',
+                                x: oldX,
+                                y: oldY,
+                                r: 100,
+                                endTime: Date.now() + 5000
+                            });
+                        }
+                    } else if (aspectData.logic) {
+                        // Run full logic for all other aspects
+                        aspectData.logic(b, ctx, state, utils, gameHelpers);
+                    }
                 }
             }
         });
@@ -1894,6 +1916,8 @@ export const bossData = [{
         
         ctx.save();
         
+        // 1. Draw the OPAQUE Psychedelic Core FIRST
+        ctx.globalAlpha = 1.0; 
         const corePulse = Math.sin(now / 400) * 5;
         const coreRadius = b.r + corePulse;
         const hue = (now / 20) % 360;
@@ -1908,12 +1932,13 @@ export const bossData = [{
         ctx.shadowBlur = 20;
         utils.drawCircle(ctx, b.x, b.y, coreRadius * 0.7, innerColor);
         
+        // 2. Draw the SEMI-TRANSPARENT Aspect Rings on TOP
         ctx.globalCompositeOperation = 'lighter';
         
         let aspectColors = [];
         b.activeAspects.forEach(aspect => {
             const aspectData = b.getAspectData(aspect.id);
-            if (aspectData) aspectColors.push(aspectData.color);
+            if (aspectData && aspect.id !== 'glitch') aspectColors.push(aspectData.color);
         });
 
         if (aspectColors.length > 0) {
@@ -1935,28 +1960,28 @@ export const bossData = [{
             });
         }
         
+        // 3. Draw a special, always-visible ring for The Glitch
         if (b.activeAspects.has('glitch')) {
             ctx.globalAlpha = 1.0;
             const glitchColors = ['#fd79a8', '#81ecec', '#f1c40f'];
             const segmentCount = 40;
+            const ringRadius = coreRadius + 15 + (aspectColors.length * 15);
+
             for (let i = 0; i < segmentCount; i++) {
-                if (Math.random() < 0.7) continue;
+                if (Math.random() < 0.75) continue;
                 
-                const angle = (i / segmentCount) * 2 * Math.PI;
-                const jitter = (Math.random() - 0.5) * 0.1;
-                const radius = coreRadius + 15 + (aspectColors.length * 15);
+                const angle = (i / segmentCount) * 2 * Math.PI + (now / 2000);
+                const jitter = (Math.random() - 0.5) * 15;
 
-                const x1 = b.x + Math.cos(angle) * radius;
-                const y1 = b.y + Math.sin(angle) * radius;
-                const x2 = b.x + Math.cos(angle + 0.1) * (radius + (Math.random() - 0.5) * 10);
-                const y2 = b.y + Math.sin(angle + 0.1) * (radius + (Math.random() - 0.5) * 10);
+                const x = b.x + Math.cos(angle) * (ringRadius + jitter);
+                const y = b.y + Math.sin(angle) * (ringRadius + jitter);
 
+                ctx.fillStyle = glitchColors[Math.floor(Math.random() * glitchColors.length)];
+                ctx.shadowColor = ctx.fillStyle;
+                ctx.shadowBlur = 10;
                 ctx.beginPath();
-                ctx.moveTo(x1, y1);
-                ctx.lineTo(x2, y2);
-                ctx.lineWidth = Math.random() * 4 + 2;
-                ctx.strokeStyle = glitchColors[Math.floor(Math.random() * glitchColors.length)];
-                ctx.stroke();
+                ctx.arc(x, y, Math.random() * 4 + 2, 0, 2 * Math.PI);
+                ctx.fill();
             }
         }
         
