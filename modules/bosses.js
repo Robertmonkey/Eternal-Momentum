@@ -1893,7 +1893,7 @@ export const bossData = [{
         }
         
         ctx.save();
-        
+
         const numRays = 15;
         for (let i = 0; i < numRays; i++) {
             const hue = (now / 20 + i * (360 / numRays)) % 360;
