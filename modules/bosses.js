@@ -1232,7 +1232,7 @@ export const bossData = [{
                 lastStateChange: Date.now()
             };
         }
-        b.r = b.r || 156;
+        b.r = 150;
         b.generation = b.generation || 1;
         delete b.aiState;
         delete b.aiTimer;
@@ -1343,7 +1343,7 @@ export const bossData = [{
             }
 
             const distToPlayer = Math.hypot(b.x - state.player.x, b.y - state.player.y);
-            const safetyRadius = 500;
+            const safetyRadius = 600;
             let slowingMultiplier = 1.0;
 
             if (distToPlayer < safetyRadius) {
@@ -1845,7 +1845,6 @@ export const bossData = [{
             }
         });
 
-        // Handle collision with Architect pillars (PLAYER ONLY)
         if (b.pillars) {
             b.pillars.forEach(pillar => {
                 const playerDist = Math.hypot(state.player.x - pillar.x, state.player.y - pillar.y);
@@ -1857,7 +1856,6 @@ export const bossData = [{
             });
         }
 
-        // Handle collision with Annihilator pillar
         if (b.pillar) {
             const allEntities = [state.player, ...state.enemies];
             allEntities.forEach(entity => {
@@ -1893,33 +1891,33 @@ export const bossData = [{
                 b.dy*=-1;
             }
         }
-
-        ctx.globalAlpha = 0.2;
+        
+        ctx.save();
+        utils.drawCircle(ctx, b.x, b.y, b.r, '#000');
+        
+        let aspectColors = [];
         b.activeAspects.forEach((aspectState, aspectId) => {
             const aspectData = b.getAspectData(aspectId);
-            if (aspectData) {
-                ctx.fillStyle = aspectData.color;
+            if (aspectData) aspectColors.push(aspectData.color);
+        });
+
+        if (aspectColors.length > 0) {
+            for (let i = 0; i < 3; i++) {
                 ctx.beginPath();
-                ctx.arc(b.x, b.y, b.r + Math.random() * 30, 0, 2 * Math.PI);
-                ctx.fill();
+                const radius = b.r + i * 8 + 5;
+                const angle = now / (2000 + i * 500);
+                const color = aspectColors[i % aspectColors.length];
+
+                ctx.lineWidth = 3 + (2-i)*2;
+                ctx.strokeStyle = color;
+                ctx.shadowColor = color;
+                ctx.shadowBlur = 15;
+                
+                ctx.arc(b.x, b.y, radius, angle, angle + Math.PI * 1.5);
+                ctx.stroke();
             }
-        });
-        ctx.globalAlpha = 1.0;
-
-        const angle = (now / 2000) % (2 * Math.PI);
-        const gradient = ctx.createConicGradient(angle, b.x, b.y);
-        const colors = ['#ff0000', '#ff8800', '#ffff00', '#00ff00', '#00ffff', '#0000ff', '#ff00ff'];
-        colors.forEach((color, i) => {
-            gradient.addColorStop(i / colors.length, color);
-        });
-        gradient.addColorStop(1, colors[0]);
-        
-        utils.drawCircle(ctx, b.x, b.y, b.r, gradient);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, b.r, 0, 2 * Math.PI);
-        ctx.fill();
-
+        }
+        ctx.restore();
     },
     onDamage: (b, dmg, source, state, sP, play, stopLoopingSfx, gameHelpers) => { 
         if (b.invulnerable) {
