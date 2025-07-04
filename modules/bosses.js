@@ -1861,7 +1861,9 @@ export const bossData = [{
                         }
                     } else if (aspectData.logic) {
                         // Run full logic for all other aspects
+                        ctx.save();
                         aspectData.logic(b, ctx, state, utils, gameHelpers);
+                        ctx.restore();
                     }
                 }
             }
