@@ -1894,25 +1894,9 @@ export const bossData = [{
         
         ctx.save();
         
-        const numRays = 20;
-        for (let i = 0; i < numRays; i++) {
-            const hue = (now / 20 + i * (360 / numRays)) % 360;
-            const color = `hsl(${hue}, 100%, 75%)`;
-            
-            ctx.beginPath();
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 5;
-            ctx.shadowColor = color;
-            ctx.shadowBlur = 25;
-            ctx.globalAlpha = 0.7;
+        // --- NEW VISUAL LOGIC ---
 
-            const angle = (now / (4000 + i * 150)) + (i * Math.PI * 2 / numRays);
-            const length = b.r * 1.1;
-
-            ctx.arc(b.x, b.y, length, angle, angle + Math.PI / 3);
-            ctx.stroke();
-        }
-
+        // 1. Draw Aspect Rings (behind the core)
         let aspectColors = [];
         b.activeAspects.forEach(aspect => {
             const aspectData = b.getAspectData(aspect.id);
@@ -1920,22 +1904,47 @@ export const bossData = [{
         });
 
         if (aspectColors.length > 0) {
-            ctx.globalAlpha = 0.8;
+            ctx.globalAlpha = 0.6; 
+            ctx.lineWidth = 10;
             aspectColors.forEach((color, i) => {
                 ctx.beginPath();
-                const radius = b.r * 0.9 + i * 15;
-                const rotationSpeed = - (2500 + i * 800);
+                const radius = b.r * 1.2 + i * 15 + Math.sin(now / (500 + i*100)) * 4;
+                const rotationSpeed = (i % 2 === 0 ? 1 : -1) * (4000 + i * 1000);
                 const angle = now / rotationSpeed;
                 
-                ctx.lineWidth = 12 - i * 3;
                 ctx.strokeStyle = color;
                 ctx.shadowColor = color;
-                ctx.shadowBlur = 25;
+                ctx.shadowBlur = 20;
 
-                ctx.arc(b.x, b.y, radius, angle, angle + Math.PI * 1.8);
+                ctx.arc(b.x, b.y, radius, angle, angle + Math.PI);
                 ctx.stroke();
             });
         }
+
+        // 2. Draw Psychedelic Core
+        const corePulse = Math.sin(now / 500) * 5;
+        const coreRadius = b.r + corePulse;
+        
+        // Outer glow
+        const outerHue = (now / 25) % 360;
+        const outerColor = `hsl(${outerHue}, 100%, 70%)`;
+        const outerGradient = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, coreRadius);
+        outerGradient.addColorStop(0, outerColor);
+        outerGradient.addColorStop(1, 'transparent');
+        ctx.fillStyle = outerGradient;
+        ctx.globalAlpha = 0.8;
+        utils.drawCircle(ctx, b.x, b.y, coreRadius, ctx.fillStyle);
+
+        // Inner core
+        const innerHue = (now / 25 + 180) % 360; // Opposite color
+        const innerColor = `hsl(${innerHue}, 100%, 80%)`;
+        const innerGradient = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, coreRadius * 0.5);
+        innerGradient.addColorStop(0, innerColor);
+        innerGradient.addColorStop(1, 'transparent');
+        ctx.fillStyle = innerGradient;
+        ctx.globalAlpha = 1.0;
+        utils.drawCircle(ctx, b.x, b.y, coreRadius * 0.5, ctx.fillStyle);
+        
         ctx.restore();
     },
     onDamage: (b, dmg, source, state, sP, play, stopLoopingSfx, gameHelpers) => { 
