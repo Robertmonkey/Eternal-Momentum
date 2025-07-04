@@ -1799,6 +1799,9 @@ export const bossData = [{
         const now = Date.now();
 
         // --- PART 1: STATE AND MECHANICS LOGIC ---
+        // This section handles the "invisible" logic: updating timers, spawning effects, and changing states. It does NOT draw to the canvas.
+
+        // Add new aspects if the Pantheon is ready and has space
         if (now > b.nextActionTime && b.activeAspects.size < 3) {
             let availablePools = ['primary', 'ambient', 'projectile'].filter(p => !Array.from(b.activeAspects.values()).some(asp => asp.type === p));
             if (availablePools.length > 0) {
@@ -1821,11 +1824,13 @@ export const bossData = [{
             b.nextActionTime = now + b.actionCooldown;
         }
 
+        // Create a null-context to run aspect logic without drawing anything
         const noDrawCtx = new Proxy(ctx, { get: (target, prop) => (prop in target && typeof target[prop] === 'function') ? () => {} : target[prop] });
         const noDrawUtils = { ...utils, drawCircle: () => {}, drawLightning: () => {}, drawCrystal: () => {} };
 
+        // Update the state for all active aspects
         b.activeAspects.forEach((aspectState, aspectId) => {
-            if (now > aspectState.endTime) {
+            if (now > aspectState.endTime) { // Cleanup expired aspects
                 const aspectData = b.getAspectData(aspectId);
                 if (aspectData?.onDeath) {
                     aspectData.onDeath(b, state, gameHelpers.spawnEnemy, (x, y, c, n, spd, life, r) => utils.spawnParticles(state.particles, x, y, c, n, spd, life, r), gameHelpers.play, gameHelpers.stopLoopingSfx);
@@ -1841,34 +1846,40 @@ export const bossData = [{
             }
         });
 
+        // Handle Pantheon's own movement
         if (!b.activeAspects.has('juggernaut')) {
             const target = state.player;
             b.x += (target.x - b.x) * 0.005;
             b.y += (target.y - b.y) * 0.005;
         } else {
+             // Juggernaut aspect controls movement
              b.x += b.dx;
              b.y += b.dy;
              if(b.x < b.r || b.x > ctx.canvas.width-b.r) { b.x = Math.max(b.r, Math.min(ctx.canvas.width - b.r, b.x)); b.dx *= -1; }
              if(b.y < b.r || b.y > ctx.canvas.height-b.r) { b.y = Math.max(b.r, Math.min(ctx.canvas.height - b.r, b.y)); b.dy *= -1; }
         }
 
+
         // --- PART 2: DRAWING LOGIC ---
+        // This section handles all visible output, ensuring it's safe and consistent.
         ctx.save();
 
+        // Draw Pantheon Core
         const corePulse = Math.sin(now / 400) * 5;
         const coreRadius = b.r + corePulse;
         const hue = (now / 20) % 360;
         utils.drawCircle(ctx, b.x, b.y, coreRadius, `hsl(${hue}, 100%, 70%)`);
         utils.drawCircle(ctx, b.x, b.y, coreRadius * 0.7, `hsl(${(hue + 40) % 360}, 100%, 80%)`);
         
-        ctx.globalCompositeOperation = 'lighter';
-        
+        // Draw Aspect Visuals
         const aspectKeys = Array.from(b.activeAspects.keys());
         aspectKeys.forEach((aspectId, index) => {
             const aspectData = b.getAspectData(aspectId);
             if (!aspectData) return;
 
+            // Draw the visual ring for every aspect
             ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
             ctx.globalAlpha = 0.8;
             ctx.lineWidth = 10;
             const radius = coreRadius + 10 + (index * 15) + Math.sin(now / (300 + index * 50)) * 3;
@@ -1882,6 +1893,7 @@ export const bossData = [{
             ctx.stroke();
             ctx.restore();
 
+            // Draw additional thematic visuals for certain aspects
             if (aspectId === 'architect' && b.pillars) {
                 b.pillars.forEach(p => utils.drawCircle(ctx, p.x, p.y, p.r, "#444"));
             }
@@ -1941,6 +1953,7 @@ export const bossData = [{
                 aspectData.onDeath(b, state, spawnEnemy, spawnParticles, play, stopLoopingSfx);
             }
         });
+        // Cleanup all possible properties just in case
         delete b.pillar;
         delete b.pillars;
         delete b.chain;
