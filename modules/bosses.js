@@ -1802,14 +1802,13 @@ export const bossData = [{
         const now = Date.now();
 
         // --- PART 1: STATE AND MECHANICS LOGIC ---
-        // Add new aspects if the Pantheon is ready and has space
         if (now > b.nextActionTime && b.activeAspects.size < 3) {
             let availablePools = ['primary', 'ambient', 'projectile'].filter(p => !Array.from(b.activeAspects.values()).some(asp => asp.type === p));
             if (availablePools.length > 0) {
                 const poolToUse = availablePools[Math.floor(Math.random() * availablePools.length)];
                 const aspectId = b.aspectPools[poolToUse][Math.floor(Math.random() * b.aspectPools[poolToUse].length)];
+                
                 const aspectData = b.getAspectData(aspectId);
-
                 if (aspectData) {
                     if (aspectData.init) {
                         aspectData.init(b, state, gameHelpers.spawnEnemy, ctx.canvas);
@@ -1825,47 +1824,117 @@ export const bossData = [{
             b.nextActionTime = now + b.actionCooldown;
         }
 
-        // Update the state for all active aspects
         b.activeAspects.forEach((aspectState, aspectId) => {
-            if (now > aspectState.endTime) { // Cleanup expired aspects
+            if (now > aspectState.endTime) {
                 const aspectData = b.getAspectData(aspectId);
                 if (aspectData?.onDeath) {
-                    aspectData.onDeath(b, state, gameHelpers.spawnEnemy, (x, y, c, n, spd, life, r) => utils.spawnParticles(state.particles, x, y, c, n, spd, life, r), gameHelpers.play, gameHelpers.stopLoopingSfx);
+                    const spawnParticlesCallback = (x, y, c, n, spd, life, r) => utils.spawnParticles(state.particles, x, y, c, n, spd, life, r);
+                    aspectData.onDeath(b, state, gameHelpers.spawnEnemy, spawnParticlesCallback, gameHelpers.play, gameHelpers.stopLoopingSfx);
                 }
                 b.activeAspects.delete(aspectId);
-                return;
-            }
-            
-            const aspectData = b.getAspectData(aspectId);
-            if (aspectData?.logic) {
-                 ctx.save();
-                 aspectData.logic(b, ctx, state, utils, gameHelpers);
-                 ctx.restore();
+            } else {
+                const aspectData = b.getAspectData(aspectId);
+                if (aspectData?.logic) {
+                     ctx.save();
+                     aspectData.logic(b, ctx, state, utils, gameHelpers);
+                     ctx.restore();
+                }
             }
         });
 
-        // Handle Pantheon's own movement
         if (!b.activeAspects.has('juggernaut')) {
-            const target = state.player;
-            b.x += (target.x - b.x) * 0.005;
-            b.y += (target.y - b.y) * 0.005;
+             b.dx = (state.player.x - b.x) * 0.005;
+             b.dy = (state.player.y - b.y) * 0.005;
+             b.x += b.dx;
+             b.y += b.dy;
+        } else {
+            b.x += b.dx;
+            b.y += b.dy;
+            if(b.x < b.r || b.x > ctx.canvas.width-b.r) {
+                b.x = Math.max(b.r, Math.min(ctx.canvas.width - b.r, b.x));
+                b.dx*=-1;
+            }
+            if(b.y < b.r || b.y > ctx.canvas.height-b.r) {
+                b.y = Math.max(b.r, Math.min(ctx.canvas.height - b.r, b.y));
+                b.dy*=-1;
+            }
         }
-        // Juggernaut aspect's own logic handles movement
-
+        
         // --- PART 2: DRAWING LOGIC ---
         ctx.save();
-
-        // Draw Pantheon Core
+        
+        ctx.globalAlpha = 1.0; 
         const corePulse = Math.sin(now / 400) * 5;
         const coreRadius = b.r + corePulse;
         const hue = (now / 20) % 360;
-        utils.drawCircle(ctx, b.x, b.y, coreRadius, `hsl(${hue}, 100%, 70%)`);
-        utils.drawCircle(ctx, b.x, b.y, coreRadius * 0.7, `hsl(${(hue + 40) % 360}, 100%, 80%)`);
+        
+        const outerColor = `hsl(${hue}, 100%, 70%)`;
+        ctx.shadowColor = outerColor;
+        ctx.shadowBlur = 30;
+        utils.drawCircle(ctx, b.x, b.y, coreRadius, outerColor);
+        
+        const innerColor = `hsl(${(hue + 40) % 360}, 100%, 80%)`;
+        ctx.shadowColor = innerColor;
+        ctx.shadowBlur = 20;
+        utils.drawCircle(ctx, b.x, b.y, coreRadius * 0.7, innerColor);
+        
+        ctx.globalCompositeOperation = 'lighter';
+        
+        let aspectColors = [];
+        b.activeAspects.forEach(aspect => {
+            const aspectData = b.getAspectData(aspect.id);
+            if (aspectData && aspect.id !== 'glitch') aspectColors.push(aspectData.color);
+        });
+
+        if (aspectColors.length > 0) {
+            ctx.globalAlpha = 0.8;
+            ctx.lineWidth = 10;
+            
+            aspectColors.forEach((color, i) => {
+                ctx.beginPath();
+                const radius = coreRadius + 10 + (i * 15) + Math.sin(now / (300 + i * 50)) * 3;
+                const rotationSpeed = (i % 2 === 0 ? 1 : -1) * (6000 + i * 1000);
+                const angle = now / rotationSpeed;
+                
+                ctx.strokeStyle = color;
+                ctx.shadowColor = color;
+                ctx.shadowBlur = 15;
+
+                ctx.arc(b.x, b.y, radius, angle, angle + Math.PI * 1.5);
+                ctx.stroke();
+            });
+        }
+        
+        if (b.activeAspects.has('glitch')) {
+            ctx.globalAlpha = 1.0;
+            const glitchColors = ['#fd79a8', '#81ecec', '#f1c40f'];
+            const segmentCount = 40;
+            const ringRadius = coreRadius + 15 + (aspectColors.length * 15);
+
+            for (let i = 0; i < segmentCount; i++) {
+                if (Math.random() < 0.75) continue;
+                
+                const angle = (i / segmentCount) * 2 * Math.PI + (now / 2000);
+                const jitter = (Math.random() - 0.5) * 15;
+
+                const x = b.x + Math.cos(angle) * (ringRadius + jitter);
+                const y = b.y + Math.sin(angle) * (ringRadius + jitter);
+
+                ctx.fillStyle = glitchColors[Math.floor(Math.random() * glitchColors.length)];
+                ctx.shadowColor = ctx.fillStyle;
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                ctx.arc(x, y, Math.random() * 4 + 2, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+        }
         
         ctx.restore();
     },
     onDamage: (b, dmg, source, state, sP, play, stopLoopingSfx, gameHelpers) => { 
-        if (b.invulnerable) { return; }
+        if (b.invulnerable) {
+            return;
+        };
         b.hp -= dmg
 
         const hpPercent = b.hp / b.maxHP;
@@ -1892,12 +1961,10 @@ export const bossData = [{
     },
     onDeath: (b, state, spawnEnemy, spawnParticles, play, stopLoopingSfx) => {
         b.activeAspects.forEach((aspectState, aspectId) => {
-            const aspectData = b.getAspectData(aspectId);
-            if (aspectData?.onDeath) {
-                aspectData.onDeath(b, state, spawnEnemy, spawnParticles, play, stopLoopingSfx);
+            if (b.getAspectData(aspectId)?.onDeath) {
+                b.getAspectData(aspectId).onDeath(b, state, spawnEnemy, spawnParticles, play, stopLoopingSfx);
             }
         });
-        // Cleanup all possible properties just in case
         delete b.pillar;
         delete b.pillars;
         delete b.chain;
