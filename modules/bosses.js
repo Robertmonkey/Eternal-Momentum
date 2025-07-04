@@ -389,13 +389,13 @@ export const bossData = [{
     lore: "An anomaly from a timeline that did not perceive time as linear. To this being, past, present, and future were all the same. The Unraveling has forced it into a linear existence, a state of being so alien and painful that it violently lurches between points in spacetime to escape the unbearable agony of 'now.'",
     mechanics_desc: "Teleports to a random location on the battlefield every few seconds. The teleportation frequency increases as it takes damage, making it a highly mobile and unpredictable target.",
     init: b => {
-        b.looperLastTeleport = 0;
+        b.lastTeleport = 0;
     },
     logic: (b, ctx, state, utils, gameHelpers) => {
         const canvas = ctx.canvas;
         const interval = b.hp < b.maxHP * 0.25 ? 1500 : (b.hp < b.maxHP * 0.5 ? 2000 : 2500);
-        if (Date.now() - b.looperLastTeleport > interval) {
-            b.looperLastTeleport = Date.now();
+        if (Date.now() - b.lastTeleport > interval) {
+            b.lastTeleport = Date.now();
             gameHelpers.play('mirrorSwap');
             utils.spawnParticles(state.particles, b.x, b.y, "#fff", 30, 4, 20);
             b.x = Math.random() * canvas.width;
@@ -1554,6 +1554,8 @@ export const bossData = [{
     mechanics_desc: "Remains stationary in the center of the arena while firing relentless, spiraling waves of projectiles. The number of projectile helices increases as its health decreases, creating an intense bullet-hell environment.",
     hasCustomMovement: true,
     init: (b, state, spawnEnemy, canvas) => {
+        b.x = canvas.width / 2;
+        b.y = canvas.height / 2;
         b.angle = 0;
         b.lastShot = 0;
         b.activeArms = 1;
@@ -1790,6 +1792,9 @@ export const bossData = [{
         
         b.activeAspects = new Map();
 
+        const blacklist = new Set(['aethel_and_umbra', 'sentinel_pair', 'fractal_horror', 'pantheon', 'shaper_of_fate', 'obelisk_conduit']);
+
+        const stageConfig = STAGE_CONFIG;
         b.aspectPools = {
             primary: ['juggernaut', 'annihilator', 'syphon', 'centurion'],
             ambient: ['swarm', 'basilisk', 'architect', 'glitch'],
@@ -1801,9 +1806,9 @@ export const bossData = [{
     logic: (b, ctx, state, utils, gameHelpers) => {
         const now = Date.now();
 
-        // --- PART 1: STATE AND MECHANICS LOGIC ---
         if (now > b.nextActionTime && b.activeAspects.size < 3) {
             let availablePools = ['primary', 'ambient', 'projectile'].filter(p => !Array.from(b.activeAspects.values()).some(asp => asp.type === p));
+            
             if (availablePools.length > 0) {
                 const poolToUse = availablePools[Math.floor(Math.random() * availablePools.length)];
                 const aspectId = b.aspectPools[poolToUse][Math.floor(Math.random() * b.aspectPools[poolToUse].length)];
@@ -1834,13 +1839,62 @@ export const bossData = [{
                 b.activeAspects.delete(aspectId);
             } else {
                 const aspectData = b.getAspectData(aspectId);
-                if (aspectData?.logic) {
-                     ctx.save();
-                     aspectData.logic(b, ctx, state, utils, gameHelpers);
-                     ctx.restore();
+                if (aspectData) {
+                    // Special case for Glitch: only run mechanics, not its original drawing logic
+                    if (aspectId === 'glitch') {
+                        const canvas = ctx.canvas;
+                        if (Date.now() - (b.lastTeleport || 0) > 3000) {
+                            b.lastTeleport = Date.now();
+                            gameHelpers.play('glitchSound');
+                            utils.spawnParticles(state.particles, b.x, b.y, "#fd79a8", 40, 4, 30);
+                            const oldX = b.x;
+                            const oldY = b.y;
+                            b.x = Math.random() * canvas.width;
+                            b.y = Math.random() * canvas.height;
+                            state.effects.push({
+                                type: 'glitch_zone',
+                                x: oldX,
+                                y: oldY,
+                                r: 100,
+                                endTime: Date.now() + 5000
+                            });
+                        }
+                    } else if (aspectData.logic) {
+                        // Run full logic for all other aspects
+                        aspectData.logic(b, ctx, state, utils, gameHelpers);
+                    }
                 }
             }
         });
+
+        if (b.pillars) {
+            b.pillars.forEach(pillar => {
+                const playerDist = Math.hypot(state.player.x - pillar.x, state.player.y - pillar.y);
+                if (playerDist < state.player.r + pillar.r) {
+                    const angle = Math.atan2(state.player.y - pillar.y, state.player.x - pillar.x);
+                    state.player.x = pillar.x + Math.cos(angle) * (state.player.r + pillar.r);
+                    state.player.y = pillar.y + Math.sin(angle) * (state.player.r + pillar.r);
+                }
+            });
+        }
+
+        if (b.pillar) {
+            const allEntities = [state.player, ...state.enemies];
+            allEntities.forEach(entity => {
+                if (entity === b && b.activeAspects.has('architect')) {
+                    return;
+                }
+                
+                const entityRadius = entity.r || state.player.r;
+                
+                const dist = Math.hypot(entity.x - b.pillar.x, entity.y - b.pillar.y);
+                if (dist < entityRadius + b.pillar.r) {
+                    const angle = Math.atan2(entity.y - b.pillar.y, entity.x - b.pillar.x);
+                    entity.x = b.pillar.x + Math.cos(angle) * (entityRadius + b.pillar.r);
+                    entity.y = b.pillar.y + Math.sin(angle) * (entityRadius + b.pillar.r);
+                }
+            });
+        }
 
         if (!b.activeAspects.has('juggernaut')) {
              b.dx = (state.player.x - b.x) * 0.005;
@@ -1860,9 +1914,9 @@ export const bossData = [{
             }
         }
         
-        // --- PART 2: DRAWING LOGIC ---
         ctx.save();
         
+        // 1. Draw the OPAQUE Psychedelic Core FIRST
         ctx.globalAlpha = 1.0; 
         const corePulse = Math.sin(now / 400) * 5;
         const coreRadius = b.r + corePulse;
@@ -1878,6 +1932,7 @@ export const bossData = [{
         ctx.shadowBlur = 20;
         utils.drawCircle(ctx, b.x, b.y, coreRadius * 0.7, innerColor);
         
+        // 2. Draw the SEMI-TRANSPARENT Aspect Rings on TOP
         ctx.globalCompositeOperation = 'lighter';
         
         let aspectColors = [];
@@ -1905,6 +1960,7 @@ export const bossData = [{
             });
         }
         
+        // 3. Draw a special, always-visible ring for The Glitch
         if (b.activeAspects.has('glitch')) {
             ctx.globalAlpha = 1.0;
             const glitchColors = ['#fd79a8', '#81ecec', '#f1c40f'];
@@ -1970,10 +2026,6 @@ export const bossData = [{
         delete b.chain;
         delete b.clones;
         delete b.petrifyZones;
-        delete b.isCharging;
-        delete b.lastCharge;
-        delete b.looperLastTeleport;
-        delete b.lastTeleport;
     }
 }
 ];
