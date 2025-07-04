@@ -1895,7 +1895,27 @@ export const bossData = [{
         ctx.save();
         
         // --- NEW VISUAL LOGIC ---
-        // 1. Draw Aspect Rings (behind the core)
+        
+        // 1. Draw the OPAQUE Psychedelic Core FIRST
+        ctx.globalAlpha = 1.0; 
+        const corePulse = Math.sin(now / 400) * 5;
+        const coreRadius = b.r + corePulse;
+        const hue = (now / 20) % 360;
+        
+        // Outer part of the core
+        const outerColor = `hsl(${hue}, 100%, 70%)`;
+        ctx.shadowColor = outerColor;
+        ctx.shadowBlur = 30;
+        utils.drawCircle(ctx, b.x, b.y, coreRadius, outerColor);
+        
+        // Inner part of the core
+        const innerColor = `hsl(${(hue + 40) % 360}, 100%, 80%)`;
+        ctx.shadowColor = innerColor;
+        ctx.shadowBlur = 20;
+        utils.drawCircle(ctx, b.x, b.y, coreRadius * 0.7, innerColor);
+
+
+        // 2. Draw the SEMI-TRANSPARENT Aspect Rings on TOP
         let aspectColors = [];
         b.activeAspects.forEach(aspect => {
             const aspectData = b.getAspectData(aspect.id);
@@ -1903,37 +1923,23 @@ export const bossData = [{
         });
 
         if (aspectColors.length > 0) {
-            ctx.globalAlpha = 0.6; 
-            ctx.lineWidth = 10;
+            ctx.globalAlpha = 0.7;
+            ctx.lineWidth = 8;
+            
             aspectColors.forEach((color, i) => {
                 ctx.beginPath();
-                const radius = b.r * 1.2 + i * 15 + Math.sin(now / (500 + i*100)) * 4;
-                const rotationSpeed = (i % 2 === 0 ? 1 : -1) * (4000 + i * 1000);
+                const radius = coreRadius + 15 + (i * 15);
+                const rotationSpeed = (i % 2 === 0 ? 1 : -1) * (5000 + i * 1000);
                 const angle = now / rotationSpeed;
                 
                 ctx.strokeStyle = color;
                 ctx.shadowColor = color;
-                ctx.shadowBlur = 20;
+                ctx.shadowBlur = 15;
 
-                ctx.arc(b.x, b.y, radius, angle, angle + Math.PI);
+                ctx.arc(b.x, b.y, radius, angle, angle + Math.PI * 1.5);
                 ctx.stroke();
             });
         }
-        
-        // 2. Draw Psychedelic Core
-        const corePulse = Math.sin(now / 400) * 5;
-        const coreRadius = b.r + corePulse;
-        const hue = (now / 20) % 360;
-        const color = `hsl(${hue}, 100%, 70%)`;
-
-        ctx.shadowColor = color;
-        ctx.shadowBlur = 30;
-        utils.drawCircle(ctx, b.x, b.y, coreRadius, color);
-        
-        // Inner Core
-        ctx.shadowColor = '#fff';
-        ctx.shadowBlur = 20;
-        utils.drawCircle(ctx, b.x, b.y, coreRadius * 0.6, `hsl(${(hue + 180) % 360}, 100%, 80%)`);
         
         ctx.restore();
     },
