@@ -733,7 +733,7 @@ export const bossData = [{
             utils.drawCircle(ctx, b.pillar.x, b.pillar.y, b.pillar.r, "#2d3436");
             const bossDist = Math.hypot(b.x - b.pillar.x, b.y - b.pillar.y);
             if (bossDist < b.r + b.pillar.r) {
-                const angle = Math.atan2(b.y - b.pillar.y, b.x - b.pillar.y);
+                const angle = Math.atan2(b.y - b.pillar.y, b.x - b.pillar.x);
                 b.x = b.pillar.x + Math.cos(angle) * (b.r + b.pillar.r);
                 b.y = b.pillar.y + Math.sin(angle) * (b.r + b.pillar.r);
             }
@@ -1598,4 +1598,409 @@ export const bossData = [{
     difficulty_tier: 3,
     archetype: 'aggressor',
     description: "Warps causality, generating a Dilation Field behind it where time moves slower. It can rewind its own timeline to negate recent damage.",
-    lore: "A Chronomancer who foresaw the Unraveling and attempted to escape it by creating a personal time-loop. The paradox
+    lore: "A Chronomancer who foresaw the Unraveling and attempted to escape it by creating a personal time-loop. The paradox of its own existence now acts as a shield, allowing it to rewind its own state to negate injury. The field it projects is a wake of distorted causality, a field of 'slow time' left behind by its constant temporal manipulation.",
+    mechanics_desc: "Projects a Dilation Field behind it where you and your projectiles are slowed. After taking a significant amount of damage, the boss will rewind time, restoring its health and position to a previous state. This rewind has a long cooldown.",
+    init: (b) => {
+        b.lastDilation = Date.now();
+        b.damageWindow = 0;
+        b.lastKnownState = { x: b.x, y: b.y, hp: b.hp };
+        b.dilationFieldEffect = null;
+    },
+    logic: (b, ctx, state, utils, gameHelpers) => {
+        const angleToPlayer = Math.atan2(state.player.y - b.y, state.player.x - b.x);
+        const fieldAngle = angleToPlayer + Math.PI;
+
+        if (!b.dilationFieldEffect || !state.effects.includes(b.dilationFieldEffect)) {
+             const field = {
+                type: 'dilation_field',
+                source: b,
+                x: b.x,
+                y: b.y,
+                r: 300,
+                shape: 'horseshoe',
+                angle: fieldAngle,
+                endTime: Infinity
+            };
+            state.effects.push(field);
+            b.dilationFieldEffect = field;
+        } else {
+            b.dilationFieldEffect.x = b.x;
+            b.dilationFieldEffect.y = b.y;
+            b.dilationFieldEffect.angle = fieldAngle;
+        }
+
+        const playerDist = Math.hypot(state.player.x - b.x, state.player.y - b.y);
+        if (playerDist < 300) {
+            let playerAngle = Math.atan2(state.player.y - b.y, state.player.x - b.x);
+            let targetAngle = b.dilationFieldEffect.angle;
+            let diff = Math.atan2(Math.sin(playerAngle - targetAngle), Math.cos(playerAngle - targetAngle));
+            
+            if (Math.abs(diff) > (Math.PI / 4)) {
+                 if (!state.player.statusEffects.some(e => e.name === 'Epoch-Slow')) {
+                     gameHelpers.addStatusEffect('Epoch-Slow', '🐌', 500);
+                 }
+            }
+        }
+    },
+    onDamage: (b, dmg, source, state, sP, play) => {
+        const now = Date.now();
+        if (!b.rewindCooldownUntil || now > b.rewindCooldownUntil) {
+            b.damageWindow += dmg;
+            if (b.damageWindow > 100) {
+                play('timeRewind');
+                b.hp = b.lastKnownState.hp;
+                b.x = b.lastKnownState.x;
+                b.y = b.lastKnownState.y;
+                b.rewindCooldownUntil = now + 15000;
+                b.damageWindow = 0;
+            }
+        }
+        if (!b.lastStateUpdate || now > b.lastStateUpdate + 2000) {
+            b.lastStateUpdate = now;
+            b.lastKnownState = { x: b.x, y: b.y, hp: b.hp };
+        }
+    },
+    onDeath: (b, state) => {
+        state.effects = state.effects.filter(e => e !== b.dilationFieldEffect);
+        b.dilationFieldEffect = null;
+    }
+}, {
+    id: "shaper_of_fate",
+    name: "The Shaper of Fate",
+    color: "#f1c40f",
+    maxHP: 600,
+    difficulty_tier: 3,
+    archetype: 'specialist',
+    description: "Foretells its attacks by manifesting reality-altering Runes. The player's position relative to the Runes determines the Shaper's next devastating assault.",
+    lore: "This being did not experience time but rather saw all potential futures as tangible 'Runes' of possibility. The Unraveling shattered its omniscience, leaving it with only fragmented glimpses of what might be. It projects these shattered prophecies onto the battlefield, and your interaction with them forces one of a thousand devastating futures into reality.",
+    mechanics_desc: "Creates three Runes on the field, each corresponding to a different attack. The Rune you are closest to when they disappear determines which powerful ability the Shaper will use. You can influence its next move by positioning yourself carefully.",
+    init: (b) => {
+        b.phase = 'idle';
+        b.phaseTimer = Date.now() + 3000;
+        b.activeRunes = [];
+        b.chosenAttack = null;
+    },
+    logic: (b, ctx, state, utils, gameHelpers) => {
+        const now = Date.now();
+
+        if (b.phase === 'idle' && now > b.phaseTimer) {
+            b.phase = 'prophecy';
+            gameHelpers.play('shaperAppear');
+            
+            const runeTypes = ['nova', 'shockwave', 'lasers', 'heal', 'speed_buff'];
+            const shuffledRunes = runeTypes.sort(() => Math.random() - 0.5);
+            
+            const margin = 150;
+            const positions = [
+                { x: utils.randomInRange(margin, ctx.canvas.width / 3), y: utils.randomInRange(margin, ctx.canvas.height - margin) },
+                { x: utils.randomInRange(ctx.canvas.width / 3, ctx.canvas.width * 2 / 3), y: utils.randomInRange(margin, ctx.canvas.height - margin)},
+                { x: utils.randomInRange(ctx.canvas.width * 2 / 3, ctx.canvas.width - margin), y: utils.randomInRange(margin, ctx.canvas.height - margin) }
+            ].sort(() => Math.random() - 0.5);
+
+            for (let i = 0; i < 3; i++) {
+                const rune = {
+                    type: 'shaper_rune',
+                    runeType: shuffledRunes[i],
+                    x: positions[i].x,
+                    y: positions[i].y,
+                    r: 60,
+                    endTime: now + 4000,
+                    sourceBoss: b
+                };
+                state.effects.push(rune);
+                b.activeRunes.push(rune);
+            }
+            b.phaseTimer = now + 4000;
+        }
+        
+        else if (b.phase === 'prophecy' && now > b.phaseTimer) {
+            b.phase = 'fulfillment';
+            
+            let closestRune = null;
+            let minPlayerDist = Infinity;
+            
+            b.activeRunes.forEach(rune => {
+                const dist = Math.hypot(state.player.x - rune.x, state.player.y - rune.y);
+                if (dist < minPlayerDist) {
+                    minPlayerDist = dist;
+                    closestRune = rune;
+                }
+            });
+            
+            b.chosenAttack = closestRune ? closestRune.runeType : 'shockwave';
+            
+            const runesToRemove = new Set(b.activeRunes);
+            state.effects = state.effects.filter(e => !runesToRemove.has(e));
+            b.activeRunes = [];
+
+            b.phaseTimer = now + 3000;
+            
+            switch (b.chosenAttack) {
+                case 'nova':
+                    state.effects.push({ type: 'nova_controller', startTime: now, duration: 2500, lastShot: 0, angle: Math.random() * Math.PI * 2, caster: b, color: b.color, r: 8, damage: 25 });
+                    break;
+                case 'shockwave':
+                     state.effects.push({ type: 'shockwave', caster: b, x: b.x, y: b.y, radius: 0, maxRadius: Math.max(ctx.canvas.width, ctx.canvas.height), speed: 1000, startTime: now, hitEnemies: new Set(), damage: 90, color: 'rgba(241, 196, 15, 0.7)' });
+                    break;
+                case 'lasers':
+                    for(let i = 0; i < 5; i++) {
+                        setTimeout(() => {
+                           if (b.hp > 0) state.effects.push({ type: 'orbital_target', x: state.player.x, y: state.player.y, startTime: Date.now(), caster: b, damage: 45, radius: 100, color: 'rgba(241, 196, 15, 0.8)' });
+                        }, i * 400);
+                    }
+                    break;
+                case 'heal':
+                    b.hp = Math.min(b.maxHP, b.hp + b.maxHP * 0.1);
+                    utils.spawnParticles(state.particles, b.x, b.y, '#2ecc71', 50, 4, 30);
+                    break;
+                case 'speed_buff':
+                    b.dx *= 2;
+                    b.dy *= 2;
+                    setTimeout(() => { b.dx /= 2; b.dy /= 2; }, 5000);
+                    utils.spawnParticles(state.particles, b.x, b.y, '#3498db', 50, 4, 30);
+                    break;
+            }
+            gameHelpers.play('shaperAttune');
+        }
+
+        else if (b.phase === 'fulfillment' && now > b.phaseTimer) {
+            b.phase = 'idle';
+            b.phaseTimer = now + 5000;
+        }
+    },
+    onDeath: (b, state) => {
+        state.effects = state.effects.filter(e => e.type !== 'shaper_rune' || e.sourceBoss !== b);
+    }
+}, {
+    id: "pantheon",
+    name: "The Pantheon",
+    color: "#ecf0f1",
+    maxHP: 3000,
+    difficulty_tier: 3,
+    archetype: 'aggressor',
+    description: "An ultimate being that channels the Aspects of other powerful entities, cycling through their abilities to create an unpredictable, multi-faceted threat.",
+    lore: "At the precipice of total non-existence, the final consciousnesses of a thousand collapsing timelines merged into a single, gestalt being to survive. The Pantheon is not one entity, but a chorus of dying gods, heroes, and monsters screaming in unison. It wields the memories and powers of the worlds it has lost, making it an unpredictable and tragic echo of a thousand apocalypses.",
+    mechanics_desc: "Does not have its own attacks. Instead, it channels the Aspects of other Aberrations, cycling through their primary abilities. Pay close attention to the visual cues of its active Aspects, as its attack patterns will change completely throughout the fight.",
+    hasCustomMovement: true,
+    hasCustomDraw: true,
+    init: (b, state, spawnEnemy, canvas) => {
+        b.x = canvas.width / 2;
+        b.y = 150;
+        b.phase = 1;
+        b.actionCooldown = 8000;
+        b.nextActionTime = Date.now() + 3000;
+        
+        b.activeAspects = new Map();
+
+        const blacklist = new Set(['aethel_and_umbra', 'sentinel_pair', 'fractal_horror', 'pantheon', 'shaper_of_fate', 'obelisk_conduit']);
+
+        const stageConfig = STAGE_CONFIG;
+        b.aspectPools = {
+            primary: ['juggernaut', 'annihilator', 'syphon', 'centurion'],
+            ambient: ['swarm', 'basilisk', 'architect', 'glitch'],
+            projectile: ['helix_weaver', 'emp', 'puppeteer', 'vampire', 'looper', 'mirror'],
+        };
+        
+        b.getAspectData = (aspectId) => bossData.find(boss => boss.id === aspectId);
+    },
+    logic: (b, ctx, state, utils, gameHelpers) => {
+        const now = Date.now();
+
+        if (now > b.nextActionTime && b.activeAspects.size < 3) {
+            let availablePools = ['primary', 'ambient', 'projectile'].filter(p => !Array.from(b.activeAspects.values()).some(asp => asp.type === p));
+            
+            if (availablePools.length > 0) {
+                const poolToUse = availablePools[Math.floor(Math.random() * availablePools.length)];
+                const aspectId = b.aspectPools[poolToUse][Math.floor(Math.random() * b.aspectPools[poolToUse].length)];
+                
+                const aspectData = b.getAspectData(aspectId);
+                if (aspectData) {
+                    if (aspectData.init) {
+                        aspectData.init(b, state, gameHelpers.spawnEnemy, ctx.canvas);
+                    }
+                    b.activeAspects.set(aspectId, {
+                        id: aspectId,
+                        type: poolToUse,
+                        endTime: now + (poolToUse === 'primary' ? 16000 : 15000),
+                    });
+                    gameHelpers.play('pantheonSummon');
+                }
+            }
+            b.nextActionTime = now + b.actionCooldown;
+        }
+
+        b.activeAspects.forEach((aspectState, aspectId) => {
+            if (now > aspectState.endTime) {
+                const aspectData = b.getAspectData(aspectId);
+                if (aspectData?.onDeath) {
+                    const spawnParticlesCallback = (x, y, c, n, spd, life, r) => utils.spawnParticles(state.particles, x, y, c, n, spd, life, r);
+                    aspectData.onDeath(b, state, gameHelpers.spawnEnemy, spawnParticlesCallback, gameHelpers.play, gameHelpers.stopLoopingSfx);
+                }
+                b.activeAspects.delete(aspectId);
+            } else {
+                const aspectData = b.getAspectData(aspectId);
+                if (aspectData && aspectData.id !== 'glitch') {
+                    if(aspectData.logic) aspectData.logic(b, ctx, state, utils, gameHelpers);
+                }
+            }
+        });
+
+        if (b.pillars) {
+            b.pillars.forEach(pillar => {
+                const playerDist = Math.hypot(state.player.x - pillar.x, state.player.y - pillar.y);
+                if (playerDist < state.player.r + pillar.r) {
+                    const angle = Math.atan2(state.player.y - pillar.y, state.player.x - pillar.x);
+                    state.player.x = pillar.x + Math.cos(angle) * (state.player.r + pillar.r);
+                    state.player.y = pillar.y + Math.sin(angle) * (state.player.r + pillar.r);
+                }
+            });
+        }
+
+        if (b.pillar) {
+            const allEntities = [state.player, ...state.enemies];
+            allEntities.forEach(entity => {
+                if (entity === b && b.activeAspects.has('architect')) {
+                    return;
+                }
+                
+                const entityRadius = entity.r || state.player.r;
+                
+                const dist = Math.hypot(entity.x - b.pillar.x, entity.y - b.pillar.y);
+                if (dist < entityRadius + b.pillar.r) {
+                    const angle = Math.atan2(entity.y - b.pillar.y, entity.x - b.pillar.x);
+                    entity.x = b.pillar.x + Math.cos(angle) * (entityRadius + b.pillar.r);
+                    entity.y = b.pillar.y + Math.sin(angle) * (entityRadius + b.pillar.r);
+                }
+            });
+        }
+
+        if (!b.activeAspects.has('juggernaut')) {
+             b.dx = (state.player.x - b.x) * 0.005;
+             b.dy = (state.player.y - b.y) * 0.005;
+             b.x += b.dx;
+             b.y += b.dy;
+        } else {
+            b.x += b.dx;
+            b.y += b.dy;
+            if(b.x < b.r || b.x > ctx.canvas.width-b.r) {
+                b.x = Math.max(b.r, Math.min(ctx.canvas.width - b.r, b.x));
+                b.dx*=-1;
+            }
+            if(b.y < b.r || b.y > ctx.canvas.height-b.r) {
+                b.y = Math.max(b.r, Math.min(ctx.canvas.height - b.r, b.y));
+                b.dy*=-1;
+            }
+        }
+        
+        ctx.save();
+        
+        const corePulse = Math.sin(now / 400) * 5;
+        const coreRadius = b.r + corePulse;
+        const hue = (now / 20) % 360;
+        
+        const outerColor = `hsl(${hue}, 100%, 70%)`;
+        ctx.shadowColor = outerColor;
+        ctx.shadowBlur = 30;
+        utils.drawCircle(ctx, b.x, b.y, coreRadius, outerColor);
+        
+        const innerColor = `hsl(${(hue + 40) % 360}, 100%, 80%)`;
+        ctx.shadowColor = innerColor;
+        ctx.shadowBlur = 20;
+        utils.drawCircle(ctx, b.x, b.y, coreRadius * 0.7, innerColor);
+        
+        ctx.globalCompositeOperation = 'lighter';
+        
+        let aspectColors = [];
+        b.activeAspects.forEach(aspect => {
+            const aspectData = b.getAspectData(aspect.id);
+            if (aspectData) aspectColors.push(aspectData.color);
+        });
+
+        if (aspectColors.length > 0) {
+            ctx.globalAlpha = 0.8;
+            ctx.lineWidth = 10;
+            
+            aspectColors.forEach((color, i) => {
+                ctx.beginPath();
+                const radius = coreRadius + 10 + (i * 15) + Math.sin(now / (300 + i * 50)) * 3;
+                const rotationSpeed = (i % 2 === 0 ? 1 : -1) * (6000 + i * 1000);
+                const angle = now / rotationSpeed;
+                
+                ctx.strokeStyle = color;
+                ctx.shadowColor = color;
+                ctx.shadowBlur = 15;
+
+                ctx.arc(b.x, b.y, radius, angle, angle + Math.PI * 1.5);
+                ctx.stroke();
+            });
+        }
+        
+        if (b.activeAspects.has('glitch')) {
+            ctx.globalAlpha = 1.0;
+            const glitchColors = ['#fd79a8', '#81ecec', '#f1c40f'];
+            const segmentCount = 40;
+            for (let i = 0; i < segmentCount; i++) {
+                if (Math.random() < 0.7) continue;
+                
+                const angle = (i / segmentCount) * 2 * Math.PI;
+                const jitter = (Math.random() - 0.5) * 0.1;
+                const radius = coreRadius + 15 + (aspectColors.length * 15);
+
+                const x1 = b.x + Math.cos(angle) * radius;
+                const y1 = b.y + Math.sin(angle) * radius;
+                const x2 = b.x + Math.cos(angle + 0.1) * (radius + (Math.random() - 0.5) * 10);
+                const y2 = b.y + Math.sin(angle + 0.1) * (radius + (Math.random() - 0.5) * 10);
+
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.lineWidth = Math.random() * 4 + 2;
+                ctx.strokeStyle = glitchColors[Math.floor(Math.random() * glitchColors.length)];
+                ctx.stroke();
+            }
+        }
+        
+        ctx.restore();
+    },
+    onDamage: (b, dmg, source, state, sP, play, stopLoopingSfx, gameHelpers) => { 
+        if (b.invulnerable) {
+            return;
+        };
+        b.hp -= dmg
+
+        const hpPercent = b.hp / b.maxHP;
+        
+        const phaseThresholds = [0.8, 0.6, 0.4, 0.2];
+        const currentPhase = b.phase || 1;
+        let nextPhase = -1;
+
+        for(let i = 0; i < phaseThresholds.length; i++) {
+            if (hpPercent <= phaseThresholds[i] && currentPhase === (i + 1)) {
+                nextPhase = i + 2;
+                break;
+            }
+        }
+
+        if (nextPhase !== -1) {
+            b.phase = nextPhase;
+            b.actionCooldown *= 0.85;
+            b.invulnerable = true;
+            utils.spawnParticles(state.particles, b.x, b.y, '#fff', 150, 8, 50);
+            state.effects.push({ type: 'shockwave', caster: b, x: b.x, y: b.y, radius: 0, maxRadius: 1200, speed: 1000, startTime: Date.now(), hitEnemies: new Set(), damage: 50, color: 'rgba(255, 255, 255, 0.7)' });
+            setTimeout(() => b.invulnerable = false, 2000);
+        }
+    },
+    onDeath: (b, state, spawnEnemy, spawnParticles, play, stopLoopingSfx) => {
+        b.activeAspects.forEach((aspectState, aspectId) => {
+            if (b.getAspectData(aspectId)?.onDeath) {
+                b.getAspectData(aspectId).onDeath(b, state, spawnEnemy, spawnParticles, play, stopLoopingSfx);
+            }
+        });
+        delete b.pillar;
+        delete b.pillars;
+        delete b.chain;
+        delete b.clones;
+        delete b.petrifyZones;
+    }
+}
+];
