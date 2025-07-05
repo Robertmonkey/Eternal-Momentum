@@ -807,7 +807,10 @@ export const bossData = [{
             gameHelpers.play('powerSirenSound');
             setTimeout(() => {
                 if(b.hp <= 0) {
-                    if (b.id === 'pantheon') b.isChargingAnnihilatorBeam = false;
+                    b.isChargingBeam = false;
+                    if (b.id === 'pantheon') {
+                        b.isChargingAnnihilatorBeam = false;
+                    }
                     return;
                 }
                 gameHelpers.play('annihilatorBeamSound');
@@ -822,10 +825,15 @@ export const bossData = [{
                 else b[timer] = Date.now();
 
                 b.isChargingBeam = false;
-                if (b.id === 'pantheon') {
-                    b.isChargingAnnihilatorBeam = false;
-                }
-            }, 4000);
+
+                // Disable the teleport lock only AFTER the beam has finished firing.
+                setTimeout(() => {
+                    if (b.id === 'pantheon') {
+                        b.isChargingAnnihilatorBeam = false;
+                    }
+                }, 1200); // Duration of the beam effect
+
+            }, 4000); // Charge-up duration
         }
         if (b.pillar) {
             utils.drawCircle(ctx, b.pillar.x, b.pillar.y, b.pillar.r, "#2d3436");
