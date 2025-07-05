@@ -156,6 +156,13 @@ window.addEventListener('load', () => {
             }
         }
 
+        function stopAllLoopingSounds() {
+            AudioManager.stopLoopingSfx('beamHumSound');
+            AudioManager.stopLoopingSfx('wallShrink');
+            AudioManager.stopLoopingSfx('obeliskHum');
+            AudioManager.stopLoopingSfx('paradoxTrailHum');
+        }
+
         function setupEventListeners() {
             function setPlayerTarget(e) {
                 const rect = canvas.getBoundingClientRect();
@@ -187,6 +194,7 @@ window.addEventListener('load', () => {
 
             levelSelectBtn.addEventListener("click", () => { 
                 state.isPaused = true; 
+                stopAllLoopingSounds();
                 populateLevelSelect(startSpecificLevel);
                 if (state.player.highestStageBeaten >= 30) {
                     arenaBtn.style.display = 'block';
@@ -205,6 +213,7 @@ window.addEventListener('load', () => {
             
             ascensionBtn.addEventListener("click", () => {
                 state.isPaused = true;
+                stopAllLoopingSounds();
                 apDisplayAscGrid.innerText = state.player.ascensionPoints;
                 renderAscensionGrid(); 
                 ascensionGridModal.style.display = 'flex';
@@ -293,6 +302,7 @@ window.addEventListener('load', () => {
             levelSelectMenuBtn.addEventListener("click", () => {
                 gameOverMenu.style.display = 'none';
                 state.isPaused = true;
+                stopAllLoopingSounds();
                 populateLevelSelect(startSpecificLevel);
                 levelSelectModal.style.display = 'flex';
                 AudioManager.playSfx('uiModalOpen');
@@ -300,6 +310,7 @@ window.addEventListener('load', () => {
             
             ascensionMenuBtn.addEventListener("click", () => {
                 gameOverMenu.style.display = 'none'; 
+                stopAllLoopingSounds();
                 apDisplayAscGrid.innerText = state.player.ascensionPoints;
                 renderAscensionGrid();
                 ascensionGridModal.style.display = 'flex';
@@ -338,7 +349,10 @@ window.addEventListener('load', () => {
 
         function loop() {
             if (!gameTick(mx, my)) {
-                if (state.gameLoopId) cancelAnimationFrame(state.gameLoopId);
+                if (state.gameLoopId) {
+                    cancelAnimationFrame(state.gameLoopId);
+                    stopAllLoopingSounds();
+                }
                 return;
             }
             state.gameLoopId = requestAnimationFrame(loop);
