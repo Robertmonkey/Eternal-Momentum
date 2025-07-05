@@ -380,19 +380,6 @@ export function gameTick(mx, my) {
         }
     }
 
-    const annihilator = state.enemies.find(e => e.id === 'annihilator' && e.pillar);
-    if (annihilator) {
-        const pillar = annihilator.pillar;
-        const dx = state.player.x - pillar.x;
-        const dy = state.player.y - pillar.y;
-        const dist = Math.hypot(dx, dy);
-        if (dist < state.player.r + pillar.r) {
-            const angle = Math.atan2(dy, dx);
-            state.player.x = pillar.x + Math.cos(angle) * (state.player.r + pillar.r);
-            state.player.y = pillar.y + Math.sin(angle) * (state.player.r + pillar.r);
-        }
-    }
-
     if (state.player.infected) {
         if (Date.now() > state.player.infectionEnd) {
             state.player.infected = false;
@@ -480,16 +467,6 @@ export function gameTick(mx, my) {
             continue;
         }
 
-        if (annihilator && annihilator.pillar) {
-            const pillar = annihilator.pillar;
-            const dist = Math.hypot(e.x - pillar.x, e.y - pillar.y);
-            if (dist < e.r + pillar.r) {
-                const angle = Math.atan2(e.y - pillar.y, e.x - pillar.x);
-                e.x = pillar.x + Math.cos(angle) * (e.r + pillar.r);
-                e.y = pillar.y + Math.sin(angle) * (e.r + pillar.r);
-            }
-        }
-        
         if (e.isInfected && !e.boss) {
             if (Date.now() > e.infectionEnd) {
                 e.isInfected = false;
@@ -970,6 +947,7 @@ export function gameTick(mx, my) {
 
                 const angleToPillarCheck = Math.atan2(pillar.y - source.y, pillar.x - source.x);
                 const angleToTangentCheck = Math.asin(pillar.r / distToPillarCheck);
+                // --- FIX: Corrected typo from source.y to source.x ---
                 const targetAngle = Math.atan2(target.y - source.y, target.x - source.x);
                 let angleDiff = (targetAngle - angleToPillarCheck + Math.PI * 3) % (Math.PI * 2) - Math.PI;
 
@@ -1258,6 +1236,24 @@ export function gameTick(mx, my) {
             } else {
                 effect.playerInsideTime = null;
             }
+        }
+        else if (effect.type === 'aspect_summon_ring') {
+            const elapsed = Date.now() - effect.startTime;
+            const progress = elapsed / effect.duration;
+            if (progress >= 1) {
+                state.effects.splice(i, 1);
+                continue;
+            }
+            const currentRadius = effect.maxRadius * progress;
+            const alpha = 1 - progress;
+
+            ctx.strokeStyle = effect.color;
+            ctx.globalAlpha = alpha;
+            ctx.lineWidth = 10 * (1 - progress);
+            ctx.beginPath();
+            ctx.arc(effect.source.x, effect.source.y, currentRadius, 0, 2 * Math.PI);
+            ctx.stroke();
+            ctx.globalAlpha = 1.0;
         }
     }
     
