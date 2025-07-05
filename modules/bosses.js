@@ -149,7 +149,7 @@ export const bossData = [{
         b.wells.forEach(w => {
             const wellX = b.x + Math.cos(w.angle) * w.dist;
             const wellY = b.y + Math.sin(w.angle) * w.dist;
-            utils.drawCircle(ctx, wellX, wellY, "rgba(155, 89, 182, 0.3)");
+            utils.drawCircle(ctx, wellX, wellY, w.r, "rgba(155, 89, 182, 0.3)");
             const dx = state.player.x - wellX,
                 dy = state.player.y - wellY;
             if (Math.hypot(dx, dy) < w.r + state.player.r) {
@@ -304,7 +304,15 @@ export const bossData = [{
                 }
             }
         }
-        b.pillars.forEach(p => utils.drawCircle(ctx, p.x, p.y, p.r, "#444"));
+        b.pillars.forEach(p => {
+            utils.drawCircle(ctx, p.x, p.y, p.r, "#444");
+            const dist = Math.hypot(state.player.x - p.x, state.player.y - p.y);
+            if (dist < state.player.r + p.r) {
+                const angle = Math.atan2(state.player.y - p.y, state.player.x - p.x);
+                state.player.x = p.x + Math.cos(angle) * (state.player.r + p.r);
+                state.player.y = p.y + Math.sin(angle) * (state.player.r + p.r);
+            }
+        });
     },
     onDeath: (b) => {
         setTimeout(() => {
@@ -697,7 +705,7 @@ export const bossData = [{
             });
         });
     },
-    logic: (b, ctx, state) => {
+    logic: (b, ctx, state, utils, gameHelpers) => {
         const canvas = ctx.canvas;
         const hpPercent = Math.max(0, b.hp / b.maxHP);
         const growthRange = 1.0 - 0.3; 
@@ -712,6 +720,34 @@ export const bossData = [{
         b.petrifyZones.forEach(zone => {
             zone.sizeW = maxSizeW * scaledGrowth;
             zone.sizeH = maxSizeH * scaledGrowth;
+
+            // --- DRAWING LOGIC MOVED HERE ---
+            const zoneX = zone.x - zone.sizeW / 2;
+            const zoneY = zone.y - zone.sizeH / 2;
+            const onCooldown = Date.now() < (zone.cooldownUntil || 0);
+
+            ctx.fillStyle = onCooldown ? `rgba(0, 184, 148, 0.05)` : `rgba(0, 184, 148, 0.2)`;
+            ctx.fillRect(zoneX, zoneY, zone.sizeW, zone.sizeH);
+
+            const player = state.player;
+            const isPlayerInside = player.x > zoneX && player.x < zoneX + zone.sizeW && player.y > zoneY && player.y < zoneY + zone.sizeH;
+
+            if (isPlayerInside && !onCooldown) {
+                if (!zone.playerInsideTime) zone.playerInsideTime = Date.now();
+                const stunProgress = (Date.now() - zone.playerInsideTime) / 1500;
+                ctx.fillStyle = `rgba(0, 184, 148, 0.4)`;
+                ctx.fillRect(zoneX, zoneY, zone.sizeW * stunProgress, zone.sizeH);
+
+                if (stunProgress >= 1) {
+                    gameHelpers.play('stoneCrackingSound');
+                    gameHelpers.addStatusEffect('Petrified', '🗿', 2000);
+                    player.stunnedUntil = Date.now() + 2000;
+                    zone.playerInsideTime = null; 
+                    zone.cooldownUntil = Date.now() + 2000;
+                }
+            } else {
+                zone.playerInsideTime = null;
+            }
         });
     }
 }, {
@@ -751,7 +787,7 @@ export const bossData = [{
                 gameHelpers.play('annihilatorBeamSound');
                 state.effects.push({
                     type: 'annihilator_beam',
-                    source: b,
+                    source: b, // Use live reference to the boss
                     pillar: { ...b.pillar },
                     endTime: Date.now() + 1200
                 });
@@ -1903,35 +1939,6 @@ export const bossData = [{
             }
         });
 
-        if (b.pillars) {
-            b.pillars.forEach(pillar => {
-                const playerDist = Math.hypot(state.player.x - pillar.x, state.player.y - pillar.y);
-                if (playerDist < state.player.r + pillar.r) {
-                    const angle = Math.atan2(state.player.y - pillar.y, state.player.x - pillar.x);
-                    state.player.x = pillar.x + Math.cos(angle) * (state.player.r + pillar.r);
-                    state.player.y = pillar.y + Math.sin(angle) * (state.player.r + pillar.r);
-                }
-            });
-        }
-
-        if (b.pillar) {
-            const allEntities = [state.player, ...state.enemies];
-            allEntities.forEach(entity => {
-                if (entity === b && b.activeAspects.has('architect')) {
-                    return;
-                }
-                
-                const entityRadius = entity.r || state.player.r;
-                
-                const dist = Math.hypot(entity.x - b.pillar.x, entity.y - b.pillar.y);
-                if (dist < entityRadius + b.pillar.r) {
-                    const angle = Math.atan2(entity.y - b.pillar.y, entity.x - b.pillar.x);
-                    entity.x = b.pillar.x + Math.cos(angle) * (entityRadius + b.pillar.r);
-                    entity.y = b.pillar.y + Math.sin(angle) * (entityRadius + b.pillar.r);
-                }
-            });
-        }
-
         if (!b.activeAspects.has('juggernaut')) {
              b.dx = (state.player.x - b.x) * 0.005;
              b.dy = (state.player.y - b.y) * 0.005;
@@ -1952,7 +1959,6 @@ export const bossData = [{
         
         ctx.save();
         
-        // 1. Draw the OPAQUE Psychedelic Core FIRST
         ctx.globalAlpha = 1.0; 
         const corePulse = Math.sin(now / 400) * 5;
         const coreRadius = b.r + corePulse;
@@ -1971,13 +1977,14 @@ export const bossData = [{
         ctx.shadowColor = 'transparent';
         ctx.shadowBlur = 0;
 
-        // 2. Draw the SEMI-TRANSPARENT Aspect Rings on TOP
         ctx.globalCompositeOperation = 'lighter';
         
         let aspectColors = [];
         b.activeAspects.forEach(aspect => {
             const aspectData = b.getAspectData(aspect.id);
-            if (aspectData && aspect.id !== 'glitch') aspectColors.push(aspectData.color);
+            if (aspectData && aspectData.color && aspect.id !== 'glitch') {
+                aspectColors.push(aspectData.color);
+            }
         });
 
         if (aspectColors.length > 0) {
@@ -1999,7 +2006,6 @@ export const bossData = [{
             });
         }
         
-        // 3. Draw a special, always-visible ring for The Glitch
         if (b.activeAspects.has('glitch')) {
             ctx.globalAlpha = 1.0;
             const glitchColors = ['#fd79a8', '#81ecec', '#f1c40f'];
