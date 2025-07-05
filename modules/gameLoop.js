@@ -210,7 +210,6 @@ export function spawnEnemy(isBoss = false, bossId = null, location = null) {
         
         const baseHp = bd.maxHP || 200;
         
-        // --- BUG FIX: Use reasonable HP scaling for Orrery mode ---
         let difficultyIndex;
         if (state.arenaMode) {
             const tierSum = state.customOrreryBosses.reduce((sum, bId) => {
@@ -371,7 +370,7 @@ export function gameTick(mx, my) {
         state.decoy.x += Math.cos(angle) * decoySpeed;
         state.decoy.y += Math.sin(angle) * decoySpeed;
         state.decoy.x = Math.max(state.decoy.r, Math.min(canvas.width - state.decoy.r, state.decoy.x));
-        state.decoy.y = Math.max(state.decoy.r, Math.min(canvas.height - state.decoy.y, state.decoy.y));
+        state.decoy.y = Math.max(state.decoy.r, Math.min(canvas.height - state.decoy.r, state.decoy.y));
     }
 
     if (state.gravityActive && Date.now() > state.gravityEnd) {
@@ -535,12 +534,11 @@ export function gameTick(mx, my) {
                             e.knockbackUntil = Date.now() + 2000;
                             field.hitEnemies.add(e);
                         }
-                    } else {
-                        const knockbackForce = 5;
-                        const angle = Math.atan2(e.y - field.y, e.x - field.x);
-                        e.x += Math.cos(angle) * knockbackForce;
-                        e.y += Math.sin(angle) * knockbackForce;
                     }
+                    const knockbackForce = 5;
+                    const angle = Math.atan2(e.y - field.y, e.x - field.x);
+                    e.x += Math.cos(angle) * knockbackForce;
+                    e.y += Math.sin(angle) * knockbackForce;
                 }
             });
         }
@@ -605,9 +603,9 @@ export function gameTick(mx, my) {
                             let pullStrength = e.boss ? 0.03 : 0.1;
                             e.x += (effect.x - e.x) * pullStrength;
                             e.y += (effect.y - e.y) * pullStrength;
-                            if (dist < effect.radius + e.r && Date.now() - (effect.lastDamage.get(e) || 0) > effect.damageRate) {
+                            if (state.player.purchasedTalents.has('unstable-singularity') && dist < effect.radius + e.r && Date.now() - (effect.lastDamage.get(e) || 0) > effect.damageRate) {
                                 e.hp -= e.boss ? effect.damage : 15;
-                                if(state.player.purchasedTalents.has('unstable-singularity')) e.hp -= 5 * state.player.talent_modifiers.damage_multiplier;
+                                e.hp -= 5 * state.player.talent_modifiers.damage_multiplier;
                                 effect.lastDamage.set(e, Date.now());
                            }
                         }
@@ -632,25 +630,6 @@ export function gameTick(mx, my) {
         if(!e.hasCustomDraw) utils.drawCircle(ctx, e.x,e.y,e.r, color);
         if(e.enraged) { ctx.strokeStyle = "yellow"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(e.x,e.y,e.r+5,0,2*Math.PI); ctx.stroke(); }
         
-        if (e.id === 'obelisk_conduit' && e.hp > 0) {
-            const distToPlayer = Math.hypot(state.player.x - e.x, state.player.y - e.y);
-            const auraRadius = 250;
-            switch(e.conduitType) {
-                case 'lightning':
-                    if (distToPlayer < auraRadius) {
-                        if (!state.player.shield) state.player.health -= 0.5;
-                        else state.player.shield = false;
-                    }
-                    break;
-                case 'gravity':
-                    if (distToPlayer < auraRadius) {
-                        const pullStrength = 0.04;
-                        state.player.x += (e.x - state.player.x) * pullStrength;
-                        state.player.y += (e.y - state.player.y) * pullStrength;
-                    }
-                    break;
-            }
-        }
         if (e.id === 'obelisk' && e.isFiringBeam) {
             const beamThickness = 10;
             const beamLength = Math.hypot(canvas.width, canvas.height);
@@ -664,7 +643,10 @@ export function gameTick(mx, my) {
             const distToBeam = Math.hypot(state.player.x - closestX, state.player.y - closestY);
 
             if (distToBeam < state.player.r + beamThickness / 2) {
-                if (!state.player.shield) state.player.health -= 5;
+                if (!state.player.shield) {
+                    state.player.health -= 5;
+                    if(state.player.health <= 0) state.gameOver = true;
+                }
                 else state.player.shield = false;
             }
         }
@@ -812,7 +794,6 @@ export function gameTick(mx, my) {
         }
     }
 
-    // --- BUG FIX: Restructured the effects loop to prevent else-if shadowing ---
     for (let i = state.effects.length - 1; i >= 0; i--) {
         const effect = state.effects[i];
         
@@ -823,7 +804,6 @@ export function gameTick(mx, my) {
             continue;
         }
 
-        // --- Generic movement block for projectiles ---
         if (effect.type === 'nova_bullet' || effect.type === 'ricochet_projectile' || effect.type === 'seeking_shrapnel') {
             let speedMultiplier = 1.0;
             state.effects.forEach(eff => {
@@ -848,7 +828,6 @@ export function gameTick(mx, my) {
         }
 
 
-        // --- Individual effect logic blocks ---
         if (effect.type === 'shockwave') {
             const elapsed = (Date.now() - effect.startTime) / 1000; effect.radius = elapsed * effect.speed;
             ctx.strokeStyle = effect.color || `rgba(255, 255, 255, ${1-(effect.radius/effect.maxRadius)})`; ctx.lineWidth = 10;
@@ -858,7 +837,16 @@ export function gameTick(mx, my) {
                 if (!effect.hitEnemies.has(target) && Math.abs(Math.hypot(target.x - effect.x, target.y - effect.y) - effect.radius) < target.r + 5) {
                     if (effect.damage > 0) {
                         let dmg = (target.boss || target === state.player) ? effect.damage : 1000;
-                        if(target.health) target.health -= dmg; else target.hp -= dmg;
+                        if (target === state.player) {
+                            if (!target.shield) {
+                                target.health -= dmg;
+                                if (target.health <= 0) state.gameOver = true;
+                            } else {
+                                target.shield = false;
+                            }
+                        } else {
+                            target.hp -= dmg;
+                        }
                         if (target.onDamage) target.onDamage(target, dmg, effect.caster, state, spawnParticlesCallback, play, stopLoopingSfx, gameHelpers);
                     }
                     effect.hitEnemies.add(target);
@@ -918,6 +906,7 @@ export function gameTick(mx, my) {
                 if (Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < state.player.r + effect.r) {
                     if (!state.player.shield) {
                         state.player.health -= (effect.damage || 40);
+                        if(state.player.health <= 0) state.gameOver = true;
                     } else state.player.shield = false;
                     state.effects.splice(i, 1);
                 }
@@ -936,7 +925,16 @@ export function gameTick(mx, my) {
                         let damage = ((state.player.berserkUntil > Date.now() && effect.caster === state.player) ? 50 : 25)  * state.player.talent_modifiers.damage_multiplier; 
                         if(effect.caster !== state.player) damage = effect.damage;
                         
-                        if(e.health) e.health -= damage; else e.hp -= damage; 
+                        if(e.health) {
+                            if (!e.shield) {
+                                e.health -= damage;
+                                if(e.health <= 0) state.gameOver = true;
+                            } else {
+                                e.shield = false;
+                            }
+                        } else {
+                            e.hp -= damage; 
+                        }
 
                         if(e.onDamage) e.onDamage(e, damage, effect.caster, state, spawnParticlesCallback, play, stopLoopingSfx, gameHelpers); 
                     } 
@@ -946,8 +944,14 @@ export function gameTick(mx, my) {
             } 
             ctx.strokeStyle = effect.color || 'rgba(230, 126, 34, 0.8)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(effect.x, effect.y, 50 * (1-progress), 0, Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(effect.x-10, effect.y); ctx.lineTo(effect.x+10, effect.y); ctx.moveTo(effect.x, effect.y-10); ctx.lineTo(effect.x, effect.y+10); ctx.stroke(); 
         }
-        else if (effect.type === 'black_hole') { 
-            if (Date.now() > effect.endTime) { if (state.player.purchasedTalents.has('unstable-singularity')) { state.effects.push({ type: 'shockwave', caster: state.player, x: effect.x, y: effect.y, radius: 0, maxRadius: effect.maxRadius, speed: 800, startTime: Date.now(), hitEnemies: new Set(), damage: 25 * state.player.talent_modifiers.damage_multiplier }); } state.effects.splice(i, 1); continue; } 
+        else if (effect.type === 'black_hole') {
+            if (Date.now() > effect.endTime) { 
+                if (state.player.purchasedTalents.has('unstable-singularity')) { 
+                    state.effects.push({ type: 'shockwave', caster: state.player, x: effect.x, y: effect.y, radius: 0, maxRadius: effect.maxRadius, speed: 800, startTime: Date.now(), hitEnemies: new Set(), damage: 25 * state.player.talent_modifiers.damage_multiplier }); 
+                } 
+                state.effects.splice(i, 1); 
+                continue; 
+            } 
             const elapsed = Date.now() - effect.startTime;
             const progress = Math.min(1, elapsed / effect.duration);
             const currentPullRadius = effect.maxRadius * progress; 
@@ -1027,7 +1031,7 @@ export function gameTick(mx, my) {
 
                 const angleToPillarCheck = Math.atan2(pillar.y - source.y, pillar.x - source.x);
                 const angleToTangentCheck = Math.asin(pillar.r / distToPillarCheck);
-                const targetAngle = Math.atan2(target.y - source.y, target.x - source.x);
+                const targetAngle = Math.atan2(target.y - source.y, target.x - source.y);
                 let angleDiff = (targetAngle - angleToPillarCheck + Math.PI * 3) % (Math.PI * 2) - Math.PI;
 
                 const isSafe = Math.abs(angleDiff) < angleToTangentCheck && Math.hypot(target.x - source.x, target.y - source.y) > distToPillarCheck;
@@ -1306,6 +1310,7 @@ export function gameTick(mx, my) {
                         case 'ruin':
                             if(effect.boss && effect.boss.hp > 0) effect.boss.hp -= effect.boss.maxHP * 0.15;
                             state.player.health -= 30;
+                            if (state.player.health <= 0) state.gameOver = true;
                             break;
                     }
                     state.effects = state.effects.filter(e => e.type !== 'shaper_zone');
