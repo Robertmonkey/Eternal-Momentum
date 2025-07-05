@@ -540,7 +540,8 @@ export const bossData = [{
                 farthestEnemy.isPuppet = true;
                 farthestEnemy.customColor = b.color;
                 farthestEnemy.r *= 1.5;
-                farthestEnemy.hp = 80;
+                farthestEnemy.hp = 104;
+                farthestEnemy.maxHP = 104;
                 farthestEnemy.dx *= 2;
                 farthestEnemy.dy *= 2;
                 state.effects.push({
