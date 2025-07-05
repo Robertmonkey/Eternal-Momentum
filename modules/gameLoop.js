@@ -759,7 +759,15 @@ export function gameTick(mx, my) {
             targets.forEach(target => {
                 if (!effect.hitEnemies.has(target) && Math.abs(Math.hypot(target.x - effect.x, target.y - effect.y) - effect.radius) < target.r + 5) {
                     if (effect.damage > 0) {
-                        let dmg = (target.boss || target === state.player) ? effect.damage : 1000;
+                        let dmg;
+                        if (target.isPuppet && effect.caster === state.player) {
+                            dmg = target.maxHP / 2;
+                        } else if (target.boss || target === state.player) {
+                            dmg = effect.damage;
+                        } else {
+                            dmg = 1000;
+                        }
+
                         if (target === state.player) {
                             if (!target.shield) {
                                 target.health -= dmg;
@@ -947,7 +955,6 @@ export function gameTick(mx, my) {
 
                 const angleToPillarCheck = Math.atan2(pillar.y - source.y, pillar.x - source.x);
                 const angleToTangentCheck = Math.asin(pillar.r / distToPillarCheck);
-                // --- FIX: Corrected typo from source.y to source.x ---
                 const targetAngle = Math.atan2(target.y - source.y, target.x - source.x);
                 let angleDiff = (targetAngle - angleToPillarCheck + Math.PI * 3) % (Math.PI * 2) - Math.PI;
 
