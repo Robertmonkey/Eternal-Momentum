@@ -77,7 +77,10 @@ export const bossData = [{
         if (b.phase !== "idle") b.hp += dmg;
         if (b.reflecting) {
             play('reflectorOnHit');
-            if(source && source.health) source.health -= 10;
+            if(source && source.health) {
+                source.health -= 10;
+                if (source.health <= 0) state.gameOver = true;
+            }
         }
     }
 }, {
@@ -146,7 +149,7 @@ export const bossData = [{
         b.wells.forEach(w => {
             const wellX = b.x + Math.cos(w.angle) * w.dist;
             const wellY = b.y + Math.sin(w.angle) * w.dist;
-            utils.drawCircle(ctx, wellX, wellY, w.r, "rgba(155, 89, 182, 0.3)");
+            utils.drawCircle(ctx, wellX, wellY, "rgba(155, 89, 182, 0.3)");
             const dx = state.player.x - wellX,
                 dy = state.player.y - wellY;
             if (Math.hypot(dx, dy) < w.r + state.player.r) {
@@ -321,30 +324,47 @@ export const bossData = [{
     lore: "In their timeline, bonds of loyalty were a tangible, physical force. Aethel & Umbra were a bonded pair of guardians. The Unraveling severed the metaphysical link between them, but not their consciousness. They now fight as two separate bodies with one shared, agonized soul, their rage amplifying when one is forced to witness the other's demise... again.",
     mechanics_desc: "A duo boss. Aethel is faster but more fragile; Umbra is slower but much tougher. When one is defeated, the survivor becomes enraged, gaining significantly enhanced stats and abilities. It is often wise to focus them down evenly.",
     init: (b, state, spawnEnemy) => {
-        const partner = state.enemies.find(e => e.id === 'aethel_and_umbra' && e !== b);
         b.r = 50;
+        b.enraged = false;
+        
+        const partner = state.enemies.find(e => e.id === 'aethel_and_umbra' && e !== b);
+        
         if (!partner) {
+            // This is the first twin, it defines both its own role and its partner's.
             b.role = Math.random() < 0.5 ? 'Aethel' : 'Umbra';
+            
             const partnerBoss = spawnEnemy(true, 'aethel_and_umbra');
             if (partnerBoss) {
                 partnerBoss.role = b.role === 'Aethel' ? 'Umbra' : 'Aethel';
+                
+                // Set up this boss (b)
+                if (b.role === 'Aethel') {
+                    b.r *= 0.75;
+                    b.dx = (b.dx || (Math.random() - 0.5)) * 2.5;
+                    b.dy = (b.dy || (Math.random() - 0.5)) * 2.5;
+                } else { // Umbra
+                    b.r *= 1.25;
+                    b.maxHP *= 1.5;
+                    b.hp = b.maxHP;
+                }
+
+                // Directly configure the partner
+                if (partnerBoss.role === 'Aethel') {
+                    partnerBoss.r *= 0.75;
+                    partnerBoss.dx = (partnerBoss.dx || (Math.random() - 0.5)) * 2.5;
+                    partnerBoss.dy = (partnerBoss.dy || (Math.random() - 0.5)) * 2.5;
+                } else { // Umbra
+                    partnerBoss.r *= 1.25;
+                    partnerBoss.maxHP *= 1.5;
+                    partnerBoss.hp = partnerBoss.maxHP;
+                }
+                
                 b.partner = partnerBoss;
                 partnerBoss.partner = b;
+                b.name = b.role;
                 partnerBoss.name = partnerBoss.role;
             }
         }
-        b.name = b.role;
-        
-        if (b.role === 'Aethel') {
-            b.r *= 0.75;
-            b.dx = (b.dx || (Math.random() - 0.5)) * 2.5;
-            b.dy = (b.dy || (Math.random() - 0.5)) * 2.5;
-        } else {
-            b.r *= 1.25;
-            b.maxHP *= 1.5;
-            b.hp = b.maxHP;
-        }
-        b.enraged = false;
     },
     logic: (b, ctx) => {
         if (!ctx) return;
@@ -367,10 +387,10 @@ export const bossData = [{
         const partner = state.enemies.find(e => e.id === 'aethel_and_umbra' && e !== b && e.hp > 0);
         if (partner && !partner.enraged) {
             partner.enraged = true;
-            if (b.role === 'Aethel') {
+            if (b.role === 'Aethel') { // Partner is Umbra, becomes faster
                 partner.dx = (partner.dx || (Math.random() - 0.5)) * 2.5;
                 partner.dy = (partner.dy || (Math.random() - 0.5)) * 2.5;
-            } else {
+            } else { // Partner is Aethel, becomes larger and tougher
                 partner.r *= 1.25;
                 const healthBonus = partner.maxHP * 1.5;
                 partner.maxHP += healthBonus;
@@ -626,6 +646,7 @@ export const bossData = [{
                             if (isPlayer && state.player.shield) return;
                             if (isPlayer) {
                                 target.health -= damage;
+                                if (target.health <= 0) state.gameOver = true;
                             } else {
                                 target.hp -= damage;
                             }
@@ -715,9 +736,18 @@ export const bossData = [{
     logic: (b, ctx, state, utils, gameHelpers) => {
         if (Date.now() - b.lastBeam > 12000 && !b.isChargingBeam) {
             b.isChargingBeam = true;
+            if (b.activeAspects) b.activeAspects.forEach(aspect => {
+                if (aspect.id === 'annihilator') b.isChargingAnnihilatorBeam = true;
+            });
+
             gameHelpers.play('powerSirenSound');
             setTimeout(() => {
-                if(b.hp <= 0) return;
+                if(b.hp <= 0) {
+                    if (b.activeAspects) b.activeAspects.forEach(aspect => {
+                        if (aspect.id === 'annihilator') b.isChargingAnnihilatorBeam = false;
+                    });
+                    return;
+                }
                 gameHelpers.play('annihilatorBeamSound');
                 state.effects.push({
                     type: 'annihilator_beam',
@@ -727,6 +757,9 @@ export const bossData = [{
                 });
                 b.lastBeam = Date.now();
                 b.isChargingBeam = false;
+                if (b.activeAspects) b.activeAspects.forEach(aspect => {
+                    if (aspect.id === 'annihilator') b.isChargingAnnihilatorBeam = false;
+                });
             }, 4000);
         }
         if (b.pillar) {
@@ -1029,6 +1062,7 @@ export const bossData = [{
                         gameHelpers.play('shieldBreak'); 
                     } else { 
                         state.player.health -= 2; 
+                        if (state.player.health <= 0) state.gameOver = true;
                     } 
                 }
             }
@@ -1498,11 +1532,22 @@ export const bossData = [{
         
         switch (b.conduitType) {
             case 'lightning':
-                for(let i = 0; i < 5; i++) {
-                    const angle = Math.random() * Math.PI * 2;
-                    const endX = b.x + Math.cos(angle) * 250;
-                    const endY = b.y + Math.sin(angle) * 250;
-                    utils.drawLightning(ctx, b.x, b.y, endX, endY, `rgba(241, 196, 15, 0.5)`, 2);
+                const distToPlayer = Math.hypot(state.player.x - b.x, state.player.y - b.y);
+                const auraRadius = 250;
+                if (distToPlayer < auraRadius) {
+                     for(let i = 0; i < 5; i++) {
+                        const angle = Math.random() * Math.PI * 2;
+                        const endX = b.x + Math.cos(angle) * auraRadius;
+                        const endY = b.y + Math.sin(angle) * auraRadius;
+                        utils.drawLightning(ctx, b.x, b.y, endX, endY, `rgba(241, 196, 15, 0.5)`, 2);
+                    }
+                    if (!state.player.shield) {
+                        state.player.health -= 0.5;
+                        if(state.player.health <= 0) state.gameOver = true;
+                    } else {
+                        state.player.shield = false;
+                        gameHelpers.play('shieldBreak');
+                    }
                 }
                 break;
             case 'gravity':
@@ -1513,6 +1558,11 @@ export const bossData = [{
                     ctx.beginPath();
                     ctx.arc(b.x, b.y, 250 * pulse, 0, 2 * Math.PI);
                     ctx.stroke();
+                }
+                 if (Math.hypot(state.player.x - b.x, state.player.y - b.y) < 250) {
+                    const pullStrength = 0.04;
+                    state.player.x += (b.x - state.player.x) * pullStrength;
+                    state.player.y += (b.y - state.player.y) * pullStrength;
                 }
                 break;
             case 'explosion':
@@ -1791,6 +1841,7 @@ export const bossData = [{
         b.nextActionTime = Date.now() + 3000;
         
         b.activeAspects = new Map();
+        b.isChargingAnnihilatorBeam = false;
 
         const blacklist = new Set(['aethel_and_umbra', 'sentinel_pair', 'fractal_horror', 'pantheon', 'shaper_of_fate', 'obelisk_conduit']);
 
@@ -1840,28 +1891,13 @@ export const bossData = [{
             } else {
                 const aspectData = b.getAspectData(aspectId);
                 if (aspectData) {
-                    // Special case for Glitch: only run mechanics, not its original drawing logic
-                    if (aspectId === 'glitch') {
-                        const canvas = ctx.canvas;
-                        if (Date.now() - (b.lastTeleport || 0) > 3000) {
-                            b.lastTeleport = Date.now();
-                            gameHelpers.play('glitchSound');
-                            utils.spawnParticles(state.particles, b.x, b.y, "#fd79a8", 40, 4, 30);
-                            const oldX = b.x;
-                            const oldY = b.y;
-                            b.x = Math.random() * canvas.width;
-                            b.y = Math.random() * canvas.height;
-                            state.effects.push({
-                                type: 'glitch_zone',
-                                x: oldX,
-                                y: oldY,
-                                r: 100,
-                                endTime: Date.now() + 5000
-                            });
-                        }
+                    const teleportAspects = new Set(['mirror', 'glitch', 'looper']);
+                    if (teleportAspects.has(aspectId) && b.isChargingAnnihilatorBeam) {
+                        // Skip teleport logic if Annihilator is charging
                     } else if (aspectData.logic) {
-                        // Run full logic for all other aspects
+                        ctx.save();
                         aspectData.logic(b, ctx, state, utils, gameHelpers);
+                        ctx.restore();
                     }
                 }
             }
@@ -1932,6 +1968,9 @@ export const bossData = [{
         ctx.shadowBlur = 20;
         utils.drawCircle(ctx, b.x, b.y, coreRadius * 0.7, innerColor);
         
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+
         // 2. Draw the SEMI-TRANSPARENT Aspect Rings on TOP
         ctx.globalCompositeOperation = 'lighter';
         
