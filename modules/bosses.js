@@ -304,6 +304,7 @@ export const bossData = [{
                 }
             }
         }
+        // Player-pillar collision logic is now handled here
         b.pillars.forEach(p => {
             utils.drawCircle(ctx, p.x, p.y, p.r, "#444");
             const dist = Math.hypot(state.player.x - p.x, state.player.y - p.y);
@@ -720,7 +721,7 @@ export const bossData = [{
         b.petrifyZones.forEach(zone => {
             zone.sizeW = maxSizeW * scaledGrowth;
             zone.sizeH = maxSizeH * scaledGrowth;
-
+            
             // --- DRAWING LOGIC MOVED HERE ---
             const zoneX = zone.x - zone.sizeW / 2;
             const zoneY = zone.y - zone.sizeH / 2;
@@ -772,34 +773,39 @@ export const bossData = [{
     logic: (b, ctx, state, utils, gameHelpers) => {
         if (Date.now() - b.lastBeam > 12000 && !b.isChargingBeam) {
             b.isChargingBeam = true;
-            if (b.activeAspects) b.activeAspects.forEach(aspect => {
-                if (aspect.id === 'annihilator') b.isChargingAnnihilatorBeam = true;
-            });
+            if (b.id === 'pantheon') {
+                b.isChargingAnnihilatorBeam = true;
+            }
 
             gameHelpers.play('powerSirenSound');
             setTimeout(() => {
                 if(b.hp <= 0) {
-                    if (b.activeAspects) b.activeAspects.forEach(aspect => {
-                        if (aspect.id === 'annihilator') b.isChargingAnnihilatorBeam = false;
-                    });
+                    if (b.id === 'pantheon') b.isChargingAnnihilatorBeam = false;
                     return;
                 }
                 gameHelpers.play('annihilatorBeamSound');
                 state.effects.push({
                     type: 'annihilator_beam',
-                    source: b, // Use live reference to the boss
+                    source: b,
                     pillar: { ...b.pillar },
                     endTime: Date.now() + 1200
                 });
                 b.lastBeam = Date.now();
                 b.isChargingBeam = false;
-                if (b.activeAspects) b.activeAspects.forEach(aspect => {
-                    if (aspect.id === 'annihilator') b.isChargingAnnihilatorBeam = false;
-                });
+                if (b.id === 'pantheon') {
+                    b.isChargingAnnihilatorBeam = false;
+                }
             }, 4000);
         }
         if (b.pillar) {
             utils.drawCircle(ctx, b.pillar.x, b.pillar.y, b.pillar.r, "#2d3436");
+            const playerDist = Math.hypot(state.player.x - b.pillar.x, state.player.y - b.pillar.y);
+             if (playerDist < state.player.r + b.pillar.r) {
+                const angle = Math.atan2(state.player.y - b.pillar.y, state.player.x - b.pillar.x);
+                state.player.x = b.pillar.x + Math.cos(angle) * (state.player.r + b.pillar.r);
+                state.player.y = b.pillar.y + Math.sin(angle) * (state.player.r + b.pillar.r);
+            }
+
             const bossDist = Math.hypot(b.x - b.pillar.x, b.y - b.pillar.y);
             if (bossDist < b.r + b.pillar.r) {
                 const angle = Math.atan2(b.y - b.pillar.y, b.x - b.pillar.x);
@@ -1910,6 +1916,16 @@ export const bossData = [{
                         type: poolToUse,
                         endTime: now + (poolToUse === 'primary' ? 16000 : 15000),
                     });
+                    
+                    state.effects.push({
+                        type: 'aspect_summon_ring',
+                        source: b,
+                        color: aspectData.color,
+                        startTime: now,
+                        duration: 1000,
+                        maxRadius: 200
+                    });
+
                     gameHelpers.play('pantheonSummon');
                 }
             }
@@ -1959,7 +1975,6 @@ export const bossData = [{
         
         ctx.save();
         
-        ctx.globalAlpha = 1.0; 
         const corePulse = Math.sin(now / 400) * 5;
         const coreRadius = b.r + corePulse;
         const hue = (now / 20) % 360;
@@ -1977,40 +1992,25 @@ export const bossData = [{
         ctx.shadowColor = 'transparent';
         ctx.shadowBlur = 0;
 
-        ctx.globalCompositeOperation = 'lighter';
-        
-        let aspectColors = [];
+        ctx.globalAlpha = 0.5;
+        let ringIndex = 0;
         b.activeAspects.forEach(aspect => {
             const aspectData = b.getAspectData(aspect.id);
             if (aspectData && aspectData.color && aspect.id !== 'glitch') {
-                aspectColors.push(aspectData.color);
+                ringIndex++;
+                ctx.strokeStyle = aspectData.color;
+                ctx.lineWidth = 4 + (ringIndex * 2);
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, b.r + 10 + (ringIndex * 12), 0, 2 * Math.PI);
+                ctx.stroke();
             }
         });
-
-        if (aspectColors.length > 0) {
-            ctx.globalAlpha = 0.8;
-            ctx.lineWidth = 10;
-            
-            aspectColors.forEach((color, i) => {
-                ctx.beginPath();
-                const radius = coreRadius + 10 + (i * 15) + Math.sin(now / (300 + i * 50)) * 3;
-                const rotationSpeed = (i % 2 === 0 ? 1 : -1) * (6000 + i * 1000);
-                const angle = now / rotationSpeed;
-                
-                ctx.strokeStyle = color;
-                ctx.shadowColor = color;
-                ctx.shadowBlur = 15;
-
-                ctx.arc(b.x, b.y, radius, angle, angle + Math.PI * 1.5);
-                ctx.stroke();
-            });
-        }
         
         if (b.activeAspects.has('glitch')) {
             ctx.globalAlpha = 1.0;
             const glitchColors = ['#fd79a8', '#81ecec', '#f1c40f'];
             const segmentCount = 40;
-            const ringRadius = coreRadius + 15 + (aspectColors.length * 15);
+            const ringRadius = coreRadius + 15 + (ringIndex * 15);
 
             for (let i = 0; i < segmentCount; i++) {
                 if (Math.random() < 0.75) continue;
