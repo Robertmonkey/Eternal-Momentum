@@ -380,18 +380,6 @@ export function gameTick(mx, my) {
         }
     }
 
-    const architect = state.enemies.find(e => e.id === 'architect');
-    if(architect && architect.pillars) {
-        architect.pillars.forEach(pillar => {
-            const dist = Math.hypot(state.player.x - pillar.x, state.player.y - pillar.y);
-            if (dist < state.player.r + pillar.r) {
-                const angle = Math.atan2(state.player.y - pillar.y, state.player.x - pillar.x);
-                state.player.x = pillar.x + Math.cos(angle) * (state.player.r + pillar.r);
-                state.player.y = pillar.y + Math.sin(angle) * (state.player.r + pillar.r);
-            }
-        });
-    }
-
     const annihilator = state.enemies.find(e => e.id === 'annihilator' && e.pillar);
     if (annihilator) {
         const pillar = annihilator.pillar;
@@ -525,16 +513,16 @@ export function gameTick(mx, my) {
             state.effects.filter(eff => eff.type === 'repulsion_field').forEach(field => {
                 const dist = Math.hypot(e.x - field.x, e.y - field.y);
                 if (dist < field.radius + e.r) {
-                    if (field.isOverloaded) {
-                        if (!field.hitEnemies.has(e)) {
-                            const knockbackVelocity = 20;
-                            const angle = Math.atan2(e.y - field.y, e.x - field.x);
-                            e.knockbackDx = Math.cos(angle) * knockbackVelocity;
-                            e.knockbackDy = Math.sin(angle) * knockbackVelocity;
-                            e.knockbackUntil = Date.now() + 2000;
-                            field.hitEnemies.add(e);
-                        }
+                    // Kinetic Overload adds a one-time blast but keeps the persistent push
+                    if (field.isOverloaded && !field.hitEnemies.has(e)) {
+                        const knockbackVelocity = 20;
+                        const angle = Math.atan2(e.y - field.y, e.x - field.x);
+                        e.knockbackDx = Math.cos(angle) * knockbackVelocity;
+                        e.knockbackDy = Math.sin(angle) * knockbackVelocity;
+                        e.knockbackUntil = Date.now() + 2000;
+                        field.hitEnemies.add(e);
                     }
+                    // All repulsion fields have a persistent push
                     const knockbackForce = 5;
                     const angle = Math.atan2(e.y - field.y, e.x - field.x);
                     e.x += Math.cos(angle) * knockbackForce;
@@ -603,6 +591,8 @@ export function gameTick(mx, my) {
                             let pullStrength = e.boss ? 0.03 : 0.1;
                             e.x += (effect.x - e.x) * pullStrength;
                             e.y += (effect.y - e.y) * pullStrength;
+                            
+                            // Black hole only does damage with the talent
                             if (state.player.purchasedTalents.has('unstable-singularity') && dist < effect.radius + e.r && Date.now() - (effect.lastDamage.get(e) || 0) > effect.damageRate) {
                                 e.hp -= e.boss ? effect.damage : 15;
                                 e.hp -= 5 * state.player.talent_modifiers.damage_multiplier;
@@ -629,58 +619,6 @@ export function gameTick(mx, my) {
         let color = e.customColor || (e.boss ? e.color : "#c0392b"); if(e.isInfected) color = '#55efc4'; if(e.frozen) color = '#add8e6';
         if(!e.hasCustomDraw) utils.drawCircle(ctx, e.x,e.y,e.r, color);
         if(e.enraged) { ctx.strokeStyle = "yellow"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(e.x,e.y,e.r+5,0,2*Math.PI); ctx.stroke(); }
-        
-        if (e.id === 'obelisk' && e.isFiringBeam) {
-            const beamThickness = 10;
-            const beamLength = Math.hypot(canvas.width, canvas.height);
-            const beamEndX = e.x + Math.cos(e.beamAngle) * beamLength;
-            const beamEndY = e.y + Math.sin(e.beamAngle) * beamLength;
-            const L2 = Math.pow(e.x - beamEndX, 2) + Math.pow(e.y - beamEndY, 2);
-            let t = ((state.player.x - e.x) * (beamEndX - e.x) + (state.player.y - e.y) * (beamEndY - e.y)) / L2;
-            t = Math.max(0, Math.min(1, t));
-            const closestX = e.x + t * (beamEndX - e.x);
-            const closestY = e.y + t * (beamEndY - e.y);
-            const distToBeam = Math.hypot(state.player.x - closestX, state.player.y - closestY);
-
-            if (distToBeam < state.player.r + beamThickness / 2) {
-                if (!state.player.shield) {
-                    state.player.health -= 5;
-                    if(state.player.health <= 0) state.gameOver = true;
-                }
-                else state.player.shield = false;
-            }
-        }
-        
-        if (e.id === 'basilisk' && e.petrifyZones) {
-            e.petrifyZones.forEach(zone => {
-                const zoneX = zone.x - zone.sizeW / 2;
-                const zoneY = zone.y - zone.sizeH / 2;
-                const onCooldown = Date.now() < (zone.cooldownUntil || 0);
-
-                ctx.fillStyle = onCooldown ? `rgba(0, 184, 148, 0.05)` : `rgba(0, 184, 148, 0.2)`;
-                ctx.fillRect(zoneX, zoneY, zone.sizeW, zone.sizeH);
-
-                const player = state.player;
-                const isPlayerInside = player.x > zoneX && player.x < zoneX + zone.sizeW && player.y > zoneY && player.y < zoneY + zone.sizeH;
-
-                if (isPlayerInside && !onCooldown) {
-                    if (!zone.playerInsideTime) zone.playerInsideTime = Date.now();
-                    const stunProgress = (Date.now() - zone.playerInsideTime) / 1500;
-                    ctx.fillStyle = `rgba(0, 184, 148, 0.4)`;
-                    ctx.fillRect(zoneX, zoneY, zone.sizeW * stunProgress, zone.sizeH);
-
-                    if (stunProgress >= 1) {
-                        play('stoneCrackingSound');
-                        addStatusEffect('Petrified', '🗿', 2000);
-                        player.stunnedUntil = Date.now() + 2000;
-                        zone.playerInsideTime = null; 
-                        zone.cooldownUntil = Date.now() + 2000;
-                    }
-                } else {
-                    zone.playerInsideTime = null;
-                }
-            });
-        }
         
         const pDist = Math.hypot(state.player.x-e.x,state.player.y-e.y);
         if(pDist < e.r+state.player.r){
@@ -797,7 +735,15 @@ export function gameTick(mx, my) {
     for (let i = state.effects.length - 1; i >= 0; i--) {
         const effect = state.effects[i];
         
-        if (Date.now() > (effect.endTime || Infinity)) {
+        if (effect.type === 'black_hole') {
+             if (Date.now() > effect.endTime) { 
+                if (state.player.purchasedTalents.has('unstable-singularity')) { 
+                    state.effects.push({ type: 'shockwave', caster: state.player, x: effect.x, y: effect.y, radius: 0, maxRadius: effect.maxRadius, speed: 800, startTime: Date.now(), hitEnemies: new Set(), damage: 25 * state.player.talent_modifiers.damage_multiplier }); 
+                } 
+                state.effects.splice(i, 1); 
+                continue; 
+            } 
+        } else if (Date.now() > (effect.endTime || Infinity)) {
             if (effect.type === 'paradox_echo') stopLoopingSfx('paradoxTrailHum');
             if (effect.type === 'shrinking_box') stopLoopingSfx('wallShrink');
             state.effects.splice(i, 1);
@@ -944,14 +890,7 @@ export function gameTick(mx, my) {
             } 
             ctx.strokeStyle = effect.color || 'rgba(230, 126, 34, 0.8)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(effect.x, effect.y, 50 * (1-progress), 0, Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(effect.x-10, effect.y); ctx.lineTo(effect.x+10, effect.y); ctx.moveTo(effect.x, effect.y-10); ctx.lineTo(effect.x, effect.y+10); ctx.stroke(); 
         }
-        else if (effect.type === 'black_hole') {
-            if (Date.now() > effect.endTime) { 
-                if (state.player.purchasedTalents.has('unstable-singularity')) { 
-                    state.effects.push({ type: 'shockwave', caster: state.player, x: effect.x, y: effect.y, radius: 0, maxRadius: effect.maxRadius, speed: 800, startTime: Date.now(), hitEnemies: new Set(), damage: 25 * state.player.talent_modifiers.damage_multiplier }); 
-                } 
-                state.effects.splice(i, 1); 
-                continue; 
-            } 
+        else if (effect.type === 'black_hole') { 
             const elapsed = Date.now() - effect.startTime;
             const progress = Math.min(1, elapsed / effect.duration);
             const currentPullRadius = effect.maxRadius * progress; 
@@ -1031,7 +970,7 @@ export function gameTick(mx, my) {
 
                 const angleToPillarCheck = Math.atan2(pillar.y - source.y, pillar.x - source.x);
                 const angleToTangentCheck = Math.asin(pillar.r / distToPillarCheck);
-                const targetAngle = Math.atan2(target.y - source.y, target.x - source.y);
+                const targetAngle = Math.atan2(target.y - source.y, target.x - source.x);
                 let angleDiff = (targetAngle - angleToPillarCheck + Math.PI * 3) % (Math.PI * 2) - Math.PI;
 
                 const isSafe = Math.abs(angleDiff) < angleToTangentCheck && Math.hypot(target.x - source.x, target.y - source.y) > distToPillarCheck;
