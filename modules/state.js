@@ -22,13 +22,15 @@ export const state = {
     contingencyUsed: false,
     preordinanceUsed: false,
     
-    // --- FIX: Added the missing power_spawn_rate_modifier property ---
+    unlockedAberrationCores: new Set(),
+    equippedAberrationCore: null,
+    
     talent_modifiers: {
         damage_multiplier: 1.0,
         damage_taken_multiplier: 1.0,
         pickup_radius_bonus: 0,
         essence_gain_modifier: 1.0,
-        power_spawn_rate_modifier: 1.0, // This line fixes the bug
+        power_spawn_rate_modifier: 1.0, // Bug fix is included
         pull_resistance_modifier: 0,
     },
 
@@ -39,6 +41,21 @@ export const state = {
         },
         reactivePlating: {
             cooldownUntil: 0,
+        },
+        core_states: {
+            architect: { lastPillarTime: 0 },
+            mirror_mirage: { cooldownUntil: 0 },
+            puppeteer: { lastConversion: 0 },
+            splitter: { cooldownUntil: 0 },
+            swarm_link: { tail: [], enemiesForNextSegment: 0 },
+            epoch_ender: { cooldownUntil: 0, history: [] },
+            pantheon: { lastCycleTime: 0, activeCore: null },
+            syphon: { canUse: true },
+            juggernaut: { isCharging: false, lastMoveTime: 0 },
+            annihilator: { isChargingBeam: false },
+            shaper_of_fate: { isDisabled: false },
+            helix_weaver: { lastBolt: 0 },
+            gravity: { lastPulseTime: 0 },
         }
     }
   },
@@ -73,6 +90,8 @@ export function savePlayerState() {
         highestStageBeaten: state.player.highestStageBeaten,
         unlockedOffensiveSlots: state.player.unlockedOffensiveSlots,
         unlockedDefensiveSlots: state.player.unlockedDefensiveSlots,
+        unlockedAberrationCores: [...state.player.unlockedAberrationCores],
+        equippedAberrationCore: state.player.equippedAberrationCore,
     };
     localStorage.setItem('eternalMomentumSave', JSON.stringify(persistentData));
 }
@@ -85,8 +104,10 @@ export function loadPlayerState() {
             unlockedOffensiveSlots: 1,
             unlockedDefensiveSlots: 1,
             ...parsedData,
-            unlockedPowers: new Set(parsedData.unlockedPowers),
-            purchasedTalents: new Map(parsedData.purchasedTalents),
+            unlockedPowers: new Set(parsedData.unlockedPowers || []),
+            purchasedTalents: new Map(parsedData.purchasedTalents || []),
+            unlockedAberrationCores: new Set(parsedData.unlockedAberrationCores || []),
+            equippedAberrationCore: parsedData.equippedAberrationCore || null,
         };
         Object.assign(state.player, playerData);
     }
@@ -104,6 +125,23 @@ export function resetGame(isArena = false) {
     state.player.talent_states.phaseMomentum.lastDamageTime = Date.now();
     state.player.talent_states.reactivePlating.cooldownUntil = 0;
     
+    // Reset core states
+    Object.keys(state.player.talent_states.core_states).forEach(key => {
+        const coreState = state.player.talent_states.core_states[key];
+        Object.keys(coreState).forEach(prop => {
+            if (Array.isArray(coreState[prop])) {
+                coreState[prop] = [];
+            } else if (typeof coreState[prop] === 'boolean') {
+                coreState[prop] = key === 'syphon' ? true : false;
+            } else if (typeof coreState[prop] === 'string' || coreState[prop] === null) {
+                coreState[prop] = null;
+            }
+            else {
+                coreState[prop] = 0;
+            }
+        });
+    });
+
     state.player.contingencyUsed = false;
     state.player.preordinanceUsed = false;
     
