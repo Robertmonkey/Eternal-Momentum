@@ -383,6 +383,9 @@ export function gameTick(mx, my) {
     if (state.isPaused) return true;
     const now = Date.now();
 
+    // --- FIX: Declare timeEater variable at the start of the function scope ---
+    const timeEater = state.enemies.find(e => e.id === 'time_eater');
+
     if (!state.gameOver) {
         if (state.arenaMode) {
             if (!state.bossHasSpawnedThisRun) {
@@ -1017,7 +1020,6 @@ export function gameTick(mx, my) {
     for (let i = state.pickups.length - 1; i >= 0; i--) {
         const p = state.pickups[i];
         if (p.lifeEnd && now > p.lifeEnd) { state.pickups.splice(i, 1); continue; }
-        const timeEater = state.enemies.find(en => en.id === 'time_eater');
         const slowZones = timeEater ? state.effects.filter(eff => eff.type === 'slow_zone') : [];
         if (timeEater && !p.eatenBy) {
             for (const zone of slowZones) {
