@@ -424,21 +424,44 @@ export const bossData = [{
     mechanics_desc: "Teleports to a random location on the battlefield every few seconds. The teleportation frequency increases as it takes damage, making it a highly mobile and unpredictable target.",
     init: b => {
         b.lastTeleport = 0;
+        b.teleportingAt = 0;
+        b.teleportTarget = null;
     },
     logic: (b, ctx, state, utils, gameHelpers, aspectState) => {
-        // Use aspect-specific timer if available (for Pantheon)
         const timer = aspectState ? 'lastActionTime' : 'lastTeleport';
-        const lastTime = aspectState ? aspectState[timer] : b[timer];
-        
+        let lastTime = aspectState ? aspectState[timer] : b[timer];
         const interval = b.hp < b.maxHP * 0.25 ? 1500 : (b.hp < b.maxHP * 0.5 ? 2000 : 2500);
-        if (Date.now() - (lastTime || 0) > interval) {
+
+        // Condition to start the teleport sequence
+        if (Date.now() - (lastTime || 0) > interval && !b.teleportingAt) {
+            b.teleportingAt = Date.now() + 1000; // 1 second warning
+            b.teleportTarget = {
+                x: utils.randomInRange(b.r, ctx.canvas.width - b.r),
+                y: utils.randomInRange(b.r, ctx.canvas.height - b.r)
+            };
+            state.effects.push({
+                type: 'teleport_indicator',
+                x: b.teleportTarget.x,
+                y: b.teleportTarget.y,
+                r: b.r,
+                endTime: b.teleportingAt
+            });
+            gameHelpers.play('chargeUpSound');
+            utils.spawnParticles(state.particles, b.x, b.y, "#fff", 30, 4, 20); // Particles on departure
+        }
+
+        // Condition to execute the teleport
+        if (b.teleportingAt && Date.now() > b.teleportingAt) {
+            b.x = b.teleportTarget.x;
+            b.y = b.teleportTarget.y;
+
             if (aspectState) aspectState[timer] = Date.now();
             else b[timer] = Date.now();
-
+            
+            b.teleportingAt = 0;
+            b.teleportTarget = null;
+            
             gameHelpers.play('mirrorSwap');
-            utils.spawnParticles(state.particles, b.x, b.y, "#fff", 30, 4, 20);
-            b.x = utils.randomInRange(b.r, ctx.canvas.width - b.r);
-            b.y = utils.randomInRange(b.r, ctx.canvas.height - b.r);
             utils.spawnParticles(state.particles, b.x, b.y, "#fff", 30, 4, 20);
         }
     }
