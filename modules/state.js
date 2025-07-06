@@ -44,14 +44,12 @@ export const state = {
         core_states: {
             architect: {
                 lastPillarTime: 0,
-                pillars: [],
             },
             mirror_mirage: {
                 cooldownUntil: 0,
             },
             puppeteer: {
                 lastConversion: 0,
-                puppets: [],
             },
             splitter: {
                 cooldownUntil: 0,
@@ -76,11 +74,12 @@ export const state = {
                 lastMoveTime: 0,
             },
             miasma: {
-                lastHealTime: 0,
+                isPurifying: false,
             },
             annihilator: {
                 cooldownUntil: 0,
                 attunedEnemy: null,
+                isChargingBeam: false,
             },
             shaper_of_fate: {
                 isDisabled: false,
