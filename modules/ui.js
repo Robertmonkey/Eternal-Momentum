@@ -1,5 +1,5 @@
 // modules/ui.js
-import { state } from './state.js';
+import { state, savePlayerState } from './state.js';
 import { powers } from './powers.js';
 import { bossData } from './bosses.js';
 import { STAGE_CONFIG } from './config.js';
@@ -347,7 +347,7 @@ export function showCustomConfirm(title, text, onConfirm) {
     customConfirm.style.display = 'flex';
 }
 
-// --- NEW: Function to populate the Aberration Core modal ---
+// --- UPDATED: Function to populate the Aberration Core modal with unlock fix ---
 export function populateAberrationCoreMenu(onEquip) {
     if (!aberrationCoreListContainer) return;
     aberrationCoreListContainer.innerHTML = '';
@@ -360,9 +360,16 @@ export function populateAberrationCoreMenu(onEquip) {
 
 
     bossData.forEach(core => {
-        if (!core.core_desc) return; // Only show bosses that are designed as cores
+        if (!core.core_desc) return;
 
-        const isUnlocked = state.player.unlockedAberrationCores.has(core.id);
+        // --- FIX: Check level requirement and update save file if newly unlocked ---
+        let isUnlocked = state.player.unlockedAberrationCores.has(core.id);
+        if (!isUnlocked && state.player.level >= core.unlock_level) {
+            state.player.unlockedAberrationCores.add(core.id);
+            savePlayerState(); // Persist the unlock immediately
+            isUnlocked = true;
+        }
+        
         const isEquipped = state.player.equippedAberrationCore === core.id;
 
         const item = document.createElement('div');
