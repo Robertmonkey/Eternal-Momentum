@@ -22,7 +22,6 @@ function stopLoopingSfx(soundId) {
     AudioManager.stopLoopingSfx(soundId);
 }
 
-// --- NEW: Pass core handlers to gameHelpers ---
 const gameHelpers = { addStatusEffect, spawnEnemy, spawnPickup, play, stopLoopingSfx, playLooping, addEssence, useSyphonCore, useLoopingEyeCore };
 const spawnParticlesCallback = (x, y, c, n, spd, life, r) => utils.spawnParticles(state.particles, x, y, c, n, spd, life, r);
 
@@ -37,6 +36,21 @@ export function addStatusEffect(name, emoji, duration) {
         }
     }
 
+    // Handle stackable charges for Obelisk Core
+    if (name === 'Conduit Charge') {
+        const existing = state.player.statusEffects.find(e => e.name === name);
+        if(existing) {
+            existing.count = Math.min(3, (existing.count || 1) + 1);
+            existing.emoji = '⚡'.repeat(existing.count);
+            existing.endTime = now + duration;
+            return;
+        } else {
+            const effect = { name, emoji, startTime: now, endTime: now + duration, count: 1 };
+            state.player.statusEffects.push(effect);
+            return;
+        }
+    }
+    
     state.player.statusEffects = state.player.statusEffects.filter(e => e.name !== name);
     state.player.statusEffects.push({ name, emoji, startTime: now, endTime: now + duration });
 }
@@ -72,9 +86,6 @@ export function handleThematicUnlock(stageJustCleared) {
     }
 }
 
-
-// --- NEW ---
-// Function to handle unlocking Aberration Cores based on player level
 function handleCoreUnlocks(newLevel) {
     const coreData = bossData.find(b => b.unlock_level === newLevel);
     if (coreData && !state.player.unlockedAberrationCores.has(coreData.id)) {
@@ -84,17 +95,14 @@ function handleCoreUnlocks(newLevel) {
     }
 }
 
-
 function levelUp() {
     state.player.level++;
     state.player.essence -= state.player.essenceToNextLevel;
-    // --- UPDATED: Gentler leveling curve ---
     state.player.essenceToNextLevel = Math.floor(state.player.essenceToNextLevel * 1.18);
     state.player.ascensionPoints += 1;
     utils.spawnParticles(state.particles, state.player.x, state.player.y, '#00ffff', 80, 6, 50, 5);
     
-    // --- NEW: Check for core unlocks on level up ---
-    if (state.player.level === 10 && state.player.unlockedAberrationCores.size === 0) {
+    if (state.player.level >= 10 && !state.player.unlockedAberrationCores.has('splitter')) {
         showUnlockNotification("SYSTEM ONLINE", "Aberration Core Socket Unlocked");
     }
     handleCoreUnlocks(state.player.level);
@@ -107,7 +115,6 @@ export function addEssence(amount) {
 
     let modifiedAmount = Math.floor(amount * state.player.talent_modifiers.essence_gain_modifier);
     
-    // --- NEW: Essence Transmutation Talent ---
     if (state.player.purchasedTalents.has('essence-transmutation')) {
         const essenceBefore = state.player.essence % 50;
         const healthGain = Math.floor((essenceBefore + modifiedAmount) / 50);
@@ -1027,13 +1034,7 @@ export function gameTick(mx, my) {
             if (state.player.equippedAberrationCore === 'obelisk') {
                 const currentCharges = state.player.statusEffects.find(e => e.name === 'Conduit Charge');
                 if (!currentCharges || currentCharges.count < 3) {
-                    if(currentCharges) {
-                        currentCharges.count++;
-                        currentCharges.endTime = now + 99999;
-                    } else {
-                        addStatusEffect('Conduit Charge', '⚡', 99999);
-                        state.player.statusEffects.find(e => e.name === 'Conduit Charge').count = 1;
-                    }
+                    addStatusEffect('Conduit Charge', '⚡', 99999);
                 }
             }
 
@@ -1416,11 +1417,10 @@ export function gameTick(mx, my) {
         else if (effect.type === 'syphon_cone') {
             const { source, endTime, isPlayer } = effect;
             const remainingTime = endTime - now;
-            
             const coneAngle = Math.PI / 4;
             const coneLength = canvas.height;
-            const progress = 1 - (remainingTime) / 500;
-            ctx.globalAlpha = 0.5 * progress;
+            
+            ctx.globalAlpha = 0.5 * (1 - (remainingTime / 500));
             ctx.fillStyle = '#9b59b6';
             ctx.beginPath();
             ctx.moveTo(source.x, source.y);
@@ -1671,9 +1671,9 @@ export function gameTick(mx, my) {
             ctx.textAlign = 'left';
             if(Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < state.player.r + effect.r) {
                 switch(effect.runeType) {
-                    case 'damage': addStatusEffect('Rune: Damage', '🔥', 99999); break;
-                    case 'defense': addStatusEffect('Rune: Defense', '🛡️', 99999); break;
-                    case 'utility': addStatusEffect('Rune: Utility', '🚀', 99999); break;
+                    case 'damage': addStatusEffect('Rune: Damage', '🔥', 99999); state.player.talent_modifiers.damage_multiplier *= 1.10; break;
+                    case 'defense': addStatusEffect('Rune: Defense', '🛡️', 99999); state.player.maxHealth *= 1.10; state.player.health *= 1.10; break;
+                    case 'utility': addStatusEffect('Rune: Utility', '🚀', 99999); break; // Placeholder for now
                 }
                 state.effects = state.effects.filter(e => e.type !== 'shaper_rune_pickup');
                 state.player.talent_states.core_states.shaper_of_fate.isDisabled = false;
