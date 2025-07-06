@@ -1,12 +1,12 @@
 // modules/main.js
-import { state, resetGame, loadPlayerState, savePlayerState } from './state.js';
-import { bossData } from './bosses.js';
-import { AudioManager } from './audio.js';
-import { updateUI, populateLevelSelect, showCustomConfirm, populateOrreryMenu, populateAberrationCoreMenu } from './ui.js';
-import { gameTick, spawnBossesForStage, addStatusEffect, addEssence } from './gameLoop.js';
-import { usePower } from './powers.js';
-import * as utils from './utils.js';
-import { renderAscensionGrid, applyAllTalentEffects } from './ascension.js';
+import { state, resetGame, loadPlayerState, savePlayerState } from './modules/state.js';
+import { bossData } from './modules/bosses.js';
+import { AudioManager } from './modules/audio.js';
+import { updateUI, populateLevelSelect, showCustomConfirm, populateOrreryMenu, populateAberrationCoreMenu } from './modules/ui.js';
+import { gameTick, spawnBossesForStage, addStatusEffect, addEssence } from './modules/gameLoop.js';
+import { usePower } from './modules/powers.js';
+import * as utils from './modules/utils.js';
+import { renderAscensionGrid, applyAllTalentEffects } from './modules/ascension.js';
 
 window.addAP = function(amount) {
     if (typeof amount !== 'number' || amount <= 0) {
