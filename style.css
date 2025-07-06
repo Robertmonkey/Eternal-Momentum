@@ -100,9 +100,13 @@ canvas { display:block; width:100vw; height:100vh; }
   display: flex; justify-content: space-between; align-items: center;
   padding: 0 20px; color: var(--font-color); pointer-events: all;
 }
-.ui-pod { text-align: center; font-size: 1.1rem; line-height: 1.5; flex-basis: 150px; flex-shrink: 0; }
-.left-pod { text-align: left; }
-.right-pod { text-align: right; display: flex; gap: 10px; justify-content: flex-end; align-items: center;}
+.ui-pod { 
+    text-align: center; font-size: 1.1rem; line-height: 1.5; 
+    flex-basis: 150px; flex-shrink: 0; 
+    display: flex; flex-direction: column;
+}
+.left-pod { text-align: left; align-items: flex-start; }
+.right-pod { text-align: right; display: flex; flex-direction: row; gap: 10px; justify-content: flex-end; align-items: center;}
 
 .core-display { 
     height: 100%; display: flex; align-items: center; justify-content: center;
@@ -189,10 +193,19 @@ canvas { display:block; width:100vw; height:100vh; }
 
 [data-tooltip-text]:hover::before {
   content: attr(data-tooltip-text);
-  position: absolute; top: -30px; left: 50%; transform: translateX(-50%);
-  background: black; color: white; padding: 4px 8px; border-radius: 4px;
-  font-size: 0.9rem; white-space: nowrap; z-index: 10;
+  position: absolute;
+  bottom: 110%; /* Position above the element */
+  left: 50%;
+  transform: translateX(-50%);
+  background: black;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  z-index: 10;
 }
+
 
 button {
   background: rgba(0, 255, 255, 0.2); border: 1px solid var(--border-color);
@@ -202,7 +215,7 @@ button {
 }
 button:hover { background: rgba(0, 255, 255, 0.4); }
 
-#bossBanner, #levelSelectModal, #bossHpContainer, #vignette, #ascensionGridModal, #unlock-notification, #gameOverMenu, #custom-confirm, #orreryModal, #bossInfoModal { position:absolute; z-index: 100; }
+#bossBanner, #levelSelectModal, #bossHpContainer, #vignette, #ascensionGridModal, #unlock-notification, #gameOverMenu, #custom-confirm, #orreryModal, #bossInfoModal, #aberrationCoreModal { position:absolute; z-index: 100; }
 #bossBanner { top:30%; width:100%; text-align:center; font-size:2rem; color:#f1c40f; text-shadow:2px 2px 4px black; opacity:0; transition:opacity 1s; pointer-events: none; }
 #bossHpContainer { top: 8px; left: 50%; transform: translateX(-50%); width: 80%; max-width: 400px; display: flex; flex-direction: column; gap: 5px; transition: all 0.3s ease-in-out; }
 .boss-hp-bar-wrapper { width: 100%; background: rgba(0,0,0,0.5); border: 1px solid #fff; border-radius: 6px; padding: 2px; box-sizing: border-box; transition: all 0.3s ease-in-out; }
@@ -393,6 +406,57 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
   text-shadow: 0 0 8px var(--primary-glow);
 }
 
+/* --- NEW: Aberration Core Socket --- */
+@keyframes core-pulse {
+    0% { box-shadow: 0 0 8px var(--border-color); }
+    50% { box-shadow: 0 0 16px var(--primary-glow); }
+    100% { box-shadow: 0 0 8px var(--border-color); }
+}
+@keyframes core-active-glow {
+    0% { box-shadow: 0 0 12px var(--nexus-glow); }
+    50% { box-shadow: 0 0 24px #0f0, 0 0 8px #fff; }
+    100% { box-shadow: 0 0 12px var(--nexus-glow); }
+}
+
+#aberration-core-socket {
+    width: 44px;
+    height: 44px;
+    border: 2px solid var(--border-color);
+    border-radius: 50%;
+    margin-top: 8px;
+    cursor: pointer;
+    display: none; /* Hidden by default */
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0,0,0,0.5);
+    transition: all 0.3s ease;
+    animation: core-pulse 3s infinite;
+}
+#aberration-core-socket.unlocked {
+    display: flex;
+}
+#aberration-core-socket.active {
+    border-color: var(--nexus-glow);
+    animation: core-active-glow 2.5s infinite;
+}
+#aberration-core-socket:hover {
+    transform: scale(1.1);
+    background-color: rgba(0, 255, 255, 0.2);
+}
+#aberration-core-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: var(--primary-glow);
+    position: relative;
+    overflow: hidden;
+}
+
+
 #ascensionGridModal {
     top: 0; left: 0; width: 100%; height: 100%; 
     background: rgba(10, 10, 20, 0.8);
@@ -477,7 +541,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     background: #ff40ff;
     box-shadow: 0 0 15px #ff40ff;
 }
-#clearSaveBtn {
+#clearSaveBtn, #unequipCoreBtn {
     background: #c0392b;
     border-color: #e74c3c;
     font-weight: bold;
@@ -485,7 +549,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     width: auto;
     height: auto;
 }
-#clearSaveBtn:hover {
+#clearSaveBtn:hover, #unequipCoreBtn:hover {
     background: #e74c3c;
     box-shadow: 0 0 10px #e74c3c;
 }
@@ -1193,4 +1257,107 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     background-color: rgba(255, 136, 0, 0.4);
     color: #fff;
     box-shadow: 0 0 12px #ff8800;
+}
+
+/* --- NEW: Aberration Core Modal --- */
+#aberrationCoreModal {
+    top: 0; left: 0; width: 100%; height: 100%; 
+    background: rgba(10, 10, 20, 0.8);
+    backdrop-filter: blur(8px) brightness(0.7);
+    display: none;
+    align-items: center; justify-content: center; 
+    color: var(--font-color);
+    pointer-events: all;
+    z-index: 101;
+}
+#aberration-core-container {
+    width: 90%; max-width: 800px;
+    height: 80vh;
+    background: var(--ui-bg);
+    border: 2px solid var(--nexus-glow);
+    border-radius: 15px;
+    box-shadow: 0 0 30px var(--nexus-glow);
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    box-sizing: border-box;
+}
+#aberration-core-equipped-display {
+    text-align: right;
+    font-size: 1rem;
+}
+#aberration-core-equipped-display span:first-child {
+    opacity: 0.7;
+    margin-right: 10px;
+}
+#aberration-core-equipped-name {
+    font-weight: bold;
+    color: var(--nexus-glow);
+}
+#aberration-core-list-container {
+    flex-grow: 1;
+    overflow-y: auto;
+    margin-top: 15px;
+    padding-right: 10px;
+}
+#aberration-core-list-container::-webkit-scrollbar { width: 8px; }
+#aberration-core-list-container::-webkit-scrollbar-track { background: rgba(0,0,0,0.5); border-radius: 4px; }
+#aberration-core-list-container::-webkit-scrollbar-thumb { background: var(--nexus-glow); border-radius: 4px; }
+
+.aberration-core-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 12px;
+    background: rgba(0, 255, 0, 0.05);
+    border: 1px solid var(--nexus-glow);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: background-color 0.2s, box-shadow 0.2s;
+}
+.aberration-core-item:hover {
+    background-color: rgba(0, 255, 0, 0.1);
+    box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+}
+.aberration-core-item.equipped {
+    background-color: rgba(0, 255, 0, 0.15);
+    box-shadow: 0 0 15px var(--nexus-glow), inset 0 0 10px rgba(0, 255, 0, 0.3);
+    border-width: 2px;
+}
+.aberration-core-item.locked {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background-color: rgba(128, 128, 128, 0.1);
+    border-color: rgba(128, 128, 128, 0.5);
+}
+.aberration-core-item.locked:hover {
+    background-color: rgba(128, 128, 128, 0.1);
+    box-shadow: none;
+}
+.core-item-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+}
+.core-item-details {
+    display: flex;
+    flex-direction: column;
+}
+.core-item-name {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: var(--nexus-glow);
+    margin-bottom: 4px;
+}
+.core-item-desc {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    opacity: 0.9;
+}
+.locked .core-item-name {
+    color: #aaa;
 }
