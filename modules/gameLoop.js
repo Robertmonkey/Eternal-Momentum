@@ -1078,32 +1078,72 @@ export function gameTick(mx, my) {
             ctx.stroke();
         }
         else if (effect.type === 'shrinking_box') {
-            playLooping('wallShrink');
-            const progress = (now - effect.startTime) / effect.duration;
-            const currentSize = effect.initialSize * (1 - progress);
-            const halfSize = currentSize / 2;
-            const left = effect.x - halfSize, right = effect.x + halfSize, top = effect.y - halfSize, bottom = effect.y + halfSize;
-            ctx.strokeStyle = 'rgba(211, 84, 0, 0.8)'; ctx.lineWidth = 10; ctx.shadowColor = '#d35400'; ctx.shadowBlur = 20;
-            const gapSize = 150 * (1 - progress);
-            const walls = [{x1:left,y1:top,x2:right,y2:top},{x1:right,y1:top,x2:right,y2:bottom},{x1:right,y1:bottom,x2:left,y2:bottom},{x1:left,y1:bottom,x2:left,y2:top}];
-            walls.forEach((wall, index) => {
-                const wallLength = Math.hypot(wall.x2 - wall.x1, wall.y2 - wall.y1);
-                let hit = false;
-                if (index === effect.gapSide) {
-                    const gapStart = (wallLength - gapSize) * effect.gapPosition, gapEnd = gapStart + gapSize;
-                    const p1 = {x:wall.x1+(wall.x2-wall.x1)*(gapStart/wallLength),y:wall.y1+(wall.y2-wall.y1)*(gapStart/wallLength)};
-                    const p2 = {x:wall.x1+(wall.x2-wall.x1)*(gapEnd/wallLength),y:wall.y1+(wall.y2-wall.y1)*(gapEnd/wallLength)};
-                    ctx.beginPath(); ctx.moveTo(wall.x1,wall.y1); ctx.lineTo(p1.x, p1.y); ctx.stroke();
-                    ctx.beginPath(); ctx.moveTo(p2.x,p2.y); ctx.lineTo(wall.x2, wall.y2); ctx.stroke();
-                    if(utils.lineCircleCollision(wall.x1,wall.y1,p1.x,p1.y,state.player.x,state.player.y,state.player.r) || utils.lineCircleCollision(p2.x,p2.y,wall.x2,wall.y2,state.player.x,state.player.y,state.player.r)) hit=true;
-                } else {
-                    ctx.beginPath(); ctx.moveTo(wall.x1,wall.y1); ctx.lineTo(wall.x2, wall.y2); ctx.stroke();
-                    if(utils.lineCircleCollision(wall.x1,wall.y1,wall.x2,wall.y2,state.player.x,state.player.y,state.player.r)) hit=true;
-                }
-                if(hit && !state.player.shield) { state.player.health-=1; if(state.player.health<=0)state.gameOver=true;} else if (hit) { state.player.shield=false; }
-            });
-            ctx.shadowBlur = 0;
+    playLooping('wallShrink');
+    const progress = (now - effect.startTime) / effect.duration;
+    const currentSize = effect.initialSize * (1 - progress);
+    const halfSize = currentSize / 2;
+    const left = effect.x - halfSize, right = effect.x + halfSize, top = effect.y - halfSize, bottom = effect.y + halfSize;
+    ctx.strokeStyle = 'rgba(211, 84, 0, 0.8)'; ctx.lineWidth = 10; ctx.shadowColor = '#d35400'; ctx.shadowBlur = 20;
+    const gapSize = 150 * (1 - progress);
+    const walls = [{x1:left,y1:top,x2:right,y2:top},{x1:right,y1:top,x2:right,y2:bottom},{x1:right,y1:bottom,x2:left,y2:bottom},{x1:left,y1:bottom,x2:left,y2:top}];
+    walls.forEach((wall, index) => {
+        const wallLength = Math.hypot(wall.x2 - wall.x1, wall.y2 - wall.y1);
+        let hit = false;
+        
+        let wallSegment1 = { x1: wall.x1, y1: wall.y1, x2: wall.x2, y2: wall.y2 };
+        let wallSegment2 = null;
+
+        if (index === effect.gapSide) {
+            const gapStart = (wallLength - gapSize) * effect.gapPosition, gapEnd = gapStart + gapSize;
+            const p1 = {x:wall.x1+(wall.x2-wall.x1)*(gapStart/wallLength),y:wall.y1+(wall.y2-wall.y1)*(gapStart/wallLength)};
+            const p2 = {x:wall.x1+(wall.x2-wall.x1)*(gapEnd/wallLength),y:wall.y1+(wall.y2-wall.y1)*(gapEnd/wallLength)};
+            ctx.beginPath(); ctx.moveTo(wall.x1,wall.y1); ctx.lineTo(p1.x, p1.y); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(p2.x,p2.y); ctx.lineTo(wall.x2, wall.y2); ctx.stroke();
+            
+            wallSegment1 = { x1: wall.x1, y1: wall.y1, x2: p1.x, y2: p1.y };
+            wallSegment2 = { x1: p2.x, y1: p2.y, x2: wall.x2, y2: wall.y2 };
+
+            if(utils.lineCircleCollision(wallSegment1.x1, wallSegment1.y1, wallSegment1.x2, wallSegment1.y2, state.player.x, state.player.y, state.player.r) || 
+               utils.lineCircleCollision(wallSegment2.x1, wallSegment2.y1, wallSegment2.x2, wallSegment2.y2, state.player.x, state.player.y, state.player.r)) {
+               hit = true;
+            }
+
+        } else {
+            ctx.beginPath(); ctx.moveTo(wall.x1,wall.y1); ctx.lineTo(wall.x2, wall.y2); ctx.stroke();
+            if(utils.lineCircleCollision(wall.x1,wall.y1,wall.x2,wall.y2,state.player.x,state.player.y,state.player.r)) {
+                hit=true;
+            }
         }
+
+        if (hit) {
+            // Player Blocking Logic
+            const overlap = 2; // A small buffer to push the player out
+            if (wall.x1 === wall.x2) { // Vertical wall
+                if (state.player.x < wall.x1) {
+                    state.player.x = wall.x1 - state.player.r - overlap;
+                } else {
+                    state.player.x = wall.x1 + state.player.r + overlap;
+                }
+            }
+            if (wall.y1 === wall.y2) { // Horizontal wall
+                 if (state.player.y < wall.y1) {
+                    state.player.y = wall.y1 - state.player.r - overlap;
+                } else {
+                    state.player.y = wall.y1 + state.player.r + overlap;
+                }
+            }
+
+            // Damage Logic
+            if (!state.player.shield) { 
+                state.player.health-=1; 
+                if(state.player.health<=0) state.gameOver=true;
+            } else if (hit) { 
+                state.player.shield=false; 
+            }
+        }
+    });
+    ctx.shadowBlur = 0;
+}
         else if (effect.type === 'shaper_rune') {
             const progress = 1 - (effect.endTime - now) / 4000;
             const size = effect.r * (1 - progress * 0.5);
