@@ -4,6 +4,7 @@ let screenShakeEnd = 0;
 let screenShakeMagnitude = 0;
 
 export function drawCircle(ctx, x, y, r, c) {
+    if (r <= 0) return; // Safeguard to prevent negative radius errors
     ctx.fillStyle = c;
     ctx.beginPath();
     ctx.arc(x, y, r, 0, 2 * Math.PI);
@@ -49,8 +50,10 @@ export function updateParticles(ctx, particles) {
         ctx.globalAlpha = p.life / p.maxLife;
         ctx.fillStyle = p.color;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, 2 * Math.PI);
-        ctx.fill();
+        if (p.r > 0) { // Safeguard for particles
+            ctx.arc(p.x, p.y, p.r, 0, 2 * Math.PI);
+            ctx.fill();
+        }
         if (p.life <= 0) particles.splice(i, 1);
     }
     ctx.globalAlpha = 1;
@@ -79,7 +82,6 @@ export function drawLightning(ctx, x1, y1, x2, y2, color, width = 2) {
     const dx = x2 - x1, dy = y2 - y1;
     const dist = Math.hypot(dx, dy);
     const segments = Math.floor(dist / 15);
-    // --- FIX: Added the missing definition for perpAngle ---
     const perpAngle = Math.atan2(dy, dx) + Math.PI / 2;
     for (let i = 1; i < segments; i++) {
         const pos = i / segments;
