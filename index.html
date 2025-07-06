@@ -55,15 +55,26 @@
 
   <div id="ui-container">
     <div class="command-bar">
-        <div class="ui-pod left-pod">
-            <div id="ascension-bar-container">
-                <div id="ascension-bar-fill"></div>
-                <div id="ascension-bar-text">LVL 1</div>
-            </div>
-            <div id="ascension-points-display">AP: 0</div>
+      <div class="hud-group-powers">
+        <div class="ability-queue defensive">
+            <div class="queue-slot" id="q-def-1"></div>
+            <div class="queue-slot" id="q-def-2"></div>
         </div>
+        <div class="abilities">
+            <div class="ability-slot" id="slot-def-0" data-tooltip-text="Defensive Power (Right-Click)"></div>
+            <div class="ability-slot main" id="slot-off-0" data-tooltip-text="Offensive Power (Left-Click)"></div>
+        </div>
+        <div class="ability-queue offensive">
+            <div class="queue-slot" id="q-off-1"></div>
+            <div class="queue-slot" id="q-off-2"></div>
+        </div>
+      </div>
 
-        <div class="central-hud">
+      <div class="hud-group-center">
+          <div id="aberration-core-socket" data-tooltip-text="No Core Attuned">
+              <div id="aberration-core-icon">◎</div>
+          </div>
+          <div class="health-cluster">
             <div id="status-effects-bar"></div>
             <div id="health-bar-container">
                 <div id="shield-bar-overlay"></div>
@@ -71,32 +82,25 @@
                 <div id="health-bar-text">100 / 100</div>
                 <div id="health-bar-sheen"></div>
             </div>
-            <div class="core-display">
-                <div class="ability-cluster">
-                    <div id="aberration-core-socket" data-tooltip-text="No Core Attuned">
-                        <div id="aberration-core-icon">◎</div>
-                    </div>
-                    <div class="ability-queue defensive">
-                        <div class="queue-slot" id="q-def-1"></div>
-                        <div class="queue-slot" id="q-def-2"></div>
-                    </div>
-                    <div class="abilities">
-                        <div class="ability-slot" id="slot-def-0" data-tooltip-text="Defensive Power (Right-Click)"></div>
-                        <div class="ability-slot main" id="slot-off-0" data-tooltip-text="Offensive Power (Left-Click)"></div>
-                    </div>
-                    <div class="ability-queue offensive">
-                        <div class="queue-slot" id="q-off-1"></div>
-                        <div class="queue-slot" id="q-off-2"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
+          </div>
+      </div>
 
-        <div class="ui-pod right-pod">
-            <button id="ascensionBtn" title="Ascension Conduit">💠</button>
-            <button id="levelSelectBtn" title="Stage Select">🗺️</button>
-            <button id="soundToggle">🔊</button>
-        </div>
+      <div class="hud-group-info">
+          <div class="info-top-row">
+               <div id="ascension-points-display">AP: 0</div>
+               <div class="info-buttons">
+                   <button id="ascensionBtn" title="Ascension Conduit">💠</button>
+                   <button id="levelSelectBtn" title="Stage Select">🗺️</button>
+                   <button id="soundToggle">🔊</button>
+               </div>
+          </div>
+          <div class="info-bottom-row">
+               <div id="ascension-bar-container">
+                  <div id="ascension-bar-fill"></div>
+                  <div id="ascension-bar-text">LVL 1</div>
+              </div>
+          </div>
+      </div>
     </div>
   </div>
   
