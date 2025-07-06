@@ -283,7 +283,7 @@ window.addEventListener('load', () => {
 
             storyBtn.addEventListener("click", () => {
                 const storyTitle = "ETERNAL MOMENTUM";
-                // --- NEW: Expanded Lore ---
+                // --- FIX: Corrected template literal usage ---
                 const storyContent = `
                     <h3>The Unraveling</h3>
                     <p>Reality is not a single thread, but an infinite, shimmering tapestry of timelines. This tapestry is fraying. A formless, silent entropy named the <strong>Unraveling</strong> consumes existence, timeline by timeline. It is a cosmic error causing reality to decohere into paradox and chaos. As each world's fundamental laws are overwritten, its echoes are twisted into monstrous <strong>Aberrations</strong>—nightmarish amalgamations of what once was.</p>
@@ -294,7 +294,7 @@ window.addEventListener('load', () => {
                     <hr style="border-color: rgba(255,255,255,0.2); margin: 15px 0;">
 
                     <h3>Power-ups: Echoes of Stability</h3>
-                    <p>The pickups you find scattered across the battlefield are not mere tools; they are concentrated fragments of stable realities that have not yet fully succumbed to the Unraveling. Each one is a memory of a physical law or a powerful concept—the unbreakable defense of a `Shield`, the impossible speed of a `Momentum Drive`, the focused devastation of a `Missile`. By absorbing them, you temporarily impose these stable concepts onto your own existence.</p>
+                    <p>The pickups you find scattered across the battlefield are not mere tools; they are concentrated fragments of stable realities that have not yet fully succumbed to the Unraveling. Each one is a memory of a physical law or a powerful concept—the unbreakable defense of a <strong>Shield</strong>, the impossible speed of a <strong>Momentum Drive</strong>, the focused devastation of a <strong>Missile</strong>. By absorbing them, you temporarily impose these stable concepts onto your own existence.</p>
 
                     <h3>Aberration Cores: Controlled Chaos</h3>
                     <p>As you gain power and experience, you learn to do more than just defeat Aberrations—you learn to resonate with their very essence. The <strong>Aberration Cores</strong> are stabilized fragments of their paradoxical existence, which you can attune to your own matrix. Equipping a Core forges a symbiotic link, granting you a fraction of an Aberration's unique power. It is a dangerous and powerful process: wielding the logic of chaos as a weapon against itself.</p>
