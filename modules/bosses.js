@@ -1052,7 +1052,7 @@ export const bossData = [{
     archetype: 'specialist',
     description: "The convergence of multiple timelines. Its combat patterns are an unpredictable amalgamation of other powerful entities.",
     lore: "The focal point where a dozen timelines collapsed simultaneously. It is not a single entity but a chaotic amalgamation—the gravitational pull of the Gravity Tyrant, the teleporting agony of the Looping Eye, the infectious despair of the Parasite. It is a legion of lost worlds condensed into a single point of failure.",
-    mechanics_desc: "A multi-phase encounter that mimics other bosses. Its abilities will change as its health is depleted, incorporating mechanics from the Gravity Tyrant, The Glitch, and The Parasite in increasingly dangerous combinations.",
+    mechanics_desc: "A multi-phase encounter that mimics other bosses. Its abilities will change as its health is depleted, incorporating mechanics from the Gravity Tyrant, The Glitch, and The Sentinel Pair in increasingly dangerous combinations.",
     init: (b, state, spawnEnemy) => {
         b.phase = 1;
         b.lastAction = 0;
