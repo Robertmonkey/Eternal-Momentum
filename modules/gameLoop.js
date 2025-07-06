@@ -36,7 +36,6 @@ export function addStatusEffect(name, emoji, duration) {
         }
     }
 
-    // Handle stackable charges for Obelisk Core
     if (name === 'Conduit Charge') {
         const existing = state.player.statusEffects.find(e => e.name === name);
         if(existing) {
@@ -1032,10 +1031,7 @@ export function gameTick(mx, my) {
                 state.player.health = Math.min(state.player.maxHealth, state.player.health + state.player.maxHealth * 0.02);
             }
             if (state.player.equippedAberrationCore === 'obelisk') {
-                const currentCharges = state.player.statusEffects.find(e => e.name === 'Conduit Charge');
-                if (!currentCharges || currentCharges.count < 3) {
-                    addStatusEffect('Conduit Charge', '⚡', 99999);
-                }
+                addStatusEffect('Conduit Charge', '⚡', 99999);
             }
 
             if (p.customApply) { p.customApply(); state.pickups.splice(i,1); continue; }
