@@ -37,6 +37,21 @@ export function addStatusEffect(name, emoji, duration) {
         }
     }
 
+    // --- ADDED: Conduit Charge Logic ---
+    if (name === 'Conduit Charge') {
+        const existing = state.player.statusEffects.find(e => e.name === name);
+        if(existing) {
+            existing.count = Math.min(3, (existing.count || 1) + 1);
+            existing.emoji = '⚡'.repeat(existing.count);
+            existing.endTime = now + duration;
+            return;
+        } else {
+            const effect = { name, emoji, startTime: now, endTime: now + duration, count: 1 };
+            state.player.statusEffects.push(effect);
+            return;
+        }
+    }
+
     state.player.statusEffects = state.player.statusEffects.filter(e => e.name !== name);
     state.player.statusEffects.push({ name, emoji, startTime: now, endTime: now + duration });
 }
@@ -457,6 +472,22 @@ export function gameTick(mx, my) {
             }
         }
     });
+
+    // --- ADDED: Player Movement & Juggernaut Core Logic ---
+    const juggernautCore = state.player.equippedAberrationCore === 'juggernaut';
+    const moveDist = Math.hypot( (finalMx - state.player.x), (finalMy - state.player.y));
+    if(juggernautCore) {
+        if (moveDist > state.player.r) {
+            if (!state.player.talent_states.core_states.juggernaut.lastMoveTime) {
+                state.player.talent_states.core_states.juggernaut.lastMoveTime = now;
+            }
+            if(now - state.player.talent_states.core_states.juggernaut.lastMoveTime > 3000) {
+                state.player.talent_states.core_states.juggernaut.isCharging = true;
+            }
+        } else {
+            state.player.talent_states.core_states.juggernaut.lastMoveTime = 0;
+        }
+    }
 
     if (now > state.player.stunnedUntil) {
         state.player.x += (finalMx - state.player.x) * 0.015 * state.player.speed * playerSpeedMultiplier;
@@ -986,6 +1017,7 @@ export function gameTick(mx, my) {
     for (let i = state.pickups.length - 1; i >= 0; i--) {
         const p = state.pickups[i];
         if (p.lifeEnd && now > p.lifeEnd) { state.pickups.splice(i, 1); continue; }
+        const timeEater = state.enemies.find(en => en.id === 'time_eater');
         const slowZones = timeEater ? state.effects.filter(eff => eff.type === 'slow_zone') : [];
         if (timeEater && !p.eatenBy) {
             for (const zone of slowZones) {
@@ -1034,13 +1066,7 @@ export function gameTick(mx, my) {
             if (state.player.equippedAberrationCore === 'obelisk') {
                 const currentCharges = state.player.statusEffects.find(e => e.name === 'Conduit Charge');
                 if (!currentCharges || currentCharges.count < 3) {
-                    if(currentCharges) {
-                        currentCharges.count++;
-                        currentCharges.endTime = now + 99999;
-                    } else {
-                        addStatusEffect('Conduit Charge', '⚡', 99999);
-                        state.player.statusEffects.find(e => e.name === 'Conduit Charge').count = 1;
-                    }
+                    addStatusEffect('Conduit Charge', '⚡', 99999);
                 }
             }
 
@@ -1422,16 +1448,18 @@ export function gameTick(mx, my) {
                 }
             });
         }
+        // --- UPDATED: Syphon Cone Logic ---
         else if (effect.type === 'syphon_cone') {
-            const { source, endTime } = effect;
+            const { source, endTime, isPlayer } = effect;
             const remainingTime = endTime - now;
-            if (remainingTime > 250 && !effect.isPlayer) {
+            const coneAngle = Math.PI / 4;
+            const coneLength = canvas.height;
+
+            if (remainingTime > 250 && !isPlayer) {
                 effect.angle = Math.atan2(state.player.y - source.y, state.player.x - source.x);
             }
             
-            const coneAngle = Math.PI / 4;
-            const coneLength = canvas.height;
-            const progress = 1 - (remainingTime) / 2500;
+            const progress = 1 - (remainingTime) / (isPlayer ? 500 : 2500);
             ctx.globalAlpha = 0.5 * progress;
             ctx.fillStyle = '#9b59b6';
             ctx.beginPath();
@@ -1440,46 +1468,59 @@ export function gameTick(mx, my) {
             ctx.lineTo(source.x, source.y);
             ctx.fill();
             ctx.globalAlpha = 1.0;
-            
-            if (remainingTime <= 0 && !effect.hasFired) {
-                effect.hasFired = true;
-                play('syphonFire');
-                const playerAngle = Math.atan2(state.player.y - source.y, state.player.x - source.x);
-                let angleDiff = Math.abs(effect.angle - playerAngle);
-                if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
-                
-                if (angleDiff < coneAngle / 2) {
-                    const stolenPower = state.offensiveInventory[0];
-                    if (stolenPower) {
-                        play('powerAbsorb');
-                        state.offensiveInventory.shift();
-                        state.offensiveInventory.push(null);
-                        
-                        switch (stolenPower) {
-                            case 'missile':
-                                state.effects.push({ type: 'shockwave', caster: source, x: state.player.x, y: state.player.y, radius: 0, maxRadius: 400, speed: 1000, startTime: now, hitEnemies: new Set(), damage: 70, color: 'rgba(155, 89, 182, 0.7)' });
-                                break;
-                            case 'chain':
-                                state.effects.push({ type: 'chain_lightning', targets: [state.player], links: [], startTime: now, durationPerLink: 80, damage: 75, caster: source, color: '#9b59b6' });
-                                break;
-                            case 'shockwave':
-                                state.effects.push({ type: 'shockwave', caster: source, x: source.x, y: source.y, radius: 0, maxRadius: canvas.width, speed: 1000, startTime: now, hitEnemies: new Set(), damage: 60, color: 'rgba(155, 89, 182, 0.7)' });
-                                break;
-                            case 'black_hole':
-                                state.effects.push({ type: 'black_hole', x: source.x, y: source.y, radius: 30, maxRadius: 400, damageRate: 200, lastDamage: new Map(), startTime: now, duration: 5000, endTime: now + 5000, damage: 65, caster: source, color: '#9b59b6' });
-                                break;
-                             case 'orbitalStrike':
-                                state.effects.push({ type: 'orbital_target', x: state.player.x, y: state.player.y, startTime: now, caster: source, damage: 80, radius: 200, color: 'rgba(155, 89, 182, 0.8)' });
-                                break;
-                            case 'ricochetShot':
-                                 for(let j = -1; j <= 1; j++) {
-                                    const angle = effect.angle + j * 0.3;
-                                    state.effects.push({ type: 'ricochet_projectile', x: source.x, y: source.y, dx: Math.cos(angle) * 12, dy: Math.sin(angle) * 12, r: 15, damage: 50, bounces: 5, initialBounces: 5, hitEnemies: new Set(), caster: source, color: '#9b59b6' });
-                                 }
-                                break;
-                            case 'bulletNova':
-                                state.effects.push({ type: 'nova_controller', startTime: now, duration: 2500, lastShot: 0, angle: Math.random() * Math.PI * 2, caster: source, color: '#9b59b6', r: 8 });
-                                break;
+
+            if (isPlayer) {
+                state.pickups.forEach(p => {
+                    let angleToPickup = Math.atan2(p.y - source.y, p.x - source.x);
+                    let angleDiff = Math.abs(effect.angle - angleToPickup);
+                    if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
+                    if (angleDiff < coneAngle / 2) {
+                        const pullStrength = 5;
+                        p.vx += Math.cos(effect.angle) * pullStrength;
+                        p.vy += Math.sin(effect.angle) * pullStrength;
+                    }
+                });
+            } else {
+                if (remainingTime <= 0 && !effect.hasFired) {
+                    effect.hasFired = true;
+                    play('syphonFire');
+                    const playerAngle = Math.atan2(state.player.y - source.y, state.player.x - source.x);
+                    let angleDiff = Math.abs(effect.angle - playerAngle);
+                    if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
+                    
+                    if (angleDiff < coneAngle / 2) {
+                        const stolenPower = state.offensiveInventory[0];
+                        if (stolenPower) {
+                            play('powerAbsorb');
+                            state.offensiveInventory.shift();
+                            state.offensiveInventory.push(null);
+                            
+                            switch (stolenPower) {
+                                case 'missile':
+                                    state.effects.push({ type: 'shockwave', caster: source, x: state.player.x, y: state.player.y, radius: 0, maxRadius: 400, speed: 1000, startTime: now, hitEnemies: new Set(), damage: 70, color: 'rgba(155, 89, 182, 0.7)' });
+                                    break;
+                                case 'chain':
+                                    state.effects.push({ type: 'chain_lightning', targets: [state.player], links: [], startTime: now, durationPerLink: 80, damage: 75, caster: source, color: '#9b59b6' });
+                                    break;
+                                case 'shockwave':
+                                    state.effects.push({ type: 'shockwave', caster: source, x: source.x, y: source.y, radius: 0, maxRadius: canvas.width, speed: 1000, startTime: now, hitEnemies: new Set(), damage: 60, color: 'rgba(155, 89, 182, 0.7)' });
+                                    break;
+                                case 'black_hole':
+                                    state.effects.push({ type: 'black_hole', x: source.x, y: source.y, radius: 30, maxRadius: 400, damageRate: 200, lastDamage: new Map(), startTime: now, duration: 5000, endTime: now + 5000, damage: 65, caster: source, color: '#9b59b6' });
+                                    break;
+                                 case 'orbitalStrike':
+                                    state.effects.push({ type: 'orbital_target', x: state.player.x, y: state.player.y, startTime: now, caster: source, damage: 80, radius: 200, color: 'rgba(155, 89, 182, 0.8)' });
+                                    break;
+                                case 'ricochetShot':
+                                     for(let j = -1; j <= 1; j++) {
+                                        const angle = effect.angle + j * 0.3;
+                                        state.effects.push({ type: 'ricochet_projectile', x: source.x, y: source.y, dx: Math.cos(angle) * 12, dy: Math.sin(angle) * 12, r: 15, damage: 50, bounces: 5, initialBounces: 5, hitEnemies: new Set(), caster: source, color: '#9b59b6' });
+                                     }
+                                    break;
+                                case 'bulletNova':
+                                    state.effects.push({ type: 'nova_controller', startTime: now, duration: 2500, lastShot: 0, angle: Math.random() * Math.PI * 2, caster: source, color: '#9b59b6', r: 8 });
+                                    break;
+                            }
                         }
                     }
                 }
