@@ -283,21 +283,29 @@ window.addEventListener('load', () => {
 
             storyBtn.addEventListener("click", () => {
                 const storyTitle = "ETERNAL MOMENTUM";
-                // --- FIX: Corrected template literal usage ---
+                // --- UPDATED: Lore Content ---
                 const storyContent = `
                     <h3>The Unraveling</h3>
                     <p>Reality is not a single thread, but an infinite, shimmering tapestry of timelines. This tapestry is fraying. A formless, silent entropy named the <strong>Unraveling</strong> consumes existence, timeline by timeline. It is a cosmic error causing reality to decohere into paradox and chaos. As each world's fundamental laws are overwritten, its echoes are twisted into monstrous <strong>Aberrations</strong>—nightmarish amalgamations of what once was.</p>
                     
                     <h3>The Conduit</h3>
-                    <p>Amidst the universal decay, you exist. You are the <strong>Conduit</strong>, an impossible being capable of maintaining a stable presence across fracturing realities. Your consciousness is imbued with <strong>Eternal Momentum</strong>—an innate, unyielding drive to push forward, to resist the decay, and to preserve the flickering embers of spacetime. By defeating Aberrations, you reclaim lost fragments of reality's source code, integrating them into your own being through the <strong>Ascension Conduit</strong> to grow stronger.</p>
+                    <p>Amidst the universal decay, you exist. You are the <strong>Conduit</strong>, an impossible being capable of maintaining a stable presence across fracturing realities. Your consciousness is imbued with <strong>Eternal Momentum</strong>—an innate, unyielding drive to push forward, to resist the decay, and to preserve the flickering embers of spacetime.</p>
                     
-                    <hr style="border-color: rgba(255,255,255,0.2); margin: 15px 0;">
-
                     <h3>Power-ups: Echoes of Stability</h3>
                     <p>The pickups you find scattered across the battlefield are not mere tools; they are concentrated fragments of stable realities that have not yet fully succumbed to the Unraveling. Each one is a memory of a physical law or a powerful concept—the unbreakable defense of a <strong>Shield</strong>, the impossible speed of a <strong>Momentum Drive</strong>, the focused devastation of a <strong>Missile</strong>. By absorbing them, you temporarily impose these stable concepts onto your own existence.</p>
 
                     <h3>Aberration Cores: Controlled Chaos</h3>
                     <p>As you gain power and experience, you learn to do more than just defeat Aberrations—you learn to resonate with their very essence. The <strong>Aberration Cores</strong> are stabilized fragments of their paradoxical existence, which you can attune to your own matrix. Equipping a Core forges a symbiotic link, granting you a fraction of an Aberration's unique power. It is a dangerous and powerful process: wielding the logic of chaos as a weapon against itself.</p>
+                    
+                    <hr style="border-color: rgba(255,255,255,0.2); margin: 15px 0;">
+                    
+                    <h3>The Mission</h3>
+                    <p>Your journey is a desperate pilgrimage through the collapsing remnants of countless worlds. Each "stage" is a pocket of spacetime you temporarily stabilize through sheer force of will. The <strong>Ascension Conduit</strong> is your means of survival and growth.</p>
+                    <p>By defeating Aberrations, you are not merely destroying them; you are reclaiming lost fragments of reality's source code. By integrating these fragments into your own being through the Conduit, you grow stronger, turning the weapons of your enemy into the keys to your salvation.</p>
+                    
+                    <h3>The Weaver's Orrery</h3>
+                    <p>The <strong>Weaver's Orrery</strong> is your greatest tool. A mysterious device left by a precursor race, it allows you to manipulate the <strong>Echoes of Creation</strong>—the residual energy left by powerful Aberrations.</p>
+                    <p>With the Orrery, you can forge custom timelines, simulating encounters against the multiverse's most dangerous threats. This is not mere practice; it is a way to hone your skills and prepare for the ultimate confrontation against the silent, all-consuming heart of the Unraveling.</p>
                     
                     <hr style="border-color: rgba(255,255,255,0.2); margin: 15px 0;">
                     <p><em>You are the final anchor in a storm of nonexistence. Hold the line. Maintain your momentum.</em></p>
