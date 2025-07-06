@@ -23,7 +23,6 @@ function stopLoopingSfx(soundId) {
     AudioManager.stopLoopingSfx(soundId);
 }
 
-// --- FIX: Moved from main.js to be in the correct scope ---
 function stopAllLoopingSounds() {
     AudioManager.stopLoopingSfx('beamHumSound');
     AudioManager.stopLoopingSfx('wallShrink');
@@ -346,6 +345,10 @@ export function gameTick(mx, my) {
     if (state.gameOver) {
         stopAllLoopingSounds();
         const gameOverMenu = document.getElementById('gameOverMenu');
+        const aberrationBtn = document.getElementById('aberrationCoreMenuBtn');
+        
+        aberrationBtn.style.display = state.player.level >= 10 ? 'block' : 'none';
+
         if (gameOverMenu.style.display !== 'flex') {
             gameOverMenu.style.display = 'flex';
         }
@@ -451,13 +454,34 @@ export function gameTick(mx, my) {
             }
         }
     }
-
+    
     if (state.player.talent_states.phaseMomentum.active) {
         ctx.globalAlpha = 0.3;
         utils.drawCircle(ctx, state.player.x, state.player.y, state.player.r + 5, 'rgba(0, 255, 255, 0.5)');
         utils.spawnParticles(state.particles, state.player.x, state.player.y, 'rgba(0, 255, 255, 0.5)', 1, 0.5, 10, state.player.r * 0.5);
         ctx.globalAlpha = 1.0;
     }
+
+    // Aberration Core Aura
+    if (state.player.equippedAberrationCore) {
+        const coreData = bossData.find(b => b.id === state.player.equippedAberrationCore);
+        if (coreData && coreData.color) {
+            const pulseFactor = 0.5 + (Math.sin(now / 400) * 0.5);
+            const auraRadius = state.player.r + 10 + (pulseFactor * 10);
+            const auraAlpha = 0.3 + (pulseFactor * 0.2);
+
+            ctx.save();
+            ctx.globalAlpha = auraAlpha;
+            ctx.shadowColor = coreData.color;
+            ctx.shadowBlur = 25;
+            ctx.fillStyle = coreData.color;
+            ctx.beginPath();
+            ctx.arc(state.player.x, state.player.y, auraRadius, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+
 
     if (state.player.shield) {
         ctx.strokeStyle = "rgba(241,196,15,0.7)";
