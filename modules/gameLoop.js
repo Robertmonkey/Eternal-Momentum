@@ -923,7 +923,7 @@ export function gameTick(mx, my) {
             ctx.lineWidth = 3;
             ctx.beginPath();
             const warningRadius = 50 * (1 - progress);
-            ctx.arc(effect.x, effect.y, Math.max(0, warningRadius), 0, Math.PI*2);
+            ctx.arc(effect.x, effect.y, Math.max(0, warningRadius), 0, Math.PI*2); // Use Math.max to prevent negative radius
             ctx.stroke();
             ctx.beginPath();
             ctx.moveTo(effect.x-10, effect.y);
