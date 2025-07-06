@@ -1,0 +1,51 @@
+﻿[Help]
+Path=Help Baby blue and purple cursor.cur
+
+[Crosshair]
+Path=Precision_baby blue and purple cursor.cur
+
+[IBeam]
+Path=Text  Baby blue and purple cursor.cur
+
+[No]
+Path=Unavailable  Baby blue and purple cursor.cur
+
+[Arrow]
+Path=Normal baby blue and purple.cur
+
+[AppStarting]
+Path=Working  Baby blue and purple cursor.ani
+
+[Wait]
+Path=Busy  Baby blue and purple cursor.ani
+
+[SizeNS]
+Path=Vertical  Baby blue and purple cursor.cur
+
+[SizeWE]
+Path=Horizontal  Baby blue and purple cursor.cur
+
+[SizeNWSE]
+Path=Diagonal  Baby blue and purple cursor.cur
+
+[SizeNESW]
+Path=Diagonal 2 Baby blue and purple cursor.cur
+
+[SizeAll]
+Path=Move  Baby blue and purple cursor.cur
+
+[UpArrow]
+Path=Alternate  Baby blue and purple cursor.cur
+
+[NWPen]
+Path=Handwriting  Baby blue and purple cursor
+
+[Hand]
+Path=Link  Baby blue and purple.cur
+
+[Pin]
+Path=Location Select.cur
+
+[Person]
+Path=Person Select.cur
+
