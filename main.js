@@ -299,6 +299,9 @@ window.addEventListener('load', () => {
                     <h3>The Weaver's Orrery</h3>
                     <p>The <strong>Weaver's Orrery</strong> is your greatest tool. A mysterious device left by a precursor race, it allows you to manipulate the <strong>Echoes of Creation</strong>—the residual energy left by powerful Aberrations.</p>
                     <p>With the Orrery, you can forge custom timelines, simulating encounters against the multiverse's most dangerous threats. This is not mere practice; it is a way to hone your skills and prepare for the ultimate confrontation against the silent, all-consuming heart of the Unraveling.</p>
+
+                    <hr style="border-color: rgba(255,255,255,0.2); margin: 15px 0;">
+                    <p><em>You are the final anchor in a storm of nonexistence. Hold the line. Maintain your momentum.</em></p>
                 `;
                 
                 levelSelectModal.style.display = 'none';
