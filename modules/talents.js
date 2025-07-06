@@ -346,7 +346,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '🌀',
             maxRanks: 1,
             costPerRank: [2],
-            position: { x: 30, y: 62 },
+            position: { x: 30, y: 70 }, // MOVED
             prerequisites: ['temporal-anomaly'],
         },
         'power-scavenger': {
@@ -397,7 +397,7 @@ export const TALENT_GRID_CONFIG = {
             icon: '💔',
             maxRanks: 1,
             costPerRank: [4],
-            position: { x: 30, y: 45 },
+            position: { x: 40, y: 35 }, // MOVED
             prerequisites: ['solar-wind'],
         },
         'essence-transmutation': {
