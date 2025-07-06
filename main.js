@@ -1,12 +1,12 @@
 // modules/main.js
-import { state, resetGame, loadPlayerState, savePlayerState } from './modules/state.js';
-import { bossData } from './modules/bosses.js';
-import { AudioManager } from './modules/audio.js';
-import { updateUI, populateLevelSelect, showCustomConfirm, populateOrreryMenu, populateAberrationCoreMenu } from './modules/ui.js';
-import { gameTick, spawnBossesForStage, addStatusEffect, addEssence, useSyphonCore, useLoopingEyeCore } from './modules/gameLoop.js';
-import { usePower } from './modules/powers.js';
-import * as utils from './modules/utils.js';
-import { renderAscensionGrid, applyAllTalentEffects } from './modules/ascension.js';
+import { state, resetGame, loadPlayerState, savePlayerState } from './state.js';
+import { bossData } from './bosses.js';
+import { AudioManager } from './audio.js';
+import { updateUI, populateLevelSelect, showCustomConfirm, populateOrreryMenu, populateAberrationCoreMenu } from './ui.js';
+import { gameTick, spawnBossesForStage, addStatusEffect, addEssence } from './gameLoop.js';
+import { usePower } from './powers.js';
+import * as utils from './utils.js';
+import { renderAscensionGrid, applyAllTalentEffects } from './ascension.js';
 
 window.addAP = function(amount) {
     if (typeof amount !== 'number' || amount <= 0) {
@@ -105,7 +105,7 @@ window.addEventListener('load', () => {
         
         const levelSelectModal = document.getElementById("levelSelectModal");
         const closeLevelSelectBtn = document.getElementById("closeLevelSelectBtn");
-        const arenaBtn = document.getElementById("arenaBtn"); // Now the Orrery Button
+        const arenaBtn = document.getElementById("arenaBtn");
         const storyBtn = document.getElementById("loreCodexBtn");
         const jumpToFrontierBtn = document.getElementById("jumpToFrontierBtn");
         
@@ -132,6 +132,7 @@ window.addEventListener('load', () => {
         const aberrationCoreModal = document.getElementById('aberrationCoreModal');
         const closeAberrationCoreBtn = document.getElementById('closeAberrationCoreBtn');
         const unequipCoreBtn = document.getElementById('unequipCoreBtn');
+        const aberrationCoreMenuBtn = document.getElementById('aberrationCoreMenuBtn');
 
         let mx = 0, my = 0;
         const allAudioElements = Array.from(document.querySelectorAll('audio'));
@@ -182,9 +183,9 @@ window.addEventListener('load', () => {
             canvas.addEventListener("touchmove", e => { e.preventDefault(); setPlayerTarget(e); }, { passive: false });
             canvas.addEventListener("touchstart", e => { e.preventDefault(); setPlayerTarget(e); }, { passive: false });
 
-            const gameHelpers = { addStatusEffect, addEssence, useSyphonCore, useLoopingEyeCore }; // Pass core handlers
-            const useOffensivePower = () => { usePower('offensive', utils, gameHelpers, mx, my); };
-            const useDefensivePower = () => { usePower('defensive', utils, gameHelpers, mx, my); };
+            const gameHelpers = { addStatusEffect, addEssence };
+            const useOffensivePower = () => { if (state.offensiveInventory[0]) usePower('offensive', utils, gameHelpers, mx, my); };
+            const useDefensivePower = () => { if (state.defensiveInventory[0]) usePower('defensive', utils, gameHelpers, mx, my); };
 
             canvas.addEventListener("click", e => { if (e.target.id === 'gameCanvas') useOffensivePower(); });
             canvas.addEventListener("contextmenu", e => { e.preventDefault(); useDefensivePower(); });
@@ -237,14 +238,7 @@ window.addEventListener('load', () => {
             });
 
             // --- NEW: Aberration Core Event Listeners ---
-            const equipCore = (coreId) => {
-                state.player.equippedAberrationCore = coreId;
-                savePlayerState();
-                populateAberrationCoreMenu(equipCore); // Re-render to show selection
-                updateUI();
-            };
-
-            aberrationCoreSocket.addEventListener('click', () => {
+            const openAberrationCoreMenu = () => {
                 if (state.player.level < 10) {
                     showUnlockNotification("SYSTEM LOCKED", "Requires Player Level 10");
                     return;
@@ -254,12 +248,27 @@ window.addEventListener('load', () => {
                 populateAberrationCoreMenu(equipCore);
                 aberrationCoreModal.style.display = 'flex';
                 AudioManager.playSfx('uiModalOpen');
+            };
+
+            const equipCore = (coreId) => {
+                state.player.equippedAberrationCore = coreId;
+                savePlayerState();
+                populateAberrationCoreMenu(equipCore);
+                updateUI();
+            };
+
+            aberrationCoreSocket.addEventListener('click', openAberrationCoreMenu);
+            aberrationCoreMenuBtn.addEventListener('click', () => {
+                gameOverMenu.style.display = 'none';
+                openAberrationCoreMenu();
             });
 
             closeAberrationCoreBtn.addEventListener('click', () => {
                 aberrationCoreModal.style.display = 'none';
                 AudioManager.playSfx('uiModalClose');
-                if (!state.gameOver) {
+                if (state.gameOver) {
+                    gameOverMenu.style.display = 'flex';
+                } else {
                     state.isPaused = false;
                 }
             });
@@ -274,18 +283,22 @@ window.addEventListener('load', () => {
 
             storyBtn.addEventListener("click", () => {
                 const storyTitle = "ETERNAL MOMENTUM";
+                // --- NEW: Expanded Lore ---
                 const storyContent = `
                     <h3>The Unraveling</h3>
-                    <p>Reality is not a single thread, but an infinite, shimmering tapestry of timelines. This tapestry is fraying.</p>
-                    <p>A formless, silent entropy named the <strong>Unraveling</strong> consumes existence, timeline by timeline. It is a cosmic error causing reality to decohere into paradox and chaos. As each world's fundamental laws are overwritten, its echoes are twisted into monstrous <strong>Aberrations</strong>—nightmarish amalgamations of what once was, their very existence a violation of natural law.</p>
+                    <p>Reality is not a single thread, but an infinite, shimmering tapestry of timelines. This tapestry is fraying. A formless, silent entropy named the <strong>Unraveling</strong> consumes existence, timeline by timeline. It is a cosmic error causing reality to decohere into paradox and chaos. As each world's fundamental laws are overwritten, its echoes are twisted into monstrous <strong>Aberrations</strong>—nightmarish amalgamations of what once was.</p>
                     
                     <h3>The Conduit</h3>
-                    <p>Amidst the universal decay, you exist. You are the <strong>Conduit</strong>, an impossible being capable of maintaining a stable presence across fracturing realities, immune to the chaos of the Unraveling. You are the final, desperate immune response of a dying multiverse.</p>
-                    <p>Your consciousness is imbued with <strong>Eternal Momentum</strong>—an innate, unyielding drive to push forward, to resist the decay, and to preserve the flickering embers of spacetime. By defeating Aberrations, you reclaim lost fragments of reality's source code, integrating them into your own being through the <strong>Ascension Conduit</strong> to grow stronger.</p>
+                    <p>Amidst the universal decay, you exist. You are the <strong>Conduit</strong>, an impossible being capable of maintaining a stable presence across fracturing realities. Your consciousness is imbued with <strong>Eternal Momentum</strong>—an innate, unyielding drive to push forward, to resist the decay, and to preserve the flickering embers of spacetime. By defeating Aberrations, you reclaim lost fragments of reality's source code, integrating them into your own being through the <strong>Ascension Conduit</strong> to grow stronger.</p>
                     
-                    <h3>The Aberration Cores</h3>
-                    <p>As you gain power, you learn to resonate with the very essence of the Aberrations you defeat. The <strong>Aberration Cores</strong> are stabilized fragments of their paradoxical existence, which you can attune to your own matrix. Equipping a Core grants you a fraction of an Aberration's unique power, fundamentally altering your capabilities.</p>
-            
+                    <hr style="border-color: rgba(255,255,255,0.2); margin: 15px 0;">
+
+                    <h3>Power-ups: Echoes of Stability</h3>
+                    <p>The pickups you find scattered across the battlefield are not mere tools; they are concentrated fragments of stable realities that have not yet fully succumbed to the Unraveling. Each one is a memory of a physical law or a powerful concept—the unbreakable defense of a `Shield`, the impossible speed of a `Momentum Drive`, the focused devastation of a `Missile`. By absorbing them, you temporarily impose these stable concepts onto your own existence.</p>
+
+                    <h3>Aberration Cores: Controlled Chaos</h3>
+                    <p>As you gain power and experience, you learn to do more than just defeat Aberrations—you learn to resonate with their very essence. The <strong>Aberration Cores</strong> are stabilized fragments of their paradoxical existence, which you can attune to your own matrix. Equipping a Core forges a symbiotic link, granting you a fraction of an Aberration's unique power. It is a dangerous and powerful process: wielding the logic of chaos as a weapon against itself.</p>
+                    
                     <hr style="border-color: rgba(255,255,255,0.2); margin: 15px 0;">
                     <p><em>You are the final anchor in a storm of nonexistence. Hold the line. Maintain your momentum.</em></p>
                 `;
