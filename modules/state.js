@@ -19,11 +19,9 @@ export const state = {
     unlockedDefensiveSlots: 1,
     infected: false, infectionEnd: 0, lastSpore: 0,
     
-    // --- NEW: Properties for new talents ---
     contingencyUsed: false,
     preordinanceUsed: false,
     
-    // --- NEW: Properties for Aberration Cores ---
     unlockedAberrationCores: new Set(),
     equippedAberrationCore: null,
     
@@ -32,7 +30,7 @@ export const state = {
         damage_taken_multiplier: 1.0,
         pickup_radius_bonus: 0,
         essence_gain_modifier: 1.0,
-        power_spawn_rate_modifier: 1.0, // For Resonant Frequencies
+        power_spawn_rate_modifier: 1.0,
     },
 
     talent_states: {
@@ -43,7 +41,6 @@ export const state = {
         reactivePlating: {
             cooldownUntil: 0,
         },
-        // --- NEW: State for Aberration Cores ---
         core_states: {
             architect: {
                 lastPillarTime: 0,
@@ -96,6 +93,9 @@ export const state = {
             },
             obelisk: {
                 charges: 0,
+            },
+            gravity: {
+                lastPulseTime: 0,
             }
         }
     }
@@ -131,7 +131,6 @@ export function savePlayerState() {
         highestStageBeaten: state.player.highestStageBeaten,
         unlockedOffensiveSlots: state.player.unlockedOffensiveSlots,
         unlockedDefensiveSlots: state.player.unlockedDefensiveSlots,
-        // --- NEW: Save Aberration Core data ---
         unlockedAberrationCores: [...state.player.unlockedAberrationCores],
         equippedAberrationCore: state.player.equippedAberrationCore,
     };
@@ -148,7 +147,6 @@ export function loadPlayerState() {
             ...parsedData,
             unlockedPowers: new Set(parsedData.unlockedPowers),
             purchasedTalents: new Map(parsedData.purchasedTalents),
-            // --- NEW: Load Aberration Core data ---
             unlockedAberrationCores: new Set(parsedData.unlockedAberrationCores || []),
             equippedAberrationCore: parsedData.equippedAberrationCore || null,
         };
@@ -168,18 +166,16 @@ export function resetGame(isArena = false) {
     state.player.talent_states.phaseMomentum.lastDamageTime = Date.now();
     state.player.talent_states.reactivePlating.cooldownUntil = 0;
     
-    // --- NEW: Reset talent and core states ---
     state.player.contingencyUsed = false;
     state.player.preordinanceUsed = false;
     
-    // Reset all core states
     Object.keys(state.player.talent_states.core_states).forEach(key => {
         const coreState = state.player.talent_states.core_states[key];
         Object.keys(coreState).forEach(prop => {
             if (Array.isArray(coreState[prop])) {
                 coreState[prop] = [];
             } else if (typeof coreState[prop] === 'boolean') {
-                coreState[prop] = true; // Syphon can be used at start
+                coreState[prop] = true;
             } else {
                 coreState[prop] = 0;
             }
