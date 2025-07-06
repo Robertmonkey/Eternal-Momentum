@@ -30,8 +30,7 @@ export const state = {
         damage_taken_multiplier: 1.0,
         pickup_radius_bonus: 0,
         essence_gain_modifier: 1.0,
-        power_spawn_rate_modifier: 1.0, // Bug fix is included
-        pull_resistance_modifier: 0,
+        power_spawn_rate_modifier: 1.0,
     },
 
     talent_states: {
@@ -43,19 +42,60 @@ export const state = {
             cooldownUntil: 0,
         },
         core_states: {
-            architect: { lastPillarTime: 0 },
-            mirror_mirage: { cooldownUntil: 0 },
-            puppeteer: { lastConversion: 0 },
-            splitter: { cooldownUntil: 0 },
-            swarm_link: { tail: [], enemiesForNextSegment: 0 },
-            epoch_ender: { cooldownUntil: 0, history: [] },
-            pantheon: { lastCycleTime: 0, activeCore: null },
-            syphon: { canUse: true },
-            juggernaut: { isCharging: false, lastMoveTime: 0 },
-            annihilator: { isChargingBeam: false },
-            shaper_of_fate: { isDisabled: false },
-            helix_weaver: { lastBolt: 0 },
-            gravity: { lastPulseTime: 0 },
+            architect: {
+                lastPillarTime: 0,
+            },
+            mirror_mirage: {
+                cooldownUntil: 0,
+            },
+            puppeteer: {
+                lastConversion: 0,
+            },
+            splitter: {
+                cooldownUntil: 0,
+            },
+            swarm_link: {
+                tail: [],
+                enemiesForNextSegment: 0,
+            },
+            epoch_ender: {
+                cooldownUntil: 0,
+                history: [],
+            },
+            pantheon: {
+                lastCycleTime: 0,
+                activeCore: null,
+            },
+            syphon: {
+                canUse: true,
+            },
+            juggernaut: {
+                isCharging: false,
+                lastMoveTime: 0,
+            },
+            miasma: {
+                isPurifying: false,
+            },
+            annihilator: {
+                cooldownUntil: 0,
+                attunedEnemy: null,
+                isChargingBeam: false,
+            },
+            shaper_of_fate: {
+                isDisabled: false,
+            },
+            helix_weaver: {
+                lastBolt: 0,
+            },
+            temporal_paradox: {
+                lastEcho: 0,
+            },
+            obelisk: {
+                charges: 0,
+            },
+            gravity: {
+                lastPulseTime: 0,
+            }
         }
     }
   },
@@ -104,8 +144,8 @@ export function loadPlayerState() {
             unlockedOffensiveSlots: 1,
             unlockedDefensiveSlots: 1,
             ...parsedData,
-            unlockedPowers: new Set(parsedData.unlockedPowers || []),
-            purchasedTalents: new Map(parsedData.purchasedTalents || []),
+            unlockedPowers: new Set(parsedData.unlockedPowers),
+            purchasedTalents: new Map(parsedData.purchasedTalents),
             unlockedAberrationCores: new Set(parsedData.unlockedAberrationCores || []),
             equippedAberrationCore: parsedData.equippedAberrationCore || null,
         };
@@ -125,26 +165,24 @@ export function resetGame(isArena = false) {
     state.player.talent_states.phaseMomentum.lastDamageTime = Date.now();
     state.player.talent_states.reactivePlating.cooldownUntil = 0;
     
-    // Reset core states
+    state.player.contingencyUsed = false;
+    state.player.preordinanceUsed = false;
+    
     Object.keys(state.player.talent_states.core_states).forEach(key => {
         const coreState = state.player.talent_states.core_states[key];
         Object.keys(coreState).forEach(prop => {
             if (Array.isArray(coreState[prop])) {
                 coreState[prop] = [];
             } else if (typeof coreState[prop] === 'boolean') {
-                coreState[prop] = key === 'syphon' ? true : false;
-            } else if (typeof coreState[prop] === 'string' || coreState[prop] === null) {
-                coreState[prop] = null;
-            }
-            else {
+                coreState[prop] = true;
+            } else {
                 coreState[prop] = 0;
             }
         });
     });
+    state.player.talent_states.core_states.pantheon.activeCore = null;
 
-    state.player.contingencyUsed = false;
-    state.player.preordinanceUsed = false;
-    
+
     Object.assign(state, {
         enemies: [], pickups: [], effects: [], particles: [], decoy: null,
         offensiveInventory: [null, null, null], 
