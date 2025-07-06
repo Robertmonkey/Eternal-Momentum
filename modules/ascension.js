@@ -15,6 +15,16 @@ Object.values(TALENT_GRID_CONFIG).forEach(constellation => {
     });
 });
 
+function getConstellationColorOfTalent(talentId) {
+    for (const key in TALENT_GRID_CONFIG) {
+        if (TALENT_GRID_CONFIG[key][talentId]) {
+            return TALENT_GRID_CONFIG[key].color || 'var(--primary-glow)';
+        }
+    }
+    return 'var(--primary-glow)'; // Default color
+}
+
+
 function isTalentVisible(talent) {
     if (!talent) return false;
 
@@ -49,7 +59,6 @@ function drawConnectorLines() {
 
     for (const key in TALENT_GRID_CONFIG) {
         const constellation = TALENT_GRID_CONFIG[key];
-        const constellationColor = constellation.color || 'var(--primary-glow)';
         
         for (const talentId in constellation) {
             if (talentId === 'color') continue;
@@ -60,7 +69,7 @@ function drawConnectorLines() {
                 
                 const powerUnlocked = !talent.powerPrerequisite || state.player.unlockedPowers.has(talent.powerPrerequisite);
 
-                if (prereqTalent && state.player.purchasedTalents.has(prereqId) && powerUnlocked) {
+                if (prereqTalent && (state.player.purchasedTalents.has(prereqId) || prereqId === 'core-nexus') && powerUnlocked) {
                     const line = document.createElementNS("http://www.w3.org/2000/svg", 'line');
                     line.setAttribute('x1', `${prereqTalent.position.x}%`);
                     line.setAttribute('y1', `${prereqTalent.position.y}%`);
@@ -72,10 +81,11 @@ function drawConnectorLines() {
                     
                     const prereqRanksNeeded = prereqTalent.maxRanks;
                     const prereqCurrentRank = state.player.purchasedTalents.get(prereqId) || 0;
+
                     if (prereqCurrentRank >= prereqRanksNeeded) {
                         line.classList.add('unlocked');
                         if (!isNexusConnection) {
-                            line.style.stroke = constellationColor;
+                            line.style.stroke = getConstellationColorOfTalent(prereqId);
                         }
                     }
 
@@ -231,7 +241,7 @@ function purchaseTalent(talentId) {
 }
 
 export function applyAllTalentEffects() {
-    // --- Reset all modifiers to their base values ---
+    // Reset all modifiers to their base values
     let baseMaxHealth = 100;
     let baseSpeed = 1.0;
     let baseDamageMultiplier = 1.0;
@@ -242,25 +252,25 @@ export function applyAllTalentEffects() {
     let basePullResistance = 0;
 
     state.player.purchasedTalents.forEach((rank, id) => {
-        // --- Health ---
+        // Health
         if (id === 'exo-weave-plating') {
             const values = [15, 20, 25];
             for (let i = 0; i < rank; i++) baseMaxHealth += values[i];
         }
         
-        // --- Speed ---
+        // Speed
         if (id === 'solar-wind') {
             const values = [0.06, 0.06];
-            for (let i = 0; i < rank; i++) baseSpeed += values[i]; // Use additive for clarity
+            for (let i = 0; i < rank; i++) baseSpeed += values[i];
         }
         
-        // --- Damage ---
+        // Damage
         if (id === 'high-frequency-emitters') {
             const values = [0.05, 0.07];
             for (let i = 0; i < rank; i++) baseDamageMultiplier += values[i];
         }
         
-        // --- Utility ---
+        // Utility
         if (id === 'resonance-magnet') {
             basePickupRadius += rank * 75;
         }
@@ -268,38 +278,30 @@ export function applyAllTalentEffects() {
             const values = [0.10, 0.15];
             for (let i = 0; i < rank; i++) baseEssenceGain += values[i];
         }
-
-        // --- NEW TALENTS ---
         if (id === 'resonant-frequencies') {
-            const values = [0.10, 0.10]; // 10% per rank
+            const values = [0.10, 0.10]; 
             for (let i = 0; i < rank; i++) basePowerSpawnRate += values[i];
         }
-        if (id === 'overcharged-capacitors') { // Kept for saves that might have it
-            baseDamageMultiplier += 0.15;
-            baseDamageTakenMultiplier += 0.15;
-        }
 
-
-        // --- ENDLESS TALENTS ---
+        // Endless Talents
         if (id === 'core-reinforcement') {
             baseMaxHealth += rank * 5;
         }
         if (id === 'momentum-drive') {
-            baseSpeed += rank * 0.01; // Use additive for clarity
+            baseSpeed += rank * 0.01;
         }
         if (id === 'weapon-calibration') {
             baseDamageMultiplier += rank * 0.01;
         }
     });
 
-    // --- Apply all calculated values to the state ---
+    // Apply all calculated values to the state
     state.player.maxHealth = baseMaxHealth;
     state.player.speed = baseSpeed;
     state.player.talent_modifiers.damage_multiplier = baseDamageMultiplier;
     state.player.talent_modifiers.damage_taken_multiplier = baseDamageTakenMultiplier;
     state.player.talent_modifiers.pickup_radius_bonus = basePickupRadius;
     state.player.talent_modifiers.essence_gain_modifier = baseEssenceGain;
-    // --- FIX: Corrected typo from pull_resistance_modifier ---
     state.player.talent_modifiers.power_spawn_rate_modifier = basePowerSpawnRate;
     state.player.talent_modifiers.pull_resistance_modifier = basePullResistance;
 }
