@@ -1036,4 +1036,3 @@ export function gameTick(mx, my) {
     ctx.restore();
     return true;
 }
-I am so sorry I grabbed the wrong file the last time, please check this one against my current file system.
