@@ -478,7 +478,7 @@ export function gameTick(mx, my) {
         ctx.strokeStyle = "rgba(241,196,15,0.7)";
         ctx.lineWidth = 4;
         ctx.beginPath();
-        ctx.arc(state.player.x, state.player.y, state.player.r + 8, 0, 2 * Math.PI);
+        ctx.arc(state.player.x, state.player.y, Math.max(0, state.player.r + 8), 0, 2 * Math.PI);
         ctx.stroke();
     }
     utils.drawCircle(ctx, state.player.x, state.player.y, state.player.r, state.player.shield ? "#f1c40f" : ((state.player.berserkUntil > now) ? '#e74c3c' : (state.player.infected ? '#55efc4' : "#3498db")));
@@ -646,7 +646,7 @@ export function gameTick(mx, my) {
         
         let color = e.customColor || (e.boss ? e.color : "#c0392b"); if(e.isInfected) color = '#55efc4'; if(e.frozen) color = '#add8e6';
         if(!e.hasCustomDraw) utils.drawCircle(ctx, e.x,e.y,e.r, color);
-        if(e.enraged) { ctx.strokeStyle = "yellow"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(e.x,e.y,e.r+5,0,2*Math.PI); ctx.stroke(); }
+        if(e.enraged) { ctx.strokeStyle = "yellow"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(e.x,e.y,Math.max(0, e.r+5),0,2*Math.PI); ctx.stroke(); }
         
         Cores.handleCoreOnCollision(e, gameHelpers);
 
@@ -817,7 +817,7 @@ export function gameTick(mx, my) {
         if (effect.type === 'shockwave') {
             const elapsed = (now - effect.startTime) / 1000; effect.radius = elapsed * effect.speed;
             ctx.strokeStyle = effect.color || `rgba(255, 255, 255, ${1-(effect.radius/effect.maxRadius)})`; ctx.lineWidth = 10;
-            ctx.beginPath(); ctx.arc(effect.x, effect.y, effect.radius, 0, 2 * Math.PI); ctx.stroke();
+            ctx.beginPath(); ctx.arc(effect.x, effect.y, Math.max(0, effect.radius), 0, 2 * Math.PI); ctx.stroke();
             let targets = (effect.caster === state.player) ? state.enemies.filter(e => !e.isFriendly) : [state.player];
             targets.forEach(target => {
                 if (!effect.hitEnemies.has(target) && Math.abs(Math.hypot(target.x - effect.x, target.y - effect.y) - effect.radius) < target.r + 5) {
@@ -923,7 +923,7 @@ export function gameTick(mx, my) {
             ctx.lineWidth = 3;
             ctx.beginPath();
             const warningRadius = 50 * (1 - progress);
-            ctx.arc(effect.x, effect.y, Math.max(0, warningRadius), 0, Math.PI*2); // Use Math.max to prevent negative radius
+            ctx.arc(effect.x, effect.y, Math.max(0, Math.max(0), warningRadius), 0, Math.PI*2); // Use Math.max to prevent negative radius
             ctx.stroke();
             ctx.beginPath();
             ctx.moveTo(effect.x-10, effect.y);
@@ -937,7 +937,7 @@ export function gameTick(mx, my) {
             const currentPullRadius = effect.maxRadius * progress; 
             utils.drawCircle(ctx, effect.x, effect.y, effect.radius, effect.color || "#000"); 
             ctx.strokeStyle = effect.color ? `rgba(${effect.color.slice(1).match(/.{1,2}/g).map(v => parseInt(v, 16)).join(',')}, ${0.6 * progress})` : `rgba(155, 89, 182, ${0.6 * progress})`;
-            ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(effect.x, effect.y, currentPullRadius, 0, 2*Math.PI); ctx.stroke();
+            ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(effect.x, effect.y, Math.max(0, currentPullRadius), 0, 2*Math.PI); ctx.stroke();
         }
         else if (effect.type === 'seeking_shrapnel') {
             let closest = null; const sortedEnemies = [...state.enemies].sort((a,b) => Math.hypot(a.x-effect.x, a.y-effect.y) - Math.hypot(b.x-effect.x, b.y-effect.y));
@@ -954,7 +954,7 @@ export function gameTick(mx, my) {
             ctx.strokeStyle = `rgba(255, 0, 0, ${1 - progress})`;
             ctx.lineWidth = 5 + (10 * progress);
             ctx.beginPath();
-            ctx.arc(effect.x, effect.y, Math.max(0, warningRadius), 0, 2 * Math.PI);
+            ctx.arc(effect.x, effect.y, Math.max(0, Math.max(0), warningRadius), 0, 2 * Math.PI);
             ctx.stroke();
         }
         else if (effect.type === 'glitch_zone') {
@@ -1013,7 +1013,7 @@ export function gameTick(mx, my) {
             ctx.fillStyle = `rgba(155, 89, 182, 0.3)`;
             ctx.beginPath();
             ctx.moveTo(effect.source.x, effect.source.y);
-            ctx.arc(effect.source.x, effect.source.y, 800, effect.angle - coneWidth/2, effect.angle + coneWidth/2);
+            ctx.arc(effect.source.x, effect.source.y, Math.max(0, 800), effect.angle - coneWidth/2, effect.angle + coneWidth/2);
             ctx.closePath();
             ctx.fill();
         }
@@ -1024,7 +1024,7 @@ export function gameTick(mx, my) {
             ctx.rotate(effect.angle);
             ctx.fillStyle = 'rgba(189, 195, 199, 0.2)';
             ctx.beginPath();
-            ctx.arc(0, 0, effect.r, -Math.PI/2, Math.PI/2, false);
+            ctx.arc(0, 0, Math.max(0, effect.r), -Math.PI/2, Math.PI/2, false);
             ctx.closePath();
             ctx.fill();
             ctx.restore();
