@@ -1,6 +1,5 @@
 // modules/state.js
 import { offensivePowers } from './powers.js';
-import { bossData } from './bosses.js';
 
 export const state = {
   player:{
@@ -20,9 +19,11 @@ export const state = {
     unlockedDefensiveSlots: 1,
     infected: false, infectionEnd: 0, lastSpore: 0,
     
+    // --- NEW: Properties for new talents ---
     contingencyUsed: false,
     preordinanceUsed: false,
     
+    // --- NEW: Properties for Aberration Cores ---
     unlockedAberrationCores: new Set(),
     equippedAberrationCore: null,
     
@@ -31,8 +32,7 @@ export const state = {
         damage_taken_multiplier: 1.0,
         pickup_radius_bonus: 0,
         essence_gain_modifier: 1.0,
-        pull_resistance_modifier: 0,
-        power_spawn_rate_modifier: 1.0,
+        power_spawn_rate_modifier: 1.0, // For Resonant Frequencies
     },
 
     talent_states: {
@@ -43,18 +43,60 @@ export const state = {
         reactivePlating: {
             cooldownUntil: 0,
         },
+        // --- NEW: State for Aberration Cores ---
         core_states: {
-            architect: { lastPillarTime: 0 },
-            mirror_mirage: { cooldownUntil: 0 },
-            puppeteer: { lastConversion: 0 },
-            splitter: { cooldownUntil: 0 },
-            swarm_link: { tail: [], enemiesForNextSegment: 0, },
-            epoch_ender: { cooldownUntil: 0, history: [], },
-            pantheon: { lastCycleTime: 0, activeCore: null, },
-            syphon: { canUse: true, },
-            juggernaut: { lastMoveTime: 0, isCharging: false },
-            annihilator: { attuneCooldown: 0 },
-            shaper_of_fate: { isDisabled: false },
+            architect: {
+                lastPillarTime: 0,
+                pillars: [],
+            },
+            mirror_mirage: {
+                cooldownUntil: 0,
+            },
+            puppeteer: {
+                lastConversion: 0,
+                puppets: [],
+            },
+            splitter: {
+                cooldownUntil: 0,
+            },
+            swarm_link: {
+                tail: [],
+                enemiesForNextSegment: 0,
+            },
+            epoch_ender: {
+                cooldownUntil: 0,
+                history: [],
+            },
+            pantheon: {
+                lastCycleTime: 0,
+                activeCore: null,
+            },
+            syphon: {
+                canUse: true,
+            },
+            juggernaut: {
+                isCharging: false,
+                lastMoveTime: 0,
+            },
+            miasma: {
+                lastHealTime: 0,
+            },
+            annihilator: {
+                cooldownUntil: 0,
+                attunedEnemy: null,
+            },
+            shaper_of_fate: {
+                isDisabled: false,
+            },
+            helix_weaver: {
+                lastBolt: 0,
+            },
+            temporal_paradox: {
+                lastEcho: 0,
+            },
+            obelisk: {
+                charges: 0,
+            }
         }
     }
   },
@@ -89,6 +131,7 @@ export function savePlayerState() {
         highestStageBeaten: state.player.highestStageBeaten,
         unlockedOffensiveSlots: state.player.unlockedOffensiveSlots,
         unlockedDefensiveSlots: state.player.unlockedDefensiveSlots,
+        // --- NEW: Save Aberration Core data ---
         unlockedAberrationCores: [...state.player.unlockedAberrationCores],
         equippedAberrationCore: state.player.equippedAberrationCore,
     };
@@ -99,24 +142,14 @@ export function loadPlayerState() {
     const savedData = localStorage.getItem('eternalMomentumSave');
     if (savedData) {
         const parsedData = JSON.parse(savedData);
-        
-        // --- NEW: Retroactively unlock cores based on saved level ---
-        const unlockedCores = new Set(parsedData.unlockedAberrationCores || []);
-        if (parsedData.level >= 10) {
-            bossData.forEach(boss => {
-                if (boss.unlock_level && parsedData.level >= boss.unlock_level) {
-                    unlockedCores.add(boss.id);
-                }
-            });
-        }
-        
         const playerData = {
             unlockedOffensiveSlots: 1,
             unlockedDefensiveSlots: 1,
             ...parsedData,
             unlockedPowers: new Set(parsedData.unlockedPowers),
             purchasedTalents: new Map(parsedData.purchasedTalents),
-            unlockedAberrationCores: unlockedCores,
+            // --- NEW: Load Aberration Core data ---
+            unlockedAberrationCores: new Set(parsedData.unlockedAberrationCores || []),
             equippedAberrationCore: parsedData.equippedAberrationCore || null,
         };
         Object.assign(state.player, playerData);
@@ -132,7 +165,10 @@ export function resetGame(isArena = false) {
     state.player.statusEffects = [];
     state.player.shield = false;
     state.player.berserkUntil = 0;
+    state.player.talent_states.phaseMomentum.lastDamageTime = Date.now();
+    state.player.talent_states.reactivePlating.cooldownUntil = 0;
     
+    // --- NEW: Reset talent and core states ---
     state.player.contingencyUsed = false;
     state.player.preordinanceUsed = false;
     
@@ -140,19 +176,16 @@ export function resetGame(isArena = false) {
     Object.keys(state.player.talent_states.core_states).forEach(key => {
         const coreState = state.player.talent_states.core_states[key];
         Object.keys(coreState).forEach(prop => {
-            const initialValue = coreState[prop];
-            if (Array.isArray(initialValue)) {
+            if (Array.isArray(coreState[prop])) {
                 coreState[prop] = [];
-            } else if (typeof initialValue === 'number') {
-                coreState[prop] = 0;
-            } else if (typeof initialValue === 'boolean') {
-                 coreState[prop] = key === 'syphon' ? true : false;
+            } else if (typeof coreState[prop] === 'boolean') {
+                coreState[prop] = true; // Syphon can be used at start
             } else {
-                 coreState[prop] = null;
+                coreState[prop] = 0;
             }
         });
     });
-     state.player.talent_states.core_states.pantheon.lastCycleTime = Date.now();
+    state.player.talent_states.core_states.pantheon.activeCore = null;
 
 
     Object.assign(state, {
