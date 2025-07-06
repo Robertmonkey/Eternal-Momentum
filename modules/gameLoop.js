@@ -962,6 +962,121 @@ export function gameTick(mx, my) {
             const alpha = (effect.endTime - now) / 5000 * 0.3; ctx.fillStyle = `rgba(253, 121, 168, ${alpha})`; utils.drawCircle(ctx, effect.x, effect.y, effect.r, ctx.fillStyle);
             if (Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < effect.r + state.player.r) { if (!state.player.controlsInverted) { play('systemErrorSound'); addStatusEffect('Controls Inverted', '🔀', 3000); } state.player.controlsInverted = true; setTimeout(() => state.player.controlsInverted = false, 3000); }
         }
+        else if (effect.type === 'paradox_echo') {
+            if (!effect.trail[0] || now - effect.trail[0].time > 1000) {
+                if (effect.history.length > 0) {
+                    effect.trail.unshift(effect.history.shift());
+                } else if (effect.trail.length === 0) {
+                    stopLoopingSfx('paradoxTrailHum');
+                    state.effects.splice(i, 1);
+                    continue;
+                }
+            }
+            effect.trail.forEach((p, index) => {
+                const alpha = 1 - (index / effect.trail.length);
+                utils.drawCircle(ctx, p.x, p.y, effect.playerR, `rgba(129, 236, 236, ${alpha * 0.5})`);
+                if (Math.hypot(state.player.x - p.x, state.player.y - p.y) < state.player.r + effect.playerR && !state.player.shield) {
+                    state.player.health -= 0.5; if (state.player.health <= 0) state.gameOver = true;
+                }
+            });
+            effect.trail = effect.trail.slice(0, 50);
+        }
+        else if (effect.type === 'dilation_field') {
+            playLooping('dilationField');
+            ctx.save();
+            ctx.translate(effect.x, effect.y);
+            ctx.rotate(effect.angle);
+            ctx.fillStyle = 'rgba(189, 195, 199, 0.2)';
+            ctx.beginPath();
+            ctx.arc(0, 0, Math.max(0, effect.r), -Math.PI/2, Math.PI/2, false);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        }
+        // --- RESTORED BOSS LOGIC BLOCK ---
+        else if (effect.type === 'annihilator_beam') {
+            const beamWidth = 2000;
+            ctx.save();
+            ctx.translate(effect.source.x, effect.source.y);
+            ctx.rotate(Math.atan2(effect.pillar.y - effect.source.y, effect.pillar.x - effect.source.x));
+            
+            const grad = ctx.createLinearGradient(0, -beamWidth / 2, 0, beamWidth / 2);
+            grad.addColorStop(0, `rgba(214, 48, 49, 0)`);
+            grad.addColorStop(0.4, `rgba(214, 48, 49, 0.7)`);
+            grad.addColorStop(0.5, `rgba(214, 48, 49, 0.9)`);
+            grad.addColorStop(0.6, `rgba(214, 48, 49, 0.7)`);
+            grad.addColorStop(1, `rgba(214, 48, 49, 0)`);
+            ctx.fillStyle = grad;
+
+            const pillarDist = Math.hypot(effect.pillar.x - effect.source.x, effect.pillar.y - effect.source.y);
+            const shadowAngle = Math.atan2(effect.pillar.r, pillarDist);
+            
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.arc(0, 0, Math.max(0, pillarDist + 2000), shadowAngle, -shadowAngle);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+
+            const angleToPlayer = Math.atan2(state.player.y - effect.source.y, state.player.x - effect.source.x);
+            const angleToPillar = Math.atan2(effect.pillar.y - effect.source.y, effect.pillar.x - effect.source.x);
+            const angleDiff = Math.abs(angleToPlayer - angleToPillar);
+            const pillarAngularSize = Math.atan2(effect.pillar.r, Math.hypot(effect.pillar.x - effect.source.x, effect.pillar.y - effect.source.y));
+            if (angleDiff > pillarAngularSize && !state.player.shield) {
+                state.player.health -= 5;
+                if (state.player.health <= 0) state.gameOver = true;
+            }
+        }
+        else if (effect.type === 'syphon_cone') {
+            const coneWidth = Math.PI / 4;
+            ctx.fillStyle = `rgba(155, 89, 182, 0.3)`;
+            ctx.beginPath();
+            ctx.moveTo(effect.source.x, effect.source.y);
+            ctx.arc(effect.source.x, effect.source.y, Math.max(0, 800), effect.angle - coneWidth/2, effect.angle + coneWidth/2);
+            ctx.closePath();
+            ctx.fill();
+
+            const distToPlayer = Math.hypot(state.player.x - effect.source.x, state.player.y - effect.source.y);
+            const angleToPlayer = Math.atan2(state.player.y - effect.source.y, state.player.x - effect.source.x);
+            const angleDiff = Math.abs(angleToPlayer - effect.angle);
+
+            if (distToPlayer < 800 && angleDiff < coneWidth / 2 && now < effect.endTime && !effect.hasHit) {
+                effect.hasHit = true; 
+                const powerType = state.offensiveInventory[0];
+                if (powerType) { // Fixes crash if player has no power
+                    const powerData = powers[powerType];
+                    if (powerData && powerData.apply) {
+                        powerData.apply(utils, gameHelpers, state.player.x, state.player.y);
+                        state.offensiveInventory[0] = null;
+                        addStatusEffect('Power Siphoned', '💀', 2000);
+                    }
+                }
+            }
+        }
+        else if (effect.type === 'juggernaut_charge_ring') {
+            const progress = (now - effect.startTime) / effect.duration;
+            ctx.strokeStyle = `rgba(99, 110, 114, ${1 - progress})`;
+            ctx.lineWidth = 15 * progress;
+            ctx.beginPath();
+            ctx.arc(effect.source.x, effect.source.y, Math.max(0, effect.source.r + 20 + 80 * progress), 0, 2 * Math.PI);
+            ctx.stroke();
+        }
+        else if (effect.type === 'transient_lightning') {
+            utils.drawLightning(ctx, effect.x1, effect.y1, effect.x2, effect.y2, effect.color, 4);
+        }
+        else if (effect.type === 'miasma_gas') {
+            ctx.fillStyle = "rgba(106, 176, 76, 0.1)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            if (!state.player.shield) { state.player.health -= 0.05; if (state.player.health <= 0) state.gameOver = true; }
+        }
+        else if (effect.type === 'charge_indicator') {
+            const progress = (now - effect.source.lastSlam) / effect.slamChargeTime;
+            ctx.strokeStyle = `rgba(106, 176, 76, ${progress})`;
+            ctx.lineWidth = 2 + progress * 8;
+            ctx.beginPath();
+            ctx.arc(effect.source.x, effect.source.y, Math.max(0, effect.radius * progress), 0, 2 * Math.PI);
+            ctx.stroke();
+        }
         else if (effect.type === 'shrinking_box') {
             playLooping('wallShrink');
             const progress = (now - effect.startTime) / effect.duration;
@@ -989,46 +1104,35 @@ export function gameTick(mx, my) {
             });
             ctx.shadowBlur = 0;
         }
-        else if (effect.type === 'paradox_echo') {
-            if (!effect.trail[0] || now - effect.trail[0].time > 1000) {
-                if (effect.history.length > 0) {
-                    effect.trail.unshift(effect.history.shift());
-                } else if (effect.trail.length === 0) {
-                    stopLoopingSfx('paradoxTrailHum');
-                    state.effects.splice(i, 1);
-                    continue;
-                }
-            }
-            effect.trail.forEach((p, index) => {
-                const alpha = 1 - (index / effect.trail.length);
-                utils.drawCircle(ctx, p.x, p.y, effect.playerR, `rgba(129, 236, 236, ${alpha * 0.5})`);
-                if (Math.hypot(state.player.x - p.x, state.player.y - p.y) < state.player.r + effect.playerR && !state.player.shield) {
-                    state.player.health -= 0.5; if (state.player.health <= 0) state.gameOver = true;
-                }
-            });
-            effect.trail = effect.trail.slice(0, 50);
-        }
-        else if (effect.type === 'syphon_cone') {
-            const coneWidth = Math.PI / 4;
-            ctx.fillStyle = `rgba(155, 89, 182, 0.3)`;
-            ctx.beginPath();
-            ctx.moveTo(effect.source.x, effect.source.y);
-            ctx.arc(effect.source.x, effect.source.y, Math.max(0, 800), effect.angle - coneWidth/2, effect.angle + coneWidth/2);
-            ctx.closePath();
-            ctx.fill();
-        }
-        else if(effect.type === 'dilation_field') {
-            playLooping('dilationField');
+        else if (effect.type === 'shaper_rune') {
+            const progress = 1 - (effect.endTime - now) / 4000;
+            const size = effect.r * (1 - progress * 0.5);
             ctx.save();
-            ctx.translate(effect.x, effect.y);
-            ctx.rotate(effect.angle);
-            ctx.fillStyle = 'rgba(189, 195, 199, 0.2)';
+            ctx.globalAlpha = 1 - progress;
+            ctx.strokeStyle = '#f1c40f';
+            ctx.lineWidth = 5;
             ctx.beginPath();
-            ctx.arc(0, 0, Math.max(0, effect.r), -Math.PI/2, Math.PI/2, false);
-            ctx.closePath();
-            ctx.fill();
+            ctx.arc(effect.x, effect.y, Math.max(0, size), 0, 2 * Math.PI);
+            ctx.stroke();
+            const symbol = { nova: '💫', shockwave: '💥', lasers: '☄️', heal: '❤️', speed_buff: '🚀'}[effect.runeType];
+            ctx.fillStyle = '#f1c40f';
+            ctx.font = `${size * 0.8}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(symbol, effect.x, effect.y);
             ctx.restore();
         }
+        else if (effect.type === 'aspect_summon_ring') {
+            const progress = (now - effect.startTime) / effect.duration;
+            ctx.strokeStyle = effect.color;
+            ctx.lineWidth = 15 * (1 - progress);
+            ctx.globalAlpha = 1 - progress;
+            ctx.beginPath();
+            ctx.arc(effect.source.x, effect.source.y, Math.max(0, effect.maxRadius * progress), 0, 2 * Math.PI);
+            ctx.stroke();
+            ctx.globalAlpha = 1.0;
+        }
+        // --- END OF RESTORED BOSS LOGIC ---
     }
 
     utils.updateParticles(ctx, state.particles);
