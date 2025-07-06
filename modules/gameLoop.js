@@ -959,15 +959,18 @@ export function gameTick(mx, my) {
             if(now > effect.startTime + effect.life) state.effects.splice(i, 1);
         }
         else if (effect.type === 'teleport_indicator') {
-            if (now > effect.endTime) { state.effects.splice(i, 1); continue; }
-            const progress = 1 - ((effect.endTime - now) / 1000);
-            const warningRadius = effect.r * (1.5 - progress);
-            ctx.strokeStyle = `rgba(255, 0, 0, ${1 - progress})`;
-            ctx.lineWidth = 5 + (10 * progress);
-            ctx.beginPath();
-            ctx.arc(effect.x, effect.y, Math.max(0, warningRadius), 0, 2 * Math.PI);
-            ctx.stroke();
-        }
+    if (now > effect.endTime) { 
+        state.effects.splice(i, 1); 
+        continue; 
+    }
+    const progress = 1 - ((effect.endTime - now) / 1000);
+    const warningRadius = effect.r * (1.5 - progress);
+    ctx.strokeStyle = `rgba(255, 0, 0, ${1 - progress})`;
+    ctx.lineWidth = 5 + (10 * progress);
+    ctx.beginPath();
+    ctx.arc(effect.x, effect.y, Math.max(0, warningRadius), 0, 2 * Math.PI);
+    ctx.stroke();
+}
         else if (effect.type === 'repulsion_field' || effect.type === 'glitch_zone' || effect.type === 'annihilator_beam' || effect.type === 'juggernaut_charge_ring' || effect.type === 'slow_zone' || effect.type === 'transient_lightning' || effect.type === 'miasma_gas' || effect.type === 'charge_indicator' || effect.type === 'paradox_echo' || effect.type === 'syphon_cone' || effect.type === 'shrinking_box' || effect.type === 'dilation_field' || effect.type === 'shaper_rune' || effect.type === 'shaper_zone' || effect.type === 'aspect_summon_ring' || effect.type === 'architect_pillar' || effect.type === 'player_pull_pulse' || effect.type === 'helix_bolt' || effect.type === 'containment_pylon' || effect.type === 'shaper_rune_pickup' || effect.type === 'small_freeze' || effect.type === 'enemy_only_pull_zone') {
             // These effects have complex rendering logic that can be kept as is.
         }
