@@ -22,7 +22,6 @@ function stopLoopingSfx(soundId) {
     AudioManager.stopLoopingSfx(soundId);
 }
 
-// --- NEW: Pass core handlers to gameHelpers ---
 const gameHelpers = { addStatusEffect, spawnEnemy, spawnPickup, play, stopLoopingSfx, playLooping, addEssence, useSyphonCore, useLoopingEyeCore };
 const spawnParticlesCallback = (x, y, c, n, spd, life, r) => utils.spawnParticles(state.particles, x, y, c, n, spd, life, r);
 
@@ -72,8 +71,6 @@ export function handleThematicUnlock(stageJustCleared) {
     }
 }
 
-
-// --- NEW ---
 // Function to handle unlocking Aberration Cores based on player level
 function handleCoreUnlocks(newLevel) {
     const coreData = bossData.find(b => b.unlock_level === newLevel);
@@ -88,12 +85,10 @@ function handleCoreUnlocks(newLevel) {
 function levelUp() {
     state.player.level++;
     state.player.essence -= state.player.essenceToNextLevel;
-    // --- UPDATED: Gentler leveling curve ---
     state.player.essenceToNextLevel = Math.floor(state.player.essenceToNextLevel * 1.18);
     state.player.ascensionPoints += 1;
     utils.spawnParticles(state.particles, state.player.x, state.player.y, '#00ffff', 80, 6, 50, 5);
     
-    // --- NEW: Check for core unlocks on level up ---
     if (state.player.level === 10 && state.player.unlockedAberrationCores.size === 0) {
         showUnlockNotification("SYSTEM ONLINE", "Aberration Core Socket Unlocked");
     }
@@ -107,7 +102,6 @@ export function addEssence(amount) {
 
     let modifiedAmount = Math.floor(amount * state.player.talent_modifiers.essence_gain_modifier);
     
-    // --- NEW: Essence Transmutation Talent ---
     if (state.player.purchasedTalents.has('essence-transmutation')) {
         const essenceBefore = state.player.essence % 50;
         const healthGain = Math.floor((essenceBefore + modifiedAmount) / 50);
@@ -129,19 +123,19 @@ function getSafeSpawnLocation() {
     let x, y;
     const side = Math.floor(Math.random() * 4);
     switch (side) {
-        case 0: // Top
+        case 0: 
             x = Math.random() * canvas.width;
             y = edgeMargin;
             break;
-        case 1: // Bottom
+        case 1:
             x = Math.random() * canvas.width;
             y = canvas.height - edgeMargin;
             break;
-        case 2: // Left
+        case 2:
             x = edgeMargin;
             y = Math.random() * canvas.height;
             break;
-        case 3: // Right
+        case 3:
             x = canvas.width - edgeMargin;
             y = canvas.height - edgeMargin;
             break;
@@ -219,7 +213,6 @@ export function spawnBossesForStage(stageNum) {
         bossIdsToSpawn.forEach(bossId => {
             spawnEnemy(true, bossId, getSafeSpawnLocation());
         });
-        // --- NEW: Centurion Core Logic ---
         if(state.player.equippedAberrationCore === 'centurion') {
             const corners = [
                 {x: 100, y: 100}, {x: canvas.width - 100, y: 100},
@@ -299,7 +292,6 @@ export function spawnEnemy(isBoss = false, bossId = null, location = null) {
 }
 
 export function spawnPickup() {
-    // --- NEW: Check if pickup spawn is disabled by a core ---
     if (state.player.talent_states.core_states.shaper_of_fate?.isDisabled) return;
 
     const available = [...state.player.unlockedPowers];
@@ -328,7 +320,6 @@ export function spawnPickup() {
     });
 }
 
-// --- NEW: Core logic handlers ---
 export function useSyphonCore(mx, my) {
     play('syphonFire');
     const angle = Math.atan2(my - state.player.y, mx - state.player.x);
@@ -378,7 +369,6 @@ export function gameTick(mx, my) {
             if (!state.bossActive && state.bossSpawnCooldownEnd > 0 && now > state.bossSpawnCooldownEnd) {
                 state.bossSpawnCooldownEnd = 0;
                 spawnBossesForStage(state.currentStage);
-                // --- NEW: Shaper of Fate Core ---
                 if (state.player.equippedAberrationCore === 'shaper_of_fate') {
                     const positions = [{x: -50, y: 0}, {x: 50, y: 0}, {x: 0, y: -50}];
                     ['damage', 'defense', 'utility'].forEach((type, i) => {
@@ -391,7 +381,6 @@ export function gameTick(mx, my) {
         if (state.bossActive && Math.random() < (0.007 + state.player.level * 0.001)) {
             spawnEnemy(false);
         }
-        // --- UPDATED: Use talent modifier for power spawn rate ---
         if (Math.random() < ((0.02 + state.player.level * 0.0002) * state.player.talent_modifiers.power_spawn_rate_modifier)) {
             spawnPickup();
         }
@@ -434,10 +423,9 @@ export function gameTick(mx, my) {
         playerSpeedMultiplier *= 0.5;
     }
     
-    // --- NEW: Aethel & Umbra Core speed/damage logic ---
     if (state.player.equippedAberrationCore === 'aethel_and_umbra') {
         if (state.player.health > state.player.maxHealth * 0.5) {
-            playerSpeedMultiplier *= 1.10; // Aethel's speed
+            playerSpeedMultiplier *= 1.10;
         }
     }
     
@@ -458,22 +446,35 @@ export function gameTick(mx, my) {
         }
     });
 
+    // Player Movement
+    const juggernautCore = state.player.equippedAberrationCore === 'juggernaut';
+    if(juggernautCore) {
+        const moveDist = Math.hypot( (finalMx - state.player.x), (finalMy - state.player.y));
+        if (moveDist > state.player.r) {
+            if (!state.player.talent_states.core_states.juggernaut.lastMoveTime) {
+                state.player.talent_states.core_states.juggernaut.lastMoveTime = now;
+            }
+            if(now - state.player.talent_states.core_states.juggernaut.lastMoveTime > 3000) {
+                state.player.talent_states.core_states.juggernaut.isCharging = true;
+            }
+        } else {
+            state.player.talent_states.core_states.juggernaut.lastMoveTime = 0;
+        }
+    }
     if (now > state.player.stunnedUntil) {
         state.player.x += (finalMx - state.player.x) * 0.015 * state.player.speed * playerSpeedMultiplier;
         state.player.y += (finalMy - state.player.y) * 0.015 * state.player.speed * playerSpeedMultiplier;
     }
 
-    // --- NEW: Epoch-Ender Core history tracking ---
     const epochCore = state.player.equippedAberrationCore === 'epoch_ender';
     if(epochCore && now > (state.player.talent_states.core_states.epoch_ender.cooldownUntil || 0)) {
         const history = state.player.talent_states.core_states.epoch_ender.history;
         history.push({ x: state.player.x, y: state.player.y, health: state.player.health });
-        if(history.length > 120) history.shift(); // Keep 2 seconds of history (120 frames at 60fps)
+        if(history.length > 120) history.shift();
     }
 
-    // --- NEW: ABERRATION CORE LOGIC ---
+    // --- ABERRATION CORE LOGIC ---
     let coreId = state.player.equippedAberrationCore;
-    // Pantheon Core logic
     if (coreId === 'pantheon') {
         if (now > (state.player.talent_states.core_states.pantheon.lastCycleTime || 0) + 60000) {
             const unlockedCores = Array.from(state.player.unlockedAberrationCores).filter(id => id !== 'pantheon');
@@ -638,7 +639,6 @@ export function gameTick(mx, my) {
         const e = state.enemies[i];
         if (e.hp <= 0) {
             if (e.boss) {
-                // --- NEW: Splitter Core Boss Death ---
                 if (state.player.equippedAberrationCore === 'splitter' && !e.isFriendly) {
                      for(let wave = 0; wave < 2; wave++) {
                         setTimeout(() => {
@@ -680,11 +680,9 @@ export function gameTick(mx, my) {
                 }
             } else {
                 addEssence(10);
-                // --- NEW: Thermal Runaway Talent ---
                 if (state.player.purchasedTalents.has('thermal-runaway') && state.player.berserkUntil > now) {
-                    state.player.berserkUntil += 100; // 0.1 seconds
+                    state.player.berserkUntil += 100;
                 }
-                // --- NEW: Splitter Core Minion Spawn ---
                 if(state.player.equippedAberrationCore === 'splitter' && !e.isFriendly && now > (state.player.talent_states.core_states.splitter.cooldownUntil || 0)) {
                     state.player.talent_states.core_states.splitter.cooldownUntil = now + 20000;
                     const minion = spawnEnemy(false, null, {x: e.x, y: e.y});
@@ -695,7 +693,6 @@ export function gameTick(mx, my) {
                         minion.lifeEnd = now + 10000;
                     }
                 }
-                // --- NEW: Swarm Link Core ---
                 if (state.player.equippedAberrationCore === 'swarm_link' && !e.isFriendly) {
                     state.player.talent_states.core_states.swarm_link.enemiesForNextSegment++;
                     if (state.player.talent_states.core_states.swarm_link.enemiesForNextSegment >= 2 && state.player.talent_states.core_states.swarm_link.tail.length < 50) {
@@ -704,8 +701,6 @@ export function gameTick(mx, my) {
                         state.player.talent_states.core_states.swarm_link.tail.push({x: lastSegment.x, y: lastSegment.y});
                     }
                 }
-
-                // --- NEW: Fractal Horror Core ---
                 if (state.player.equippedAberrationCore === 'fractal_horror' && !e.isFriendly) {
                     if(!state.player.talent_states.core_states.fractal_horror) state.player.talent_states.core_states.fractal_horror = {killCount: 0};
                     state.player.talent_states.core_states.fractal_horror.killCount++;
@@ -719,7 +714,6 @@ export function gameTick(mx, my) {
                         }
                     }
                 }
-                 // --- NEW: Parasite Core ---
                 if (e.isInfected && state.player.equippedAberrationCore === 'parasite') {
                     const spore = spawnEnemy(false, null, {x: e.x, y: e.y});
                     if(spore) {
@@ -739,7 +733,6 @@ export function gameTick(mx, my) {
                 if (cryoRank && e.wasFrozen && Math.random() < [0.25, 0.5][cryoRank-1]) {
                     utils.spawnParticles(state.particles, e.x, e.y, '#ADD8E6', 40, 4, 30, 2);
                     state.effects.push({ type: 'shockwave', caster: state.player, x: e.x, y: e.y, radius: 0, maxRadius: 100, speed: 500, startTime: now, hitEnemies: new Set(), damage: 5 * state.player.talent_modifiers.damage_multiplier, color: 'rgba(0, 200, 255, 0.5)' });
-                    // --- NEW: Glacial Propagation ---
                     if (state.player.purchasedTalents.has('glacial-propagation')) {
                         state.effects.push({ type: 'small_freeze', x: e.x, y: e.y, radius: 100, endTime: now + 200 });
                     }
@@ -893,7 +886,6 @@ export function gameTick(mx, my) {
         if(!e.hasCustomDraw) utils.drawCircle(ctx, e.x,e.y,e.r, color);
         if(e.enraged) { ctx.strokeStyle = "yellow"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(e.x,e.y,e.r+5,0,2*Math.PI); ctx.stroke(); }
         
-        // --- NEW: Parasite Core from Phase Momentum ---
         if (state.player.talent_states.phaseMomentum.active && !e.boss && !e.isFriendly && state.player.equippedAberrationCore === 'parasite') {
              if (Math.hypot(state.player.x - e.x, state.player.y - e.y) < state.player.r + e.r) {
                 e.isInfected = true;
@@ -916,7 +908,6 @@ export function gameTick(mx, my) {
                         damage *= state.player.talent_modifiers.damage_taken_multiplier;
                         const wouldBeFatal = (state.player.health - damage) <= 0;
 
-                        // --- NEW: Epoch Ender & Contingency Protocol ---
                         if(wouldBeFatal && epochCore && e.boss && now > (state.player.talent_states.core_states.epoch_ender.cooldownUntil || 0)) {
                              const history = state.player.talent_states.core_states.epoch_ender.history;
                              const rewindState = history[0];
@@ -939,7 +930,6 @@ export function gameTick(mx, my) {
                             state.player.health -= damage; 
                         }
 
-                        // --- NEW: Mirror Mirage & Glitch Cores ---
                         if (state.player.equippedAberrationCore === 'mirror_mirage' && now > (state.player.talent_states.core_states.mirror_mirage.cooldownUntil || 0)) {
                             state.player.talent_states.core_states.mirror_mirage.cooldownUntil = now + 12000;
                             state.decoy = {x: state.player.x, y: state.player.y, r: 20, expires: now + 3000, isTaunting: true, isMobile: false};
@@ -954,7 +944,6 @@ export function gameTick(mx, my) {
                     } else { 
                         state.player.shield=false; 
                         play('shieldBreak');
-                        // --- NEW: EMP Core ---
                         if (state.player.equippedAberrationCore === 'emp') {
                              state.effects = state.effects.filter(ef => ef.type !== 'nova_bullet' && ef.type !== 'ricochet_projectile' && ef.type !== 'seeking_shrapnel');
                              utils.spawnParticles(state.particles, state.player.x, state.player.y, '#3498db', 50, 4, 30);
@@ -1026,11 +1015,9 @@ export function gameTick(mx, my) {
         const collectDist = Math.hypot(state.player.x - p.x, state.player.y - p.y);
         if(collectDist < state.player.r + p.r){
             play('pickupSound'); 
-            // --- NEW: Essence Weaving Talent ---
             if (state.player.purchasedTalents.has('essence-weaving')) {
                 state.player.health = Math.min(state.player.maxHealth, state.player.health + state.player.maxHealth * 0.02);
             }
-             // --- NEW: Obelisk Core ---
             if (state.player.equippedAberrationCore === 'obelisk') {
                 const currentCharges = state.player.statusEffects.find(e => e.name === 'Conduit Charge');
                 if (!currentCharges || currentCharges.count < 3) {
@@ -1076,7 +1063,6 @@ export function gameTick(mx, my) {
                 if (state.player.purchasedTalents.has('unstable-singularity')) { 
                     state.effects.push({ type: 'shockwave', caster: state.player, x: effect.x, y: effect.y, radius: 0, maxRadius: effect.maxRadius, speed: 800, startTime: now, hitEnemies: new Set(), damage: 25 * state.player.talent_modifiers.damage_multiplier }); 
                 } 
-                // --- NEW: Time Eater Core ---
                 if (state.player.equippedAberrationCore === 'time_eater') {
                     state.effects.push({ type: 'dilation_field', x: effect.x, y: effect.y, r: effect.maxRadius, endTime: now + 30000 });
                 }
@@ -1140,7 +1126,6 @@ export function gameTick(mx, my) {
                             }
                         } else {
                             target.hp -= dmg;
-                            // --- NEW: Basilisk Core ---
                             if (state.player.equippedAberrationCore === 'basilisk') {
                                 addStatusEffect.call(target, 'Petrified', '🗿', 3000);
                             }
@@ -1633,7 +1618,6 @@ export function gameTick(mx, my) {
             ctx.stroke();
             ctx.globalAlpha = 1.0;
         }
-        // --- NEW EFFECTS ---
         else if (effect.type === 'architect_pillar') {
             utils.drawCircle(ctx, effect.x, effect.y, effect.r, '#7f8c8d');
             state.enemies.forEach(e => {
