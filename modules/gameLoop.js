@@ -966,7 +966,11 @@ export function gameTick(mx, my) {
                         target.health -= 999;
                         if (target.health <= 0) state.gameOver = true;
                     } else {
-                        target.hp -= 999;
+                        if (target.boss) {
+                            target.hp -= 500;
+                        } else {
+                            target.hp -= 999;
+                        }
                     }
                 }
             });
