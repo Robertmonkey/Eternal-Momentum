@@ -1,4 +1,4 @@
-name: Test Self-Hosted Runner
+name: Build and Deploy to GitHub Pages (Self-Hosted)
 
 on:
   push:
@@ -6,8 +6,27 @@ on:
       - main
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v3
-      - run: echo "Hello from your self-hosted runner on ${{ runner.os }}!"
+
+      # If using Node.js (like for an npm build)
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      # Install dependencies and build your game
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build project
+        run: npm run build
+
+      # Deploy to gh-pages branch using official action
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
