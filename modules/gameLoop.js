@@ -331,14 +331,20 @@ export function gameTick(mx, my) {
                 }
             }
         }
-        if (state.bossActive && Math.random() < (0.007 + state.player.level * 0.001)) {
-            spawnEnemy(false);
-        }
-
-        const baseSpawnChance = 0.02 + state.player.level * 0.0002;
-        const finalSpawnChance = baseSpawnChance * state.player.talent_modifiers.power_spawn_rate_modifier;
-        if (Math.random() < finalSpawnChance) {
-            spawnPickup();
+        
+        // --- FIX: Grouped minion and power-up spawning under a single, clear condition ---
+        if (state.bossActive) {
+            // Minion spawning
+            if (Math.random() < (0.007 + state.player.level * 0.001)) {
+                spawnEnemy(false);
+            }
+    
+            // Power-up spawning
+            const baseSpawnChance = 0.02 + state.player.level * 0.0002;
+            const finalSpawnChance = baseSpawnChance * state.player.talent_modifiers.power_spawn_rate_modifier;
+            if (Math.random() < finalSpawnChance) {
+                spawnPickup();
+            }
         }
     }
     
