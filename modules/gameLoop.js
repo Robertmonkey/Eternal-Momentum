@@ -933,7 +933,6 @@ export function gameTick(mx, my) {
             ctx.strokeStyle = effect.color || 'rgba(230, 126, 34, 0.8)';
             ctx.lineWidth = 3;
             ctx.beginPath();
-            // --- FIX: Clamp the radius to a minimum of 0 to prevent negative radius error ---
             const warningRadius = 50 * (1 - progress);
             ctx.arc(effect.x, effect.y, Math.max(0, warningRadius), 0, Math.PI*2);
             ctx.stroke();
