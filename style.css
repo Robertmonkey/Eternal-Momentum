@@ -75,78 +75,29 @@ canvas { display:block; width:100vw; height:100vh; }
   align-items: center; gap: 8px; pointer-events: none; 
 }
 
-/* Status Effects Bar - Relocated inside Command Bar */
-#status-effects-bar {
-  display: flex;
-  gap: 8px;
-  height: 32px; /* Adjusted size */
-  padding: 0 10px;
-  background: rgba(0,0,0,0.4);
-  border-radius: 20px;
-  border: 1px solid var(--border-color);
-  backdrop-filter: blur(5px);
-  pointer-events: all;
-  opacity: 0;
-  transition: opacity 0.3s ease-in-out;
-  align-items: center;
-}
-#status-effects-bar.visible { opacity: 1; }
-.status-icon {
-  width: 28px; /* Adjusted size */
-  height: 28px; /* Adjusted size */
-  font-size: 20px; /* Adjusted size */
-  display: flex;
-  align-items: center; justify-content: center; position: relative;
-  background: rgba(0,0,0,0.5); border-radius: 50%; overflow: hidden;
-}
-.status-icon .cooldown-overlay {
-  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(0,0,0,0.7); transform-origin: bottom;
-  transition: transform 0.2s linear;
-}
-
+/* --- COMMAND BAR REWORK --- */
 .command-bar {
-  width: 100%; height: 120px; /* Adjusted height */
+  width: 100%; height: 110px;
   background: var(--ui-bg);
   border: 1px solid var(--border-color); border-radius: 12px;
   box-shadow: 0 0 20px rgba(0, 255, 255, 0.2); backdrop-filter: blur(10px);
-  display: flex; justify-content: space-between;
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  padding: 10px 20px; color: var(--font-color); pointer-events: all;
+  padding: 0 20px;
+  color: var(--font-color); pointer-events: all;
   box-sizing: border-box;
 }
 
-.ui-pod { 
-    text-align: center; font-size: 1.1rem; line-height: 1.5; 
-    flex-basis: 200px;
-    flex-shrink: 0; 
-    display: flex; flex-direction: column;
-}
-.left-pod { text-align: left; align-items: flex-start; justify-content: center; }
-.right-pod { text-align: right; display: flex; flex-direction: row; gap: 10px; justify-content: flex-end; align-items: center;}
-
-.central-hud {
+/* Group 1: Powers */
+.hud-group-powers {
+  flex: 1 1 0;
   display: flex;
-  flex-direction: column;
-  align-items: center;
   justify-content: flex-start;
-  flex-grow: 1;
-  height: 100%;
-  gap: 4px;
+  align-items: center;
+  gap: 10px;
 }
 
-.core-display { 
-    height: auto;
-    display: flex; 
-    align-items: center; 
-    justify-content: center;
-}
-.ability-cluster { 
-  display: flex; justify-content: center; 
-  align-items: flex-end; /* Align to bottom for better feel */ 
-  gap: 15px;
-  width: 100%;
-}
 .abilities { display: flex; align-items: flex-end; gap: 10px; }
 .ability-slot {
   width: 64px; height: 72px; border: 2px solid var(--border-color);
@@ -176,12 +127,54 @@ canvas { display:block; width:100vw; height:100vh; }
 }
 .queue-slot.visible { opacity: 1; transform: scale(1); }
 
-/* Health Bar - Relocated */
+/* Group 2: Core & Health */
+.hud-group-center {
+  flex: 1.5 1 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  min-width: 350px;
+}
+
+.health-cluster {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  max-width: 280px;
+}
+
+#status-effects-bar {
+  display: flex;
+  gap: 6px;
+  height: 28px;
+  padding: 0 8px;
+  background: rgba(0,0,0,0.4);
+  border-radius: 20px;
+  border: 1px solid rgba(0,255,255,0.2);
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+}
+#status-effects-bar.visible { opacity: 1; }
+.status-icon {
+  width: 24px; height: 24px; font-size: 16px;
+  display: flex;
+  align-items: center; justify-content: center; position: relative;
+  background: rgba(0,0,0,0.5); border-radius: 50%; overflow: hidden;
+}
+.status-icon .cooldown-overlay {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.7); transform-origin: bottom;
+  transition: transform 0.2s linear;
+}
+
 #health-bar-container {
-  position: relative; /* Changed from absolute */
-  width: 90%; 
-  max-width: 450px;
-  height: 24px; /* Adjusted size */
+  position: relative;
+  width: 100%; 
+  height: 28px;
   background: var(--health-bar-bg);
   border: 2px solid rgba(0,0,0,0.5);
   border-radius: 8px;
@@ -189,9 +182,7 @@ canvas { display:block; width:100vw; height:100vh; }
   box-shadow: inset 0 0 8px rgba(0,0,0,0.7);
 }
 #health-bar-value {
-  position: absolute; top:0; left: 0;
-  height: 100%;
-  width: 100%;
+  position: absolute; top:0; left: 0; height: 100%; width: 100%;
   border-radius: 6px;
   transition: width 0.4s ease-out, background-color 0.5s ease;
 }
@@ -200,29 +191,67 @@ canvas { display:block; width:100vw; height:100vh; }
 #health-bar-value.health-low { background: var(--health-low); }
 
 #shield-bar-overlay {
-    position: absolute; top:0; left: 0;
-    height: 100%;
-    width: 0%;
-    background-color: var(--shield-color);
-    border-radius: 6px;
-    transition: width 0.3s linear;
+  position: absolute; top:0; left: 0; height: 100%; width: 0%;
+  background-color: var(--shield-color); border-radius: 6px;
+  transition: width 0.3s linear;
 }
 
 #health-bar-sheen {
-    position: absolute; top: 0; left: 0;
-    width: 30%; height: 100%;
-    background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0) 100%);
-    animation: sheen-animation 3.5s ease-in-out infinite;
-    animation-delay: 1s;
+  position: absolute; top: 0; left: 0; width: 30%; height: 100%;
+  background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0) 100%);
+  animation: sheen-animation 3.5s ease-in-out infinite; animation-delay: 1s;
 }
 
 #health-bar-text {
   position: absolute; width: 100%; text-align: center;
-  line-height: 24px; /* Adjusted size */
-  font-size: 0.9rem; /* Adjusted size */
-  font-weight: bold;
+  line-height: 28px; font-size: 1rem; font-weight: bold;
   color: white; text-shadow: 1px 1px 3px black;
 }
+
+/* Group 3: Player Info */
+.hud-group-info {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 8px;
+}
+.info-top-row {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+.info-buttons {
+  display: flex;
+  gap: 8px;
+}
+.info-bottom-row {
+  width: 100%;
+  max-width: 220px;
+}
+#ascension-bar-container {
+  width: 100%; height: 20px; background: var(--health-bar-bg);
+  border-radius: 5px; position: relative; overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+#ascension-bar-fill {
+  width: 0%; height: 100%; background: var(--primary-glow);
+  transition: width 0.3s ease-in-out;
+  box-shadow: 0 0 10px var(--primary-glow);
+}
+#ascension-bar-text {
+  position: absolute; top: 0; left: 10px; width: 100%;
+  line-height: 20px; font-weight: bold; color: white;
+  text-shadow: 1px 1px 2px black; font-size: 0.9rem;
+}
+#ascension-points-display {
+  font-size: 1.1rem; font-weight: bold;
+  color: var(--primary-glow);
+  text-shadow: 0 0 8px var(--primary-glow);
+}
+/* --- END COMMAND BAR REWORK --- */
+
 
 [data-tooltip-text]:hover::before {
   content: attr(data-tooltip-text);
@@ -415,28 +444,6 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     align-items: center;
     justify-content: center;
     gap: 15px;
-}
-
-#ascension-bar-container {
-  width: 100%; height: 20px; background: var(--health-bar-bg);
-  border-radius: 5px; position: relative; overflow: hidden;
-  border: 1px solid var(--border-color);
-  margin-bottom: 4px;
-}
-#ascension-bar-fill {
-  width: 0%; height: 100%; background: var(--primary-glow);
-  transition: width 0.3s ease-in-out;
-  box-shadow: 0 0 10px var(--primary-glow);
-}
-#ascension-bar-text {
-  position: absolute; top: 0; left: 10px; width: 100%;
-  line-height: 20px; font-weight: bold; color: white;
-  text-shadow: 1px 1px 2px black; font-size: 0.9rem;
-}
-#ascension-points-display {
-  font-size: 1rem; font-weight: bold;
-  color: var(--primary-glow);
-  text-shadow: 0 0 8px var(--primary-glow);
 }
 
 @keyframes core-pulse {
