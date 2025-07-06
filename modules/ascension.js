@@ -238,7 +238,7 @@ export function applyAllTalentEffects() {
     let baseDamageTakenMultiplier = 1.0;
     let basePickupRadius = 0;
     let baseEssenceGain = 1.0;
-    let basePowerSpawnRate = 1.0; // NEW
+    let basePowerSpawnRate = 1.0;
     let basePullResistance = 0;
 
     state.player.purchasedTalents.forEach((rank, id) => {
@@ -299,7 +299,8 @@ export function applyAllTalentEffects() {
     state.player.talent_modifiers.damage_taken_multiplier = baseDamageTakenMultiplier;
     state.player.talent_modifiers.pickup_radius_bonus = basePickupRadius;
     state.player.talent_modifiers.essence_gain_modifier = baseEssenceGain;
-    state.player.talent_modifiers.power_spawn_rate_modifier = basePowerSpawnRate; // NEW
+    // --- FIX: Corrected typo from pull_resistance_modifier ---
+    state.player.talent_modifiers.power_spawn_rate_modifier = basePowerSpawnRate;
     state.player.talent_modifiers.pull_resistance_modifier = basePullResistance;
 }
 
