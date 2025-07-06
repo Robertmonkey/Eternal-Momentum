@@ -332,14 +332,11 @@ export function gameTick(mx, my) {
             }
         }
         
-        // --- FIX: Grouped minion and power-up spawning under a single, clear condition ---
         if (state.bossActive) {
-            // Minion spawning
             if (Math.random() < (0.007 + state.player.level * 0.001)) {
                 spawnEnemy(false);
             }
     
-            // Power-up spawning
             const baseSpawnChance = 0.02 + state.player.level * 0.0002;
             const finalSpawnChance = baseSpawnChance * state.player.talent_modifiers.power_spawn_rate_modifier;
             if (Math.random() < finalSpawnChance) {
@@ -933,7 +930,19 @@ export function gameTick(mx, my) {
                 state.effects.splice(i, 1); 
                 continue; 
             } 
-            ctx.strokeStyle = effect.color || 'rgba(230, 126, 34, 0.8)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(effect.x, effect.y, 50 * (1-progress), 0, Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(effect.x-10, effect.y); ctx.lineTo(effect.x+10, effect.y); ctx.moveTo(effect.x, effect.y-10); ctx.lineTo(effect.x, effect.y+10); ctx.stroke(); 
+            ctx.strokeStyle = effect.color || 'rgba(230, 126, 34, 0.8)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            // --- FIX: Clamp the radius to a minimum of 0 to prevent negative radius error ---
+            const warningRadius = 50 * (1 - progress);
+            ctx.arc(effect.x, effect.y, Math.max(0, warningRadius), 0, Math.PI*2);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(effect.x-10, effect.y);
+            ctx.lineTo(effect.x+10, effect.y);
+            ctx.moveTo(effect.x, effect.y-10);
+            ctx.lineTo(effect.x, effect.y+10);
+            ctx.stroke();
         }
         else if (effect.type === 'black_hole') { 
             const elapsed = now - effect.startTime, progress = Math.min(1, elapsed / effect.duration);
