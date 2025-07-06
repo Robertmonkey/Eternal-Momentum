@@ -30,6 +30,13 @@ const bossInfoTitle = document.getElementById('bossInfoModalTitle');
 const bossInfoContent = document.getElementById('bossInfoModalContent');
 const closeBossInfoBtn = document.getElementById('closeBossInfoModalBtn');
 
+// --- NEW: Aberration Core UI elements ---
+const aberrationCoreSocket = document.getElementById('aberration-core-socket');
+const aberrationCoreIcon = document.getElementById('aberration-core-icon');
+const aberrationCoreListContainer = document.getElementById('aberration-core-list-container');
+const equippedCoreNameEl = document.getElementById('aberration-core-equipped-name');
+
+
 function updateStatusEffectsUI() {
     const now = Date.now();
     state.player.statusEffects = state.player.statusEffects.filter(effect => now < effect.endTime);
@@ -55,6 +62,38 @@ function updateStatusEffectsUI() {
     });
 }
 
+// --- NEW: Function to update the Aberration Core socket UI ---
+function updateAberrationCoreUI() {
+    if (state.player.level >= 10) {
+        aberrationCoreSocket.classList.add('unlocked');
+    } else {
+        aberrationCoreSocket.classList.remove('unlocked');
+        return;
+    }
+
+    const equippedCoreId = state.player.equippedAberrationCore;
+    const coreData = equippedCoreId ? bossData.find(b => b.id === equippedCoreId) : null;
+
+    if (coreData) {
+        aberrationCoreSocket.classList.add('active');
+        aberrationCoreIcon.style.backgroundColor = coreData.color;
+        aberrationCoreIcon.innerHTML = ''; // Clear text like '◎'
+        aberrationCoreSocket.setAttribute('data-tooltip-text', `Core Attuned: ${coreData.name}`);
+        if(coreData.id === 'pantheon') {
+            aberrationCoreIcon.classList.add('pantheon-icon-bg');
+        } else {
+            aberrationCoreIcon.classList.remove('pantheon-icon-bg');
+        }
+    } else {
+        aberrationCoreSocket.classList.remove('active');
+        aberrationCoreIcon.style.backgroundColor = 'transparent';
+        aberrationCoreIcon.innerText = '◎';
+        aberrationCoreSocket.setAttribute('data-tooltip-text', 'No Core Attuned');
+        aberrationCoreIcon.classList.remove('pantheon-icon-bg');
+    }
+}
+
+
 export function updateUI() {
     const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
     document.querySelectorAll('.ability-key').forEach(el => { el.style.display = isTouchDevice ? 'none' : 'block'; });
@@ -63,6 +102,8 @@ export function updateUI() {
     ascensionText.innerText = `LVL ${state.player.level}`;
     apDisplay.innerText = `AP: ${state.player.ascensionPoints}`;
     
+    updateAberrationCoreUI(); // --- NEW: Call the update function
+
     const healthPct = Math.max(0, state.player.health) / state.player.maxHealth;
     healthBarValue.style.width = `${healthPct * 100}%`;
     healthBarText.innerText = `${Math.max(0, Math.round(state.player.health))}/${Math.round(state.player.maxHealth)}`;
@@ -305,6 +346,49 @@ export function showCustomConfirm(title, text, onConfirm) {
 
     customConfirm.style.display = 'flex';
 }
+
+// --- NEW: Function to populate the Aberration Core modal ---
+export function populateAberrationCoreMenu(onEquip) {
+    if (!aberrationCoreListContainer) return;
+    aberrationCoreListContainer.innerHTML = '';
+
+    const equippedCoreId = state.player.equippedAberrationCore;
+    const equippedCoreData = equippedCoreId ? bossData.find(b => b.id === equippedCoreId) : null;
+    equippedCoreNameEl.innerText = equippedCoreData ? equippedCoreData.name : 'None';
+    if(equippedCoreData?.color) equippedCoreNameEl.style.color = equippedCoreData.color;
+    else equippedCoreNameEl.style.color = 'var(--nexus-glow)';
+
+
+    bossData.forEach(core => {
+        if (!core.core_desc) return; // Only show bosses that are designed as cores
+
+        const isUnlocked = state.player.unlockedAberrationCores.has(core.id);
+        const isEquipped = state.player.equippedAberrationCore === core.id;
+
+        const item = document.createElement('div');
+        item.className = 'aberration-core-item';
+        if (!isUnlocked) item.classList.add('locked');
+        if (isEquipped) item.classList.add('equipped');
+
+        const iconClass = core.id === 'pantheon' ? 'core-item-icon pantheon-icon-bg' : 'core-item-icon';
+        const iconStyle = core.id === 'pantheon' ? '' : `background-color: ${core.color};`;
+
+        item.innerHTML = `
+            <div class="${iconClass}" style="${iconStyle}"></div>
+            <div class="core-item-details">
+                <div class="core-item-name">${isUnlocked ? core.name : 'LOCKED // LEVEL ' + core.unlock_level}</div>
+                <div class="core-item-desc">${isUnlocked ? core.core_desc : '????????????????'}</div>
+            </div>
+        `;
+        
+        if (isUnlocked) {
+            item.onclick = () => onEquip(core.id);
+        }
+
+        aberrationCoreListContainer.appendChild(item);
+    });
+}
+
 
 export function populateOrreryMenu(onStart) {
     let totalEchoes = 0;
