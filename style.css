@@ -69,7 +69,7 @@ canvas { display:block; width:100vw; height:100vh; }
 
 #ui-container {
   position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
-  width: 95%; max-width: 900px;
+  width: 95%; max-width: 1200px; /* Increased max-width for more space */
   display: none; 
   flex-direction: column;
   align-items: center; gap: 8px; pointer-events: none; 
@@ -94,15 +94,19 @@ canvas { display:block; width:100vw; height:100vh; }
 }
 
 .command-bar {
-  width: 100%; height: 120px; background: var(--ui-bg);
+  width: 100%; height: 110px; /* Adjusted height */
+  background: var(--ui-bg);
   border: 1px solid var(--border-color); border-radius: 12px;
   box-shadow: 0 0 20px rgba(0, 255, 255, 0.2); backdrop-filter: blur(10px);
-  display: flex; justify-content: space-between; align-items: center;
+  display: flex; justify-content: space-between; /* Changed to space-between */
+  align-items: center;
   padding: 0 20px; color: var(--font-color); pointer-events: all;
+  position: relative; /* For health bar positioning */
 }
 .ui-pod { 
     text-align: center; font-size: 1.1rem; line-height: 1.5; 
-    flex-basis: 150px; flex-shrink: 0; 
+    flex-basis: 200px; /* Increased basis for more space */
+    flex-shrink: 0; 
     display: flex; flex-direction: column;
 }
 .left-pod { text-align: left; align-items: flex-start; }
@@ -110,13 +114,12 @@ canvas { display:block; width:100vw; height:100vh; }
 
 .core-display { 
     height: 100%; display: flex; align-items: center; justify-content: center;
-    flex-grow: 1; /* Allow core display to take up more space */
+    flex-grow: 1; /* Allow core display to take up the central space */
 }
-/* UPDATED: ability-cluster alignment */
 .ability-cluster { 
   display: flex; justify-content: center; 
-  align-items: center; /* Center items vertically */
-  gap: 15px; /* Add gap for core socket */
+  align-items: center; 
+  gap: 15px;
   width: 100%;
 }
 .abilities { display: flex; align-items: flex-end; gap: 10px; }
@@ -149,8 +152,8 @@ canvas { display:block; width:100vw; height:100vh; }
 .queue-slot.visible { opacity: 1; transform: scale(1); }
 
 #health-bar-container {
-  position: absolute; /* Take out of flex flow */
-  top: 10px; /* Position at the top */
+  position: absolute; 
+  top: -38px; /* Moved above the command bar */
   left: 50%;
   transform: translateX(-50%);
   width: 40%; 
