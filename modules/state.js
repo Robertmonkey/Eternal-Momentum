@@ -31,6 +31,7 @@ export const state = {
         pickup_radius_bonus: 0,
         essence_gain_modifier: 1.0,
         power_spawn_rate_modifier: 1.0,
+        pull_resistance_modifier: 0, // Added for completeness as ascension.js uses it
     },
 
     talent_states: {
@@ -144,8 +145,8 @@ export function loadPlayerState() {
             unlockedOffensiveSlots: 1,
             unlockedDefensiveSlots: 1,
             ...parsedData,
-            unlockedPowers: new Set(parsedData.unlockedPowers),
-            purchasedTalents: new Map(parsedData.purchasedTalents),
+            unlockedPowers: new Set(parsedData.unlockedPowers || []),
+            purchasedTalents: new Map(parsedData.purchasedTalents || []),
             unlockedAberrationCores: new Set(parsedData.unlockedAberrationCores || []),
             equippedAberrationCore: parsedData.equippedAberrationCore || null,
         };
@@ -174,13 +175,20 @@ export function resetGame(isArena = false) {
             if (Array.isArray(coreState[prop])) {
                 coreState[prop] = [];
             } else if (typeof coreState[prop] === 'boolean') {
-                coreState[prop] = true;
-            } else {
+                 // Correctly reset syphon's canUse state
+                coreState[prop] = key === 'syphon' ? true : false;
+            } else if (coreState[prop] === null) {
+                // Do nothing for properties that should be null
+            }
+            else {
                 coreState[prop] = 0;
             }
         });
     });
-    state.player.talent_states.core_states.pantheon.activeCore = null;
+    // Ensure Pantheon's active core is cleared
+    if (state.player.talent_states.core_states.pantheon) {
+        state.player.talent_states.core_states.pantheon.activeCore = null;
+    }
 
 
     Object.assign(state, {
