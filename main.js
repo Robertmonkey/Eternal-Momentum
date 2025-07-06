@@ -203,10 +203,15 @@ window.addEventListener('load', () => {
                 levelSelectModal.style.display = 'flex'; 
                 AudioManager.playSfx('uiModalOpen');
             });
-            closeLevelSelectBtn.addEventListener("click", () => { 
-                state.isPaused = false; 
+
+            closeLevelSelectBtn.addEventListener("click", () => {
                 levelSelectModal.style.display = 'none';
                 AudioManager.playSfx('uiModalClose');
+                if (state.gameOver) {
+                    document.getElementById('gameOverMenu').style.display = 'flex';
+                } else {
+                    state.isPaused = false;
+                }
             });
             
             ascensionBtn.addEventListener("click", () => {
@@ -268,7 +273,6 @@ window.addEventListener('load', () => {
                 updateUI();
             });
 
-
             storyBtn.addEventListener("click", () => {
                 const storyTitle = "ETERNAL MOMENTUM";
                 const storyContent = `
@@ -287,7 +291,14 @@ window.addEventListener('load', () => {
                     <p>As you gain power and experience, you learn to do more than just defeat Aberrations—you learn to resonate with their very essence. The <strong>Aberration Cores</strong> are stabilized fragments of their paradoxical existence, which you can attune to your own matrix. Equipping a Core forges a symbiotic link, granting you a fraction of an Aberration's unique power. It is a dangerous and powerful process: wielding the logic of chaos as a weapon against itself.</p>
                     
                     <hr style="border-color: rgba(255,255,255,0.2); margin: 15px 0;">
-                    <p><em>You are the final anchor in a storm of nonexistence. Hold the line. Maintain your momentum.</em></p>
+
+                    <h3>The Mission</h3>
+                    <p>Your journey is a desperate pilgrimage through the collapsing remnants of countless worlds. Each "stage" is a pocket of spacetime you temporarily stabilize through sheer force of will. The <strong>Ascension Conduit</strong> is your means of survival and growth.</p>
+                    <p>By defeating Aberrations, you are not merely destroying them; you are reclaiming lost fragments of reality's source code. By integrating these fragments into your own being through the Conduit, you grow stronger, turning the weapons of your enemy into the keys to your salvation.</p>
+                    
+                    <h3>The Weaver's Orrery</h3>
+                    <p>The <strong>Weaver's Orrery</strong> is your greatest tool. A mysterious device left by a precursor race, it allows you to manipulate the <strong>Echoes of Creation</strong>—the residual energy left by powerful Aberrations.</p>
+                    <p>With the Orrery, you can forge custom timelines, simulating encounters against the multiverse's most dangerous threats. This is not mere practice; it is a way to hone your skills and prepare for the ultimate confrontation against the silent, all-consuming heart of the Unraveling.</p>
                 `;
                 
                 levelSelectModal.style.display = 'none';
