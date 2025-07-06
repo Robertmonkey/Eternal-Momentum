@@ -102,7 +102,7 @@ function levelUp() {
     state.player.ascensionPoints += 1;
     utils.spawnParticles(state.particles, state.player.x, state.player.y, '#00ffff', 80, 6, 50, 5);
     
-    if (state.player.level >= 10 && !state.player.unlockedAberrationCores.has('splitter')) {
+    if (state.player.level === 10 && state.player.unlockedAberrationCores.size === 0) {
         showUnlockNotification("SYSTEM ONLINE", "Aberration Core Socket Unlocked");
     }
     handleCoreUnlocks(state.player.level);
@@ -1671,9 +1671,9 @@ export function gameTick(mx, my) {
             ctx.textAlign = 'left';
             if(Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < state.player.r + effect.r) {
                 switch(effect.runeType) {
-                    case 'damage': addStatusEffect('Rune: Damage', '🔥', 99999); state.player.talent_modifiers.damage_multiplier *= 1.10; break;
-                    case 'defense': addStatusEffect('Rune: Defense', '🛡️', 99999); state.player.maxHealth *= 1.10; state.player.health *= 1.10; break;
-                    case 'utility': addStatusEffect('Rune: Utility', '🚀', 99999); break; // Placeholder for now
+                    case 'damage': addStatusEffect('Rune: Damage', '🔥', 99999); break;
+                    case 'defense': addStatusEffect('Rune: Defense', '🛡️', 99999); break;
+                    case 'utility': addStatusEffect('Rune: Utility', '🚀', 99999); break;
                 }
                 state.effects = state.effects.filter(e => e.type !== 'shaper_rune_pickup');
                 state.player.talent_states.core_states.shaper_of_fate.isDisabled = false;
