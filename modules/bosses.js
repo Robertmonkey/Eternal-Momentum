@@ -1189,18 +1189,21 @@ export const bossData = [{
 
         if (b.beamTarget) {
             utils.drawLightning(ctx, b.x, b.y, b.beamTarget.x, b.beamTarget.y, '#fd79a8', 8);
-            const p1 = b, p2 = b.beamTarget, p3 = state.player; const L2 = Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2);
+            const p1 = b, p2 = b.beamTarget, p3 = state.player;
+            const L2 = Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2);
             if (L2 !== 0) {
-                let t = ((p3.x - p1.x) * (p2.x - p1.x) + (p3.y - p1.y) * (p2.y - p1.y)) / L2; t = Math.max(0, Math.min(1, t));
-                const closestX = p1.x + t * (p2.x - p1.x); const closestY = p1.y + t * (p2.y - p1.y);
-                if (Math.hypot(p3.x - closestX, p3.y - closestY) < p3.r + 5) { 
-                    if (state.player.shield) { 
-                        state.player.shield = false; 
-                        gameHelpers.play('shieldBreak'); 
-                    } else { 
-                        state.player.health -= 2; 
+                let t = ((p3.x - p1.x) * (p2.x - p1.x) + (p3.y - p1.y) * (p2.y - p1.y)) / L2;
+                t = Math.max(0, Math.min(1, t));
+                const closestX = p1.x + t * (p2.x - p1.x);
+                const closestY = p1.y + t * (p2.y - p1.y);
+                if (Math.hypot(p3.x - closestX, p3.y - closestY) < p3.r + 5) {
+                    if (state.player.shield) {
+                        state.player.shield = false;
+                        gameHelpers.play('shieldBreak');
+                    } else {
+                        state.player.health -= 2;
                         if (state.player.health <= 0) state.gameOver = true;
-                    } 
+                    }
                 }
             }
         }
@@ -1642,6 +1645,10 @@ export const bossData = [{
             const beamColor = b.beamColors[Math.floor(Math.random() * b.beamColors.length)];
 
             utils.drawLightning(ctx, topCenter.x, topCenter.y, beamEndX, beamEndY, beamColor, 10);
+            
+            if (utils.lineCircleCollision(topCenter.x, topCenter.y, beamEndX, beamEndY, state.player.x, state.player.y, state.player.r) && !state.player.shield) {
+                state.player.health -= 3; if (state.player.health <= 0) state.gameOver = true;
+            }
         }
     },
     onDamage: (b, dmg) => { 
