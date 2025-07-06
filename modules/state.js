@@ -195,7 +195,6 @@ export function resetGame(isArena = false) {
         arenaMode: isArena, wave: 0, lastArenaSpawn: Date.now(),
         bossSpawnCooldownEnd: Date.now() + 3000, 
         customOrreryBosses: [],
-        initialPickupsSpawned: false,
     });
     
     delete state.fractalHorrorSharedHp;
