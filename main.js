@@ -2,8 +2,8 @@
 import { state, resetGame, loadPlayerState, savePlayerState } from './modules/state.js';
 import { bossData } from './modules/bosses.js';
 import { AudioManager } from './modules/audio.js';
-import { updateUI, populateLevelSelect, showCustomConfirm, populateOrreryMenu } from './modules/ui.js';
-import { gameTick, spawnBossesForStage, addStatusEffect, addEssence } from './modules/gameLoop.js';
+import { updateUI, populateLevelSelect, showCustomConfirm, populateOrreryMenu, populateAberrationCoreMenu } from './modules/ui.js';
+import { gameTick, spawnBossesForStage, addStatusEffect, addEssence, useSyphonCore, useLoopingEyeCore } from './modules/gameLoop.js';
 import { usePower } from './modules/powers.js';
 import * as utils from './modules/utils.js';
 import { renderAscensionGrid, applyAllTalentEffects } from './modules/ascension.js';
@@ -126,6 +126,12 @@ window.addEventListener('load', () => {
         const restartStageBtn = document.getElementById('restartStageBtn');
         const levelSelectMenuBtn = document.getElementById('levelSelectMenuBtn');
         const ascensionMenuBtn = document.getElementById('ascensionMenuBtn');
+        
+        // --- NEW: Aberration Core elements ---
+        const aberrationCoreSocket = document.getElementById('aberration-core-socket');
+        const aberrationCoreModal = document.getElementById('aberrationCoreModal');
+        const closeAberrationCoreBtn = document.getElementById('closeAberrationCoreBtn');
+        const unequipCoreBtn = document.getElementById('unequipCoreBtn');
 
         let mx = 0, my = 0;
         const allAudioElements = Array.from(document.querySelectorAll('audio'));
@@ -176,9 +182,9 @@ window.addEventListener('load', () => {
             canvas.addEventListener("touchmove", e => { e.preventDefault(); setPlayerTarget(e); }, { passive: false });
             canvas.addEventListener("touchstart", e => { e.preventDefault(); setPlayerTarget(e); }, { passive: false });
 
-            const gameHelpers = { addStatusEffect, addEssence };
-            const useOffensivePower = () => { if (state.offensiveInventory[0]) usePower('offensive', utils, gameHelpers, mx, my); };
-            const useDefensivePower = () => { if (state.defensiveInventory[0]) usePower('defensive', utils, gameHelpers, mx, my); };
+            const gameHelpers = { addStatusEffect, addEssence, useSyphonCore, useLoopingEyeCore }; // Pass core handlers
+            const useOffensivePower = () => { usePower('offensive', utils, gameHelpers, mx, my); };
+            const useDefensivePower = () => { usePower('defensive', utils, gameHelpers, mx, my); };
 
             canvas.addEventListener("click", e => { if (e.target.id === 'gameCanvas') useOffensivePower(); });
             canvas.addEventListener("contextmenu", e => { e.preventDefault(); useDefensivePower(); });
@@ -187,7 +193,7 @@ window.addEventListener('load', () => {
             document.addEventListener('visibilitychange', () => AudioManager.handleVisibilityChange());
             soundBtn.addEventListener("click", () => AudioManager.toggleMute());
             
-            document.querySelectorAll('button, .stage-select-item, .orrery-boss-item').forEach(button => {
+            document.querySelectorAll('button, .stage-select-item, .orrery-boss-item, .aberration-core-item').forEach(button => {
                 button.addEventListener('mouseenter', () => AudioManager.playSfx('uiHoverSound'));
                 button.addEventListener('click', () => AudioManager.playSfx('uiClickSound'));
             });
@@ -230,6 +236,42 @@ window.addEventListener('load', () => {
                 }
             });
 
+            // --- NEW: Aberration Core Event Listeners ---
+            const equipCore = (coreId) => {
+                state.player.equippedAberrationCore = coreId;
+                savePlayerState();
+                populateAberrationCoreMenu(equipCore); // Re-render to show selection
+                updateUI();
+            };
+
+            aberrationCoreSocket.addEventListener('click', () => {
+                if (state.player.level < 10) {
+                    showUnlockNotification("SYSTEM LOCKED", "Requires Player Level 10");
+                    return;
+                }
+                state.isPaused = true;
+                stopAllLoopingSounds();
+                populateAberrationCoreMenu(equipCore);
+                aberrationCoreModal.style.display = 'flex';
+                AudioManager.playSfx('uiModalOpen');
+            });
+
+            closeAberrationCoreBtn.addEventListener('click', () => {
+                aberrationCoreModal.style.display = 'none';
+                AudioManager.playSfx('uiModalClose');
+                if (!state.gameOver) {
+                    state.isPaused = false;
+                }
+            });
+            
+            unequipCoreBtn.addEventListener('click', () => {
+                state.player.equippedAberrationCore = null;
+                savePlayerState();
+                populateAberrationCoreMenu(equipCore);
+                updateUI();
+            });
+
+
             storyBtn.addEventListener("click", () => {
                 const storyTitle = "ETERNAL MOMENTUM";
                 const storyContent = `
@@ -239,16 +281,10 @@ window.addEventListener('load', () => {
                     
                     <h3>The Conduit</h3>
                     <p>Amidst the universal decay, you exist. You are the <strong>Conduit</strong>, an impossible being capable of maintaining a stable presence across fracturing realities, immune to the chaos of the Unraveling. You are the final, desperate immune response of a dying multiverse.</p>
-                    <p>Your very existence warps the battlefield on a fundamental level. You passively project a field of <strong>Quantum Friction</strong>, an extension of your own impossible stability. As matter and Aberrations draw near, they enter this aura and are forced to adhere to a stricter set of physical laws. Their chaotic energy dampens, their momentum slows—a localized reality where the multiverse itself grows dense and resistant in your presence.</p>
-                    <p>Your consciousness is imbued with <strong>Eternal Momentum</strong>—an innate, unyielding drive to push forward, to resist the decay, and to preserve the flickering embers of spacetime.</p>
+                    <p>Your consciousness is imbued with <strong>Eternal Momentum</strong>—an innate, unyielding drive to push forward, to resist the decay, and to preserve the flickering embers of spacetime. By defeating Aberrations, you reclaim lost fragments of reality's source code, integrating them into your own being through the <strong>Ascension Conduit</strong> to grow stronger.</p>
                     
-                    <h3>The Mission</h3>
-                    <p>Your journey is a desperate pilgrimage through the collapsing remnants of countless worlds. Each "stage" is a pocket of spacetime you temporarily stabilize through sheer force of will. The <strong>Ascension Conduit</strong> is your means of survival and growth.</p>
-                    <p>By defeating Aberrations, you are not merely destroying them; you are reclaiming lost fragments of reality's source code. By integrating these fragments into your own being through the Conduit, you grow stronger, turning the weapons of your enemy into the keys to your salvation.</p>
-                    
-                    <h3>The Weaver's Orrery</h3>
-                    <p>The <strong>Weaver's Orrery</strong> is your greatest tool. A mysterious device left by a precursor race, it allows you to manipulate the <strong>Echoes of Creation</strong>—the residual energy left by powerful Aberrations.</p>
-                    <p>With the Orrery, you can forge custom timelines, simulating encounters against the multiverse's most dangerous threats. This is not mere practice; it is a way to hone your skills and prepare for the ultimate confrontation against the silent, all-consuming heart of the Unraveling.</p>
+                    <h3>The Aberration Cores</h3>
+                    <p>As you gain power, you learn to resonate with the very essence of the Aberrations you defeat. The <strong>Aberration Cores</strong> are stabilized fragments of their paradoxical existence, which you can attune to your own matrix. Equipping a Core grants you a fraction of an Aberration's unique power, fundamentally altering your capabilities.</p>
             
                     <hr style="border-color: rgba(255,255,255,0.2); margin: 15px 0;">
                     <p><em>You are the final anchor in a storm of nonexistence. Hold the line. Maintain your momentum.</em></p>
