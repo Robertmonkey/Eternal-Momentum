@@ -69,21 +69,33 @@ canvas { display:block; width:100vw; height:100vh; }
 
 #ui-container {
   position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
-  width: 95%; max-width: 1200px; /* Increased max-width for more space */
+  width: 95%; max-width: 1200px;
   display: none; 
   flex-direction: column;
   align-items: center; gap: 8px; pointer-events: none; 
 }
 
+/* Status Effects Bar - Relocated inside Command Bar */
 #status-effects-bar {
-  display: flex; gap: 8px; height: 40px; padding: 4px 10px;
-  background: rgba(0,0,0,0.4); border-radius: 20px;
-  border: 1px solid var(--border-color); backdrop-filter: blur(5px);
-  pointer-events: none; opacity: 0; transition: opacity 0.3s ease-in-out;
+  display: flex;
+  gap: 8px;
+  height: 32px; /* Adjusted size */
+  padding: 0 10px;
+  background: rgba(0,0,0,0.4);
+  border-radius: 20px;
+  border: 1px solid var(--border-color);
+  backdrop-filter: blur(5px);
+  pointer-events: all;
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+  align-items: center;
 }
-#status-effects-bar.visible { opacity: 1; pointer-events: all; }
+#status-effects-bar.visible { opacity: 1; }
 .status-icon {
-  width: 32px; height: 32px; font-size: 24px; display: flex;
+  width: 28px; /* Adjusted size */
+  height: 28px; /* Adjusted size */
+  font-size: 20px; /* Adjusted size */
+  display: flex;
   align-items: center; justify-content: center; position: relative;
   background: rgba(0,0,0,0.5); border-radius: 50%; overflow: hidden;
 }
@@ -94,31 +106,44 @@ canvas { display:block; width:100vw; height:100vh; }
 }
 
 .command-bar {
-  width: 100%; height: 110px; /* Adjusted height */
+  width: 100%; height: 120px; /* Adjusted height */
   background: var(--ui-bg);
   border: 1px solid var(--border-color); border-radius: 12px;
   box-shadow: 0 0 20px rgba(0, 255, 255, 0.2); backdrop-filter: blur(10px);
-  display: flex; justify-content: space-between; /* Changed to space-between */
+  display: flex; justify-content: space-between;
   align-items: center;
-  padding: 0 20px; color: var(--font-color); pointer-events: all;
-  position: relative; /* For health bar positioning */
+  padding: 10px 20px; color: var(--font-color); pointer-events: all;
+  box-sizing: border-box;
 }
+
 .ui-pod { 
     text-align: center; font-size: 1.1rem; line-height: 1.5; 
-    flex-basis: 200px; /* Increased basis for more space */
+    flex-basis: 200px;
     flex-shrink: 0; 
     display: flex; flex-direction: column;
 }
-.left-pod { text-align: left; align-items: flex-start; }
+.left-pod { text-align: left; align-items: flex-start; justify-content: center; }
 .right-pod { text-align: right; display: flex; flex-direction: row; gap: 10px; justify-content: flex-end; align-items: center;}
 
+.central-hud {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  flex-grow: 1;
+  height: 100%;
+  gap: 4px;
+}
+
 .core-display { 
-    height: 100%; display: flex; align-items: center; justify-content: center;
-    flex-grow: 1; /* Allow core display to take up the central space */
+    height: auto;
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
 }
 .ability-cluster { 
   display: flex; justify-content: center; 
-  align-items: center; 
+  align-items: flex-end; /* Align to bottom for better feel */ 
   gap: 15px;
   width: 100%;
 }
@@ -151,14 +176,12 @@ canvas { display:block; width:100vw; height:100vh; }
 }
 .queue-slot.visible { opacity: 1; transform: scale(1); }
 
+/* Health Bar - Relocated */
 #health-bar-container {
-  position: absolute; 
-  top: -38px; /* Moved above the command bar */
-  left: 50%;
-  transform: translateX(-50%);
-  width: 40%; 
-  max-width: 500px;
-  height: 28px;
+  position: relative; /* Changed from absolute */
+  width: 90%; 
+  max-width: 450px;
+  height: 24px; /* Adjusted size */
   background: var(--health-bar-bg);
   border: 2px solid rgba(0,0,0,0.5);
   border-radius: 8px;
@@ -195,7 +218,9 @@ canvas { display:block; width:100vw; height:100vh; }
 
 #health-bar-text {
   position: absolute; width: 100%; text-align: center;
-  line-height: 28px; font-size: 1rem; font-weight: bold;
+  line-height: 24px; /* Adjusted size */
+  font-size: 0.9rem; /* Adjusted size */
+  font-weight: bold;
   color: white; text-shadow: 1px 1px 3px black;
 }
 
@@ -414,7 +439,6 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
   text-shadow: 0 0 8px var(--primary-glow);
 }
 
-/* --- UPDATED: Aberration Core Socket --- */
 @keyframes core-pulse {
     0% { box-shadow: 0 0 8px var(--border-color); }
     50% { box-shadow: 0 0 16px var(--primary-glow); }
@@ -432,7 +456,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     border: 2px solid var(--border-color);
     border-radius: 50%;
     cursor: pointer;
-    display: none; /* Hidden by default */
+    display: none; 
     align-items: center;
     justify-content: center;
     background-color: rgba(0,0,0,0.5);
@@ -726,7 +750,6 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     background-color: rgba(255, 136, 0, 0.4);
 }
 
-/* NEW: Aberration Core button style */
 #aberrationCoreMenuBtn {
     background-color: rgba(0, 255, 0, 0.2);
     border-color: var(--nexus-glow);
@@ -1277,7 +1300,6 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     box-shadow: 0 0 12px #ff8800;
 }
 
-/* --- NEW: Aberration Core Modal --- */
 #aberrationCoreModal {
     top: 0; left: 0; width: 100%; height: 100%; 
     background: rgba(10, 10, 20, 0.8);
