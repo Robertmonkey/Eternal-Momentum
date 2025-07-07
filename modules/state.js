@@ -31,7 +31,7 @@ export const state = {
         pickup_radius_bonus: 0,
         essence_gain_modifier: 1.0,
         power_spawn_rate_modifier: 1.0,
-        pull_resistance_modifier: 0,
+        pull_resistance_modifier: 0, // Added for completeness as ascension.js uses it
     },
 
     talent_states: {
@@ -43,22 +43,60 @@ export const state = {
             cooldownUntil: 0,
         },
         core_states: {
-            architect: { lastPillarTime: 0 },
-            mirror_mirage: { cooldownUntil: 0 },
-            puppeteer: { lastConversion: 0 },
-            splitter: { cooldownUntil: 0 },
-            swarm_link: { tail: [], enemiesForNextSegment: 0 },
-            epoch_ender: { cooldownUntil: 0, history: [] },
-            pantheon: { lastCycleTime: 0, activeCore: null },
-            syphon: { canUse: true },
-            juggernaut: { isCharging: false, lastMoveTime: 0 },
-            annihilator: { cooldownUntil: 0, attunedEnemy: null, isChargingBeam: false },
-            shaper_of_fate: { isDisabled: false },
-            helix_weaver: { lastBolt: 0 },
-            obelisk: { charges: 0 },
-            gravity: { lastPulseTime: 0 },
-            fractal_horror: { killCount: 0 },
-            parasite: {}
+            architect: {
+                lastPillarTime: 0,
+            },
+            mirror_mirage: {
+                cooldownUntil: 0,
+            },
+            puppeteer: {
+                lastConversion: 0,
+            },
+            splitter: {
+                cooldownUntil: 0,
+            },
+            swarm_link: {
+                tail: [],
+                enemiesForNextSegment: 0,
+            },
+            epoch_ender: {
+                cooldownUntil: 0,
+                history: [],
+            },
+            pantheon: {
+                lastCycleTime: 0,
+                activeCore: null,
+            },
+            syphon: {
+                canUse: true,
+            },
+            juggernaut: {
+                isCharging: false,
+                lastMoveTime: 0,
+            },
+            miasma: {
+                isPurifying: false,
+            },
+            annihilator: {
+                cooldownUntil: 0,
+                attunedEnemy: null,
+                isChargingBeam: false,
+            },
+            shaper_of_fate: {
+                isDisabled: false,
+            },
+            helix_weaver: {
+                lastBolt: 0,
+            },
+            temporal_paradox: {
+                lastEcho: 0,
+            },
+            obelisk: {
+                charges: 0,
+            },
+            gravity: {
+                lastPulseTime: 0,
+            }
         }
     }
   },
@@ -137,6 +175,7 @@ export function resetGame(isArena = false) {
             if (Array.isArray(coreState[prop])) {
                 coreState[prop] = [];
             } else if (typeof coreState[prop] === 'boolean') {
+                 // Correctly reset syphon's canUse state
                 coreState[prop] = key === 'syphon' ? true : false;
             } else if (coreState[prop] === null) {
                 // Do nothing for properties that should be null
@@ -146,7 +185,7 @@ export function resetGame(isArena = false) {
             }
         });
     });
-    
+    // Ensure Pantheon's active core is cleared
     if (state.player.talent_states.core_states.pantheon) {
         state.player.talent_states.core_states.pantheon.activeCore = null;
     }
