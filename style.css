@@ -12,6 +12,16 @@
   --disabled-color: rgba(255, 255, 255, 0.2);
   --shield-color: rgba(241, 196, 15, 0.7);
   --nexus-glow: #00ff00;
+
+  /* --- Custom Cursor Definitions --- */
+  --cursor-default: url('./assets/cursors/default.cur'), auto;
+  --cursor-link: url('./assets/cursors/link.cur'), pointer;
+  --cursor-text: url('./assets/cursors/text.cur'), text;
+  --cursor-help: url('./assets/cursors/help.cur'), help;
+  --cursor-working: url('./assets/cursors/working.ani'), progress;
+  --cursor-busy: url('./assets/cursors/busy.ani'), wait;
+  --cursor-not-allowed: url('./assets/cursors/not-allowed.cur'), not-allowed;
+  --cursor-move: url('./assets/cursors/move.cur'), move;
 }
 @keyframes sheen-animation {
     0% { transform: translateX(-150%) skewX(-30deg); }
@@ -21,6 +31,7 @@ html, body {
   margin:0; padding:0; overflow:hidden; background:var(--dark-bg);
   font-family: 'Segoe UI', 'Roboto', sans-serif;
   -webkit-user-select: none; user-select: none;
+  cursor: var(--cursor-default);
 }
 canvas { display:block; width:100vw; height:100vh; }
 
@@ -41,6 +52,7 @@ canvas { display:block; width:100vw; height:100vh; }
     justify-content: center;
     z-index: 10000;
     transition: opacity 0.5s ease-out;
+    cursor: var(--cursor-busy);
 }
 #loading-progress-container {
     width: 300px;
@@ -101,7 +113,8 @@ canvas { display:block; width:100vw; height:100vh; }
 .abilities { display: flex; align-items: flex-end; gap: 10px; }
 .ability-slot {
   width: 64px; height: 72px; border: 2px solid var(--border-color);
-  cursor: pointer; position: relative; background-color: rgba(0, 255, 255, 0.05);
+  cursor: var(--cursor-link);
+  position: relative; background-color: rgba(0, 255, 255, 0.05);
   clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
   transition: background-color 0.2s, transform 0.2s;
   display: flex; align-items: center; justify-content: center; font-size: 36px;
@@ -109,7 +122,7 @@ canvas { display:block; width:100vw; height:100vh; }
 .ability-slot.main { width: 80px; height: 90px; border-color: var(--secondary-glow); background-color: rgba(240, 0, 255, 0.05); font-size: 44px;}
 .ability-slot:hover { background-color: rgba(0, 255, 255, 0.2); transform: translateY(-5px); }
 .ability-slot.main:hover { background-color: rgba(240, 0, 255, 0.2); }
-.ability-slot.empty { font-size: 24px; color: var(--disabled-color); }
+.ability-slot.empty { font-size: 24px; color: var(--disabled-color); cursor: var(--cursor-default); }
 .ability-slot .ability-key {
   position: absolute; bottom: 5px; left:0; right: 0; text-align: center;
   font-size: 0.7rem; color: #aaa;
@@ -272,7 +285,9 @@ canvas { display:block; width:100vw; height:100vh; }
 button {
   background: rgba(0, 255, 255, 0.2); border: 1px solid var(--border-color);
   padding: 6px; width: 40px; height: 40px; border-radius: 8px;
-  color: white; font-size: 1.2rem; cursor: pointer; transition: background-color 0.2s;
+  color: white; font-size: 1.2rem;
+  cursor: var(--cursor-link);
+  transition: background-color 0.2s;
   display: flex; align-items: center; justify-content: center;
 }
 button:hover { background: rgba(0, 255, 255, 0.4); }
@@ -335,6 +350,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     justify-content: space-between;
     align-items: center;
     overflow: hidden;
+    cursor: var(--cursor-link);
 }
 .stage-select-item:hover {
     background: rgba(0, 255, 255, 0.2);
@@ -345,7 +361,6 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     flex-direction: column;
     flex-grow: 1;
     min-width: 0;
-    cursor: pointer;
 }
 .stage-item-actions {
     display: flex;
@@ -462,7 +477,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     height: 44px;
     border: 2px solid var(--border-color);
     border-radius: 50%;
-    cursor: pointer;
+    cursor: var(--cursor-link);
     display: none; 
     align-items: center;
     justify-content: center;
@@ -605,7 +620,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     display: flex;
     align-items: center;
     justify-content: center;
-    cursor: not-allowed;
+    cursor: var(--not-allowed);
     transition: all 0.2s ease-in-out;
     z-index: 2;
 }
@@ -620,7 +635,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     font-size: 24px;
 }
 .talent-node.can-purchase {
-    cursor: pointer;
+    cursor: var(--cursor-link);
     border-color: var(--nexus-glow);
     box-shadow: 0 0 12px var(--nexus-glow);
 }
@@ -632,7 +647,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     border-color: var(--primary-glow);
     background: var(--dark-bg);
     box-shadow: 0 0 15px var(--primary-glow);
-    cursor: help;
+    cursor: var(--cursor-help);
 }
 .talent-node .talent-tooltip {
     visibility: hidden;
@@ -915,7 +930,6 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     text-shadow: 0 0 8px var(--primary-glow);
     box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
     transition: all 0.3s ease;
-    cursor: pointer;
     pointer-events: all;
 }
 
@@ -1091,13 +1105,14 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     border: 1px solid var(--secondary-glow);
     border-radius: 5px;
     transition: background-color 0.2s;
+    cursor: var(--cursor-link);
 }
 .orrery-boss-item:hover {
     background: rgba(240, 0, 255, 0.15);
 }
 .orrery-boss-item.disabled {
     opacity: 0.4;
-    cursor: not-allowed;
+    cursor: var(--cursor-not-allowed);
     background: rgba(128, 128, 128, 0.1);
 }
 .orrery-boss-info {
@@ -1106,7 +1121,6 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     gap: 10px;
     flex-grow: 1;
     min-width: 0;
-    cursor: pointer;
 }
 .orrery-boss-name {
     white-space: nowrap;
@@ -1137,7 +1151,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     height: 48px;
     background: rgba(0,0,0,0.5);
     border-radius: 50%;
-    cursor: pointer;
+    cursor: var(--cursor-link);
     transition: background-color 0.2s;
     position: relative;
     overflow: hidden;
@@ -1195,7 +1209,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
 }
 #orrery-start-btn.disabled {
     opacity: 0.4;
-    cursor: not-allowed;
+    cursor: var(--cursor-not-allowed);
     background-color: var(--disabled-color);
     color: var(--font-color);
 }
@@ -1360,7 +1374,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     border: 1px solid var(--nexus-glow);
     border-radius: 8px;
     margin-bottom: 10px;
-    cursor: pointer;
+    cursor: var(--cursor-link);
     transition: background-color 0.2s, box-shadow 0.2s;
 }
 .aberration-core-item:hover {
@@ -1374,7 +1388,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
 }
 .aberration-core-item.locked {
     opacity: 0.4;
-    cursor: not-allowed;
+    cursor: var(--cursor-not-allowed);
     background-color: rgba(128, 128, 128, 0.1);
     border-color: rgba(128, 128, 128, 0.5);
 }
