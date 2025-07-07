@@ -6,11 +6,12 @@ import { bossData } from './bosses.js';
 import { updateUI, showBossBanner, showUnlockNotification } from './ui.js';
 import * as utils from './utils.js';
 import { AudioManager } from './audio.js';
-import * as Cores from './core.js';
+import * as Cores from './cores.js';
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
+// --- Audio Helpers ---
 function play(soundId) {
     AudioManager.playSfx(soundId);
 }
@@ -23,22 +24,51 @@ function stopLoopingSfx(soundId) {
     AudioManager.stopLoopingSfx(soundId);
 }
 
-const gameHelpers = { 
-    addStatusEffect, spawnEnemy, spawnPickup, play, stopLoopingSfx, playLooping, addEssence,
+function stopAllLoopingSounds() {
+    AudioManager.stopLoopingSfx('beamHumSound');
+    AudioManager.stopLoopingSfx('wallShrink');
+    AudioManager.stopLoopingSfx('obeliskHum');
+    AudioManager.stopLoopingSfx('paradoxTrailHum');
+    AudioManager.stopLoopingSfx('dilationField');
+}
+
+// --- Game Logic Helpers ---
+const spawnParticlesCallback = (x, y, c, n, spd, life, r) => utils.spawnParticles(state.particles, x, y, c, n, spd, life, r);
+const gameHelpers = {
+    addStatusEffect,
+    spawnEnemy,
+    spawnPickup,
+    play,
+    stopLoopingSfx,
+    playLooping,
+    addEssence,
     useSyphonCore: (mx, my) => Cores.handleCoreOnEmptySlot(mx, my, gameHelpers),
     useLoopingEyeCore: (mx, my) => Cores.handleCoreOnDefensivePower(mx, my, gameHelpers)
 };
 
-const spawnParticlesCallback = (x, y, c, n, spd, life, r) => utils.spawnParticles(state.particles, x, y, c, n, spd, life, r);
 
 export function addStatusEffect(name, emoji, duration) {
     const now = Date.now();
-    
+
     if (name === 'Stunned' || name === 'Petrified' || name === 'Slowed' || name === 'Epoch-Slow') {
         const isBerserk = state.player.berserkUntil > now;
         const hasTalent = state.player.purchasedTalents.has('unstoppable-frenzy');
         if (isBerserk && hasTalent) {
-            return; 
+            return;
+        }
+    }
+
+    if (name === 'Conduit Charge') {
+        const existing = state.player.statusEffects.find(e => e.name === name);
+        if(existing) {
+            existing.count = Math.min(3, (existing.count || 1) + 1);
+            existing.emoji = '⚡'.repeat(existing.count);
+            existing.endTime = now + duration;
+            return;
+        } else {
+            const effect = { name, emoji, startTime: now, endTime: now + duration, count: 1 };
+            state.player.statusEffects.push(effect);
+            return;
         }
     }
 
@@ -56,7 +86,7 @@ export function handleThematicUnlock(stageJustCleared) {
     for (const unlock of unlocks) {
         const isAlreadyUnlocked = unlock.type === 'power' && state.player.unlockedPowers.has(unlock.id);
         if (isAlreadyUnlocked) continue;
-        
+
         if (unlock.type === 'power') {
             state.player.unlockedPowers.add(unlock.id);
             const powerName = powers[unlock.id]?.desc || unlock.id;
@@ -86,19 +116,38 @@ function handleCoreUnlocks(newLevel) {
     }
 }
 
+
 function levelUp() {
     state.player.level++;
     state.player.essence -= state.player.essenceToNextLevel;
-    state.player.essenceToNextLevel = Math.floor(state.player.essenceToNextLevel * 1.5);
+    state.player.essenceToNextLevel = Math.floor(state.player.essenceToNextLevel * 1.18);
     state.player.ascensionPoints += 1;
     utils.spawnParticles(state.particles, state.player.x, state.player.y, '#00ffff', 80, 6, 50, 5);
+
+    if (state.player.level === 10 && state.player.unlockedAberrationCores.size === 0) {
+        showUnlockNotification("SYSTEM ONLINE", "Aberration Core Socket Unlocked");
+    }
     handleCoreUnlocks(state.player.level);
+
     savePlayerState();
 }
 
 export function addEssence(amount) {
     if (state.gameOver) return;
-    state.player.essence += Math.floor(amount * state.player.talent_modifiers.essence_gain_modifier);
+
+    let modifiedAmount = Math.floor(amount * state.player.talent_modifiers.essence_gain_modifier);
+
+    if (state.player.purchasedTalents.has('essence-transmutation')) {
+        const essenceBefore = state.player.essence % 50;
+        const healthGain = Math.floor((essenceBefore + modifiedAmount) / 50);
+        if (healthGain > 0) {
+            state.player.maxHealth += healthGain;
+            state.player.health += healthGain;
+        }
+    }
+
+    state.player.essence += modifiedAmount;
+
     while (state.player.essence >= state.player.essenceToNextLevel) {
         levelUp();
     }
@@ -129,20 +178,20 @@ export function getBossesForStage(stageNum) {
         tier2: proceduralBossData.filter(b => b.difficulty_tier === 2),
         tier3: proceduralBossData.filter(b => b.difficulty_tier === 3)
     };
-    
+
     let difficultyBudget = Math.floor((stageNum - 31) / 2) + 4;
     const bossesToSpawn = new Set();
-    
+
     const keystoneBossIndex = (stageNum - 31) % proceduralBossData.length;
     const keystoneBoss = proceduralBossData[keystoneBossIndex];
-    
+
     if (keystoneBoss) {
         bossesToSpawn.add(keystoneBoss.id);
         difficultyBudget -= keystoneBoss.difficulty_tier;
     }
 
     const availableTiers = [bossPools.tier3, bossPools.tier2, bossPools.tier1].filter(pool => pool.length > 0);
-    let emergencyBreak = 0; 
+    let emergencyBreak = 0;
     while (difficultyBudget > 0 && emergencyBreak < 10) {
         let bossSelectedInLoop = false;
         for (const pool of availableTiers) {
@@ -161,13 +210,11 @@ export function getBossesForStage(stageNum) {
                     bossesToSpawn.add(candidateBoss.id);
                     difficultyBudget -= tierCost;
                     bossSelectedInLoop = true;
-                    break; 
+                    break;
                 }
             }
         }
-        if (!bossSelectedInLoop) {
-            break;
-        }
+        if (!bossSelectedInLoop) break;
         emergencyBreak++;
     }
 
@@ -175,13 +222,9 @@ export function getBossesForStage(stageNum) {
 }
 
 export function spawnBossesForStage(stageNum) {
-    let bossIdsToSpawn;
-
-    if (state.arenaMode && state.customOrreryBosses.length > 0) {
-        bossIdsToSpawn = state.customOrreryBosses;
-    } else {
-        bossIdsToSpawn = getBossesForStage(stageNum);
-    }
+    let bossIdsToSpawn = state.arenaMode && state.customOrreryBosses.length > 0
+        ? state.customOrreryBosses
+        : getBossesForStage(stageNum);
 
     if (bossIdsToSpawn && bossIdsToSpawn.length > 0) {
         bossIdsToSpawn.forEach(bossId => {
@@ -202,38 +245,30 @@ export function spawnBossesForStage(stageNum) {
 }
 
 export function spawnEnemy(isBoss = false, bossId = null, location = null) {
-    const e = { 
-        x: location ? location.x : Math.random() * canvas.width, 
-        y: location ? location.y : Math.random() * canvas.height, 
-        dx: (Math.random() - 0.5) * 0.75, 
-        dy: (Math.random() - 0.5) * 0.75, 
-        r: isBoss ? 50 : 15, 
-        hp: isBoss ? 200 : 1, 
-        maxHP: isBoss ? 200 : 1, 
-        boss: isBoss, 
-        frozen: false, 
+    const e = {
+        x: location ? location.x : Math.random() * canvas.width,
+        y: location ? location.y : Math.random() * canvas.height,
+        dx: (Math.random() - 0.5) * 0.75,
+        dy: (Math.random() - 0.5) * 0.75,
+        r: isBoss ? 50 : 15,
+        hp: isBoss ? 200 : 1,
+        maxHP: isBoss ? 200 : 1,
+        boss: isBoss,
+        frozen: false,
         targetBosses: false,
         instanceId: Date.now() + Math.random(),
     };
     if (isBoss) {
         const bd = bossData.find(b => b.id === bossId);
         if (!bd) { console.error("Boss data not found for id", bossId); return null; }
-        
+
         Object.assign(e, bd);
-        
+
         const baseHp = bd.maxHP || 200;
-        
-        let difficultyIndex;
-        if (state.arenaMode) {
-            const tierSum = state.customOrreryBosses.reduce((sum, bId) => {
-                const boss = bossData.find(b => b.id === bId);
-                return sum + (boss ? boss.difficulty_tier : 0);
-            }, 0);
-            difficultyIndex = tierSum * 2.5; 
-        } else {
-            difficultyIndex = (state.currentStage - 1);
-        }
-        
+        let difficultyIndex = state.arenaMode
+            ? state.customOrreryBosses.reduce((sum, bId) => sum + (bossData.find(b => b.id === bId)?.difficulty_tier || 0), 0) * 2.5
+            : (state.currentStage - 1);
+
         const scalingFactor = 12;
         const finalHp = baseHp + (Math.pow(difficultyIndex, 1.5) * scalingFactor);
         e.maxHP = Math.round(finalHp);
@@ -241,27 +276,18 @@ export function spawnEnemy(isBoss = false, bossId = null, location = null) {
 
         state.enemies.push(e);
         if (bd.init) bd.init(e, state, spawnEnemy, canvas);
-        
+
         if (!state.bossActive) {
             const stageInfo = STAGE_CONFIG.find(s => s.stage === state.currentStage);
-            let bannerName = "Custom Encounter";
-            if(stageInfo) {
-                bannerName = stageInfo.displayName;
-            } else if (state.arenaMode) {
-                bannerName = "Forged Timeline";
-            } else if (e.name) {
-                bannerName = e.name;
-            }
-            showBossBanner({name: bannerName});
+            let bannerName = state.arenaMode ? "Forged Timeline" : (stageInfo?.displayName || e.name || "Custom Encounter");
+            showBossBanner({ name: bannerName });
             AudioManager.playSfx('bossSpawnSound');
             AudioManager.crossfadeToNextTrack();
         }
         state.bossActive = true;
-
     } else {
         state.enemies.push(e);
     }
-    if (state.arenaMode) { e.target = null; e.lastTargetCheck = 0; }
     return e;
 }
 
@@ -269,26 +295,22 @@ export function spawnPickup() {
     if (state.player.talent_states.core_states.shaper_of_fate?.isDisabled) return;
     const available = [...state.player.unlockedPowers];
     if (available.length === 0) return;
+
     const types = [];
     for (const type of available) {
         const weight = SPAWN_WEIGHTS[type] || 1;
         for (let i = 0; i < weight; i++) types.push(type);
     }
     const type = types[Math.floor(Math.random() * types.length)];
-    
+
     let life = 10000;
     const anomalyRank = state.player.purchasedTalents.get('temporal-anomaly');
-    if (anomalyRank) {
-        life *= (1 + [0.25, 0.5][anomalyRank - 1]);
-    }
+    if (anomalyRank) life *= (1 + [0.25, 0.5][anomalyRank - 1]);
 
-    state.pickups.push({ 
-        x: Math.random() * canvas.width, 
-        y: Math.random() * canvas.height, 
-        r: 12, 
-        type, 
-        vx: 0, 
-        vy: 0,
+    state.pickups.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        r: 12, type, vx: 0, vy: 0,
         lifeEnd: Date.now() + life
     });
 }
@@ -301,7 +323,6 @@ export function gameTick(mx, my) {
     const timeEaterZones = timeEater && timeEater.effects ? timeEater.effects : [];
     const otherSlowZones = state.effects.filter(e => e.type === 'slow_zone');
     const allSlowZones = [...timeEaterZones, ...otherSlowZones];
-
 
     if (!state.gameOver) {
         if (state.arenaMode) {
@@ -322,18 +343,27 @@ export function gameTick(mx, my) {
                 }
             }
         }
-        if (state.bossActive && Math.random() < (0.007 + state.player.level * 0.001)) {
-            spawnEnemy(false);
-        }
-        if (Math.random() < (0.02 + state.player.level * 0.0002)) {
-            spawnPickup();
+        
+        if (state.bossActive) {
+            if (Math.random() < (0.007 + state.player.level * 0.001)) {
+                spawnEnemy(false);
+            }
+    
+            const baseSpawnChance = 0.02 + state.player.level * 0.0002;
+            const finalSpawnChance = baseSpawnChance * state.player.talent_modifiers.power_spawn_rate_modifier;
+            if (Math.random() < finalSpawnChance) {
+                spawnPickup();
+            }
         }
     }
     
     if (state.gameOver) {
-        stopLoopingSfx("beamHumSound");
-        stopLoopingSfx('wallShrink');
+        stopAllLoopingSounds();
         const gameOverMenu = document.getElementById('gameOverMenu');
+        const aberrationBtn = document.getElementById('aberrationCoreMenuBtn');
+        
+        aberrationBtn.style.display = state.player.level >= 10 ? 'block' : 'none';
+
         if (gameOverMenu.style.display !== 'flex') {
             gameOverMenu.style.display = 'flex';
         }
@@ -353,9 +383,7 @@ export function gameTick(mx, my) {
     
     const phaseMomentumTalent = state.player.purchasedTalents.get('phase-momentum');
     if (phaseMomentumTalent) {
-        if (now - state.player.talent_states.phaseMomentum.lastDamageTime > 8000) {
-            state.player.talent_states.phaseMomentum.active = true;
-        }
+        state.player.talent_states.phaseMomentum.active = now - state.player.talent_states.phaseMomentum.lastDamageTime > 8000;
     } else {
         state.player.talent_states.phaseMomentum.active = false;
     }
@@ -366,6 +394,10 @@ export function gameTick(mx, my) {
     
     if (state.player.statusEffects.some(e => e.name === 'Slowed' || e.name === 'Epoch-Slow') && !isBerserkImmune) {
         playerSpeedMultiplier *= 0.5;
+    }
+    
+    if (state.player.equippedAberrationCore === 'aethel_and_umbra') {
+        if (state.player.health > state.player.maxHealth * 0.5) playerSpeedMultiplier *= 1.10;
     }
     
     allSlowZones.forEach(zone => {
@@ -388,9 +420,29 @@ export function gameTick(mx, my) {
         }
     });
 
+    if (state.player.equippedAberrationCore === 'juggernaut') {
+        const moveDist = Math.hypot( (finalMx - state.player.x), (finalMy - state.player.y));
+        if (moveDist > state.player.r) {
+            if (!state.player.talent_states.core_states.juggernaut.lastMoveTime) {
+                state.player.talent_states.core_states.juggernaut.lastMoveTime = now;
+            }
+            if(now - state.player.talent_states.core_states.juggernaut.lastMoveTime > 3000) {
+                state.player.talent_states.core_states.juggernaut.isCharging = true;
+            }
+        } else {
+            state.player.talent_states.core_states.juggernaut.lastMoveTime = 0;
+        }
+    }
+
     if (now > state.player.stunnedUntil) {
         state.player.x += (finalMx - state.player.x) * 0.015 * state.player.speed * playerSpeedMultiplier;
         state.player.y += (finalMy - state.player.y) * 0.015 * state.player.speed * playerSpeedMultiplier;
+    }
+
+    if (state.player.equippedAberrationCore === 'epoch_ender' && now > (state.player.talent_states.core_states.epoch_ender.cooldownUntil || 0)) {
+        const history = state.player.talent_states.core_states.epoch_ender.history;
+        history.push({ x: state.player.x, y: state.player.y, health: state.player.health });
+        if(history.length > 120) history.shift();
     }
 
     Cores.applyCoreTickEffects(gameHelpers);
@@ -407,7 +459,7 @@ export function gameTick(mx, my) {
     if (state.gravityActive && now > state.gravityEnd) {
         state.gravityActive = false;
         if (state.player.purchasedTalents.has('temporal-collapse')) {
-            state.effects.push({ type: 'slow_zone', x: canvas.width / 2, y: canvas.height / 2, r: 250, endTime: now + 4000 });
+            state.effects.push({ type: 'slow_zone', x: canvas.width / 2, y: canvas.height / 2, r: 250, endTime: Date.now() + 4000 });
         }
     }
 
@@ -418,15 +470,12 @@ export function gameTick(mx, my) {
             state.player.lastSpore = now;
             const spore = spawnEnemy(false, null, {x: state.player.x, y: state.player.y});
             if(spore){
-                spore.r = 8;
-                spore.hp = 2;
-                spore.dx = (Math.random() - 0.5) * 8;
-                spore.dy = (Math.random() - 0.5) * 8;
-                spore.ignoresPlayer = true;
+                spore.r = 8; spore.hp = 2; spore.dx = (Math.random() - 0.5) * 8;
+                spore.dy = (Math.random() - 0.5) * 8; spore.ignoresPlayer = true;
             }
         }
     }
-
+    
     if (state.player.talent_states.phaseMomentum.active) {
         ctx.globalAlpha = 0.3;
         utils.drawCircle(ctx, state.player.x, state.player.y, state.player.r + 5, 'rgba(0, 255, 255, 0.5)');
@@ -438,16 +487,14 @@ export function gameTick(mx, my) {
         ctx.strokeStyle = "rgba(241,196,15,0.7)";
         ctx.lineWidth = 4;
         ctx.beginPath();
-        ctx.arc(state.player.x, state.player.y, state.player.r + 8, 0, 2 * Math.PI);
+        ctx.arc(state.player.x, state.player.y, Math.max(0, state.player.r + 8), 0, 2 * Math.PI);
         ctx.stroke();
     }
-    utils.drawCircle(ctx, state.player.x, state.player.y, state.player.r, state.player.shield ? "#f1c40f" : ((state.player.berserkUntil > Date.now()) ? '#e74c3c' : (state.player.infected ? '#55efc4' : "#3498db")));
+    utils.drawCircle(ctx, state.player.x, state.player.y, state.player.r, state.player.shield ? "#f1c40f" : ((state.player.berserkUntil > now) ? '#e74c3c' : (state.player.infected ? '#55efc4' : "#3498db")));
     
     if (state.decoy) {
         utils.drawCircle(ctx, state.decoy.x, state.decoy.y, state.decoy.r, "#9b59b6");
-        if (now > state.decoy.expires) {
-            state.decoy = null;
-        }
+        if (now > state.decoy.expires) state.decoy = null;
     }
 
     let totalPlayerPushX = 0;
@@ -467,15 +514,13 @@ export function gameTick(mx, my) {
                     AudioManager.fadeOutMusic();
                     if (state.arenaMode) {
                         showUnlockNotification("Timeline Forged!", "Victory");
-                        setTimeout(() => {
-                            state.gameOver = true;
-                        }, 2000);
+                        setTimeout(() => { state.gameOver = true; }, 2000);
                     } else {
                         state.bossSpawnCooldownEnd = now + 4000;
                         if (state.currentStage > state.player.highestStageBeaten) {
                             state.player.highestStageBeaten = state.currentStage;
                             state.player.ascensionPoints += 1;
-                            showUnlockNotification("Stage Cleared! +1 AP", `Level ${state.currentStage + 1} Unlocked`);
+                            showUnlockNotification("Stage Cleared! +1 AP", `Stage ${state.currentStage + 1} Unlocked`);
                         }
                         if (THEMATIC_UNLOCKS[state.currentStage + 1]) handleThematicUnlock(state.currentStage);
                         addEssence(300);
@@ -484,8 +529,11 @@ export function gameTick(mx, my) {
                     }
                 }
             } else {
-                Cores.handleCoreOnEnemyDeath(e, gameHelpers);
                 addEssence(10);
+                Cores.handleCoreOnEnemyDeath(e, gameHelpers);
+                if (state.player.purchasedTalents.has('thermal-runaway') && state.player.berserkUntil > now) {
+                    state.player.berserkUntil += 100;
+                }
                 const scavengerRank = state.player.purchasedTalents.get('power-scavenger');
                 if (scavengerRank && Math.random() < [0.01, 0.025][scavengerRank-1]) {
                     state.pickups.push({ x: e.x, y: e.y, r: 12, type: 'score', vx: 0, vy: 0, lifeEnd: now + 10000 });
@@ -494,11 +542,16 @@ export function gameTick(mx, my) {
                 if (cryoRank && e.wasFrozen && Math.random() < [0.25, 0.5][cryoRank-1]) {
                     utils.spawnParticles(state.particles, e.x, e.y, '#ADD8E6', 40, 4, 30, 2);
                     state.effects.push({ type: 'shockwave', caster: state.player, x: e.x, y: e.y, radius: 0, maxRadius: 100, speed: 500, startTime: now, hitEnemies: new Set(), damage: 5 * state.player.talent_modifiers.damage_multiplier, color: 'rgba(0, 200, 255, 0.5)' });
+                    if (state.player.purchasedTalents.has('glacial-propagation')) {
+                        state.effects.push({ type: 'small_freeze', x: e.x, y: e.y, radius: 100, endTime: now + 200 });
+                    }
                 }
                 state.enemies.splice(i, 1);
             }
             continue;
         }
+
+        if(e.lifeEnd && now > e.lifeEnd) { state.enemies.splice(i, 1); continue; }
 
         if (e.isInfected && !e.boss) {
             if (now > e.infectionEnd) {
@@ -507,11 +560,8 @@ export function gameTick(mx, my) {
                 e.lastSpore = now;
                 const spore = spawnEnemy(false, null, { x: e.x, y: e.y });
                 if (spore) {
-                    spore.r = 6;
-                    spore.hp = 1;
-                    spore.dx = (Math.random() - 0.5) * 8;
-                    spore.dy = (Math.random() - 0.5) * 8;
-                    spore.ignoresPlayer = true;
+                    spore.r = 6; spore.hp = 1; spore.dx = (Math.random() - 0.5) * 8;
+                    spore.dy = (Math.random() - 0.5) * 8; spore.ignoresPlayer = true;
                 }
             }
         }
@@ -521,18 +571,13 @@ export function gameTick(mx, my) {
             state.effects.filter(eff => eff.type === 'repulsion_field').forEach(field => {
                 const dist = Math.hypot(e.x - field.x, e.y - field.y);
                 if (dist < field.radius + e.r) {
+                    const angle = Math.atan2(e.y - field.y, e.x - field.x);
                     if (field.isOverloaded && !field.hitEnemies.has(e)) {
-                        const knockbackVelocity = 20;
-                        const angle = Math.atan2(e.y - field.y, e.x - field.x);
-                        e.knockbackDx = Math.cos(angle) * knockbackVelocity;
-                        e.knockbackDy = Math.sin(angle) * knockbackVelocity;
+                        e.knockbackDx = Math.cos(angle) * 20; e.knockbackDy = Math.sin(angle) * 20;
                         e.knockbackUntil = now + 2000;
                         field.hitEnemies.add(e);
                     }
-                    const knockbackForce = 5;
-                    const angle = Math.atan2(e.y - field.y, e.x - field.x);
-                    e.x += Math.cos(angle) * knockbackForce;
-                    e.y += Math.sin(angle) * knockbackForce;
+                    e.x += Math.cos(angle) * 5; e.y += Math.sin(angle) * 5;
                 }
             });
         }
@@ -542,24 +587,14 @@ export function gameTick(mx, my) {
                 const zone = e.effects[j];
                 if (now > zone.endTime) {
                     e.effects.splice(j, 1);
-                } else if (!e.eatenBy) {
-                    allSlowZones.forEach(z => {
-                         if (Math.hypot(e.x - z.x, e.y - z.y) < z.r) {
-                             e.eatenBy = z;
-                         }
-                    });
                 }
             }
         }
-        
+
         if (e.eatenBy) {
-            const pullX = e.eatenBy.x - e.x;
-            const pullY = e.eatenBy.y - e.y;
+            const pullX = e.eatenBy.x - e.x, pullY = e.eatenBy.y - e.y;
             const pullDist = Math.hypot(pullX, pullY) || 1;
-            e.dx = (pullX / pullDist) * 3;
-            e.dy = (pullY / pullDist) * 3;
-            e.x += e.dx;
-            e.y += e.dy;
+            e.x += (pullX / pullDist) * 3; e.y += (pullY / pullDist) * 3;
             e.r *= 0.95;
             if (e.r < 2) {
                 if (timeEater) timeEater.hp -= 10;
@@ -568,116 +603,117 @@ export function gameTick(mx, my) {
                 continue;
             }
         } else if (e.knockbackUntil && e.knockbackUntil > now) {
-            e.x += e.knockbackDx;
-            e.y += e.knockbackDy;
-            e.knockbackDx *= 0.98;
-            e.knockbackDy *= 0.98;
+            e.x += e.knockbackDx; e.y += e.knockbackDy;
+            e.knockbackDx *= 0.98; e.knockbackDy *= 0.98;
             if (e.x < e.r || e.x > canvas.width - e.r) {
-                e.x = Math.max(e.r, Math.min(canvas.width - e.r, e.x));
-                e.knockbackDx *= -0.8;
+                e.x = Math.max(e.r, Math.min(canvas.width - e.r, e.x)); e.knockbackDx *= -0.8;
             }
             if (e.y < e.r || e.y > canvas.height - e.r) {
-                e.y = Math.max(e.r, Math.min(canvas.height - e.r, e.y));
-                e.knockbackDy *= -0.8;
+                e.y = Math.max(e.r, Math.min(canvas.height - e.r, e.y)); e.knockbackDy *= -0.8;
             }
         } else if(!e.frozen && !e.hasCustomMovement){ 
-            let tgt = state.decoy ? state.decoy : state.player;
-            let enemySpeedMultiplier = 1;
-            if (state.gravityActive && now < state.gravityEnd) {
-                if (!e.boss) {
-                    const pullX = (canvas.width / 2) - e.x;
-                    const pullY = (canvas.height / 2) - e.y;
-                    e.x += pullX * 0.05;
-                    e.y += pullY * 0.05;
-                }
+            let tgt = e.isFriendly ? null : (state.decoy ? state.decoy : state.player);
+            if (e.isFriendly) {
+                let closestEnemy = null, minDist = Infinity;
+                state.enemies.forEach(other => {
+                    if (!other.isFriendly && !other.boss) {
+                        const dist = Math.hypot(e.x - other.x, e.y - other.y);
+                        if (dist < minDist) { minDist = dist; closestEnemy = other; }
+                    }
+                });
+                tgt = closestEnemy;
             }
+            
+            let enemySpeedMultiplier = 1;
+            if (state.gravityActive && now < state.gravityEnd && !e.boss) {
+                e.x += ((canvas.width / 2) - e.x) * 0.05; e.y += ((canvas.height / 2) - e.y) * 0.05;
+            }
+            
             allSlowZones.forEach(zone => {
                 if(Math.hypot(e.x - zone.x, e.y - zone.y) < zone.r) enemySpeedMultiplier = 0.5;
             });
-            
+
             state.effects.forEach(effect => { 
-                if (effect.type === 'black_hole') {
-                    if (e.id !== 'fractal_horror') {
-                        const elapsed = now - effect.startTime;
-                        const progress = Math.min(1, elapsed / effect.duration);
-                        const currentPullRadius = effect.maxRadius * progress;
-                        const dist = Math.hypot(e.x - effect.x, e.y - effect.y);
-                        if (dist < currentPullRadius) {
-                            let pullStrength = e.boss ? 0.03 : 0.1;
-                            e.x += (effect.x - e.x) * pullStrength;
-                            e.y += (effect.y - e.y) * pullStrength;
-                            
-                            if (state.player.purchasedTalents.has('unstable-singularity') && dist < effect.radius + e.r && now - (effect.lastDamage.get(e) || 0) > effect.damageRate) {
-                                e.hp -= e.boss ? effect.damage : 15;
-                                e.hp -= 5 * state.player.talent_modifiers.damage_multiplier;
-                                effect.lastDamage.set(e, now);
-                           }
-                        }
+                if (effect.type === 'black_hole' && e.id !== 'fractal_horror') {
+                    const elapsed = now - effect.startTime, progress = Math.min(1, elapsed / effect.duration);
+                    const currentPullRadius = effect.maxRadius * progress, dist = Math.hypot(e.x - effect.x, e.y - effect.y);
+                    if (dist < currentPullRadius) {
+                        let pullStrength = e.boss ? 0.03 : 0.1;
+                        e.x += (effect.x - e.x) * pullStrength; e.y += (effect.y - e.y) * pullStrength;
+                        if (state.player.purchasedTalents.has('unstable-singularity') && dist < effect.radius + e.r && now - (effect.lastDamage.get(e) || 0) > effect.damageRate) {
+                            e.hp -= (e.boss ? effect.damage : 15) - 5 * state.player.talent_modifiers.damage_multiplier;
+                            effect.lastDamage.set(e, now);
+                       }
                     }
                 }
             });
             if (tgt) {
-              const vx = (tgt.x - e.x) * 0.005 * enemySpeedMultiplier; 
-              const vy = (tgt.y - e.y) * 0.005 * enemySpeedMultiplier; 
+              const vx = (tgt.x - e.x) * 0.005 * enemySpeedMultiplier; const vy = (tgt.y - e.y) * 0.005 * enemySpeedMultiplier; 
               e.x += vx; e.y += vy; 
             }
-            e.x += e.dx * enemySpeedMultiplier; 
-            e.y += e.dy * enemySpeedMultiplier;
+            e.x += e.dx * enemySpeedMultiplier; e.y += e.dy * enemySpeedMultiplier;
             if(e.x<e.r || e.x>canvas.width-e.r) e.dx*=-1; 
             if(e.y<e.r || e.y>canvas.height-e.r) e.dy*=-1;
         }
         
-        const bossLogicArgs = [e, ctx, state, utils, gameHelpers];
-        if (e.boss && e.logic) e.logic(...bossLogicArgs);
+        if (e.boss && e.logic) e.logic(e, ctx, state, utils, gameHelpers);
         
         let color = e.customColor || (e.boss ? e.color : "#c0392b"); if(e.isInfected) color = '#55efc4'; if(e.frozen) color = '#add8e6';
         if(!e.hasCustomDraw) utils.drawCircle(ctx, e.x,e.y,e.r, color);
-        if(e.enraged) { ctx.strokeStyle = "yellow"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(e.x,e.y,e.r+5,0,2*Math.PI); ctx.stroke(); }
+        if(e.enraged) { ctx.strokeStyle = "yellow"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(e.x,e.y,Math.max(0, e.r+5),0,2*Math.PI); ctx.stroke(); }
         
         Cores.handleCoreOnCollision(e, gameHelpers);
-        
-        const pDist = Math.hypot(state.player.x-e.x,state.player.y-e.y);
-        if(pDist < e.r+state.player.r){
-            if (state.player.talent_states.phaseMomentum.active && !e.boss) {
-            } else {
-                state.player.talent_states.phaseMomentum.lastDamageTime = now;
-                state.player.talent_states.phaseMomentum.active = false;
-                if (e.onCollision) e.onCollision(e, state.player, addStatusEffect); 
-                if(!state.player.shield){ 
-                    let damage = e.boss ? (e.enraged ? 20 : 10) : 1; 
-                    if (state.player.berserkUntil > now) damage *= 2;
-                    damage *= state.player.talent_modifiers.damage_taken_multiplier;
-                    const wouldBeFatal = (state.player.health - damage) <= 0;
 
-                    if (wouldBeFatal && Cores.handleCoreOnFatalDamage(e, gameHelpers)) {
-                        // Death was prevented by a core, do nothing more.
-                    } else if(wouldBeFatal && state.player.purchasedTalents.has('contingency-protocol') && !state.player.contingencyUsed) {
-                        state.player.contingencyUsed = true;
-                        state.player.health = 1;
-                        addStatusEffect('Contingency Protocol', '🛡️', 3000);
-                        const invulnShieldEndTime = now + 3000;
-                        state.player.shield = true;
-                        state.player.shield_end_time = invulnShieldEndTime;
-                        setTimeout(()=> { if(state.player.shield_end_time <= invulnShieldEndTime) state.player.shield = false; }, 3000);
-                    } else {
-                        state.player.health -= damage; 
+        if(!e.isFriendly) {
+            const pDist = Math.hypot(state.player.x-e.x,state.player.y-e.y);
+            if(pDist < e.r+state.player.r){
+                if (state.player.talent_states.phaseMomentum.active && !e.boss) {
+                    // No collision damage
+                } else {
+                    state.player.talent_states.phaseMomentum.lastDamageTime = now;
+                    state.player.talent_states.phaseMomentum.active = false;
+                    if (e.onCollision) e.onCollision(e, state.player, addStatusEffect); 
+
+                    if(!state.player.shield){ 
+                        let damage = e.boss ? (e.enraged ? 20 : 10) : 1; 
+                        damage *= state.player.talent_modifiers.damage_taken_multiplier;
+                        const wouldBeFatal = (state.player.health - damage) <= 0;
+
+                        if (wouldBeFatal && Cores.handleCoreOnFatalDamage(e, gameHelpers)) {
+                            // Death prevented by core
+                        } else if(wouldBeFatal && state.player.purchasedTalents.has('contingency-protocol') && !state.player.contingencyUsed) {
+                            state.player.contingencyUsed = true; state.player.health = 1;
+                            addStatusEffect('Contingency Protocol', '🛡️', 3000);
+                            const invulnShieldEndTime = now + 3000;
+                            state.player.shield = true; state.player.shield_end_time = invulnShieldEndTime;
+                            setTimeout(()=> { if(state.player.shield_end_time <= invulnShieldEndTime) state.player.shield = false; }, 3000);
+                        } else {
+                            state.player.health -= damage; 
+                        }
+
+                        Cores.handleCoreOnPlayerDamage(e, gameHelpers);
+                        play('hitSound'); 
+                        if(e.onDamage) e.onDamage(e, damage, state.player, state, spawnParticlesCallback, play, stopLoopingSfx, gameHelpers);
+                        if(state.player.health<=0) state.gameOver=true; 
+                    } else { 
+                        state.player.shield=false; 
+                        play('shieldBreak');
+                        Cores.handleCoreOnShieldBreak();
+                        if(state.player.purchasedTalents.has('aegis-retaliation')) state.effects.push({ type: 'shockwave', caster: state.player, x: state.player.x, y: state.player.y, radius: 0, maxRadius: 250, speed: 1000, startTime: now, hitEnemies: new Set(), damage: 0, color: 'rgba(255, 255, 255, 0.5)' });
                     }
-                    Cores.handleCoreOnPlayerDamage(e, gameHelpers);
-                    play('hitSound'); 
-                    if(e.onDamage) e.onDamage(e, damage, state.player, state, spawnParticlesCallback, play, stopLoopingSfx, gameHelpers);
-                    if(state.player.health<=0) state.gameOver=true; 
-                } else { 
-                    state.player.shield=false; 
-                    play('shieldBreak');
-                    Cores.handleCoreOnShieldBreak();
-                    if(state.player.purchasedTalents.has('aegis-retaliation')) state.effects.push({ type: 'shockwave', caster: state.player, x: state.player.x, y: state.player.y, radius: 0, maxRadius: 250, speed: 1000, startTime: now, hitEnemies: new Set(), damage: 0, color: 'rgba(255, 255, 255, 0.5)' });
+                    const overlap = (e.r + state.player.r) - pDist;
+                    const ang=Math.atan2(state.player.y-e.y,state.player.x-e.x); 
+                    totalPlayerPushX += Math.cos(ang) * overlap;
+                    totalPlayerPushY += Math.sin(ang) * overlap;
+                    playerCollisions++;
                 }
-                const overlap = (e.r + state.player.r) - pDist;
-                const ang=Math.atan2(state.player.y-e.y,state.player.x-e.x); 
-                totalPlayerPushX += Math.cos(ang) * overlap;
-                totalPlayerPushY += Math.sin(ang) * overlap;
-                playerCollisions++;
             }
+        } else {
+            state.enemies.forEach(other => {
+                if(!other.isFriendly && Math.hypot(e.x - other.x, e.y - other.y) < e.r + other.r) {
+                    other.hp -= 0.5; e.hp -= 0.5;
+                }
+            });
         }
     }
 
@@ -702,10 +738,8 @@ export function gameTick(mx, my) {
         }
 
         if (p.eatenBy) {
-            const pullX = p.eatenBy.x - p.x;
-            const pullY = p.eatenBy.y - p.y;
-            p.vx = (pullX / (Math.hypot(pullX, pullY) || 1)) * 3;
-            p.vy = (pullY / (Math.hypot(pullX, pullY) || 1)) * 3;
+            const pullX = p.eatenBy.x - p.x; const pullY = p.eatenBy.y - p.y;
+            p.vx = (pullX / (Math.hypot(pullX, pullY) || 1)) * 3; p.vy = (pullY / (Math.hypot(pullX, pullY) || 1)) * 3;
             p.r *= 0.95;
             if (p.r < 2) {
                 if (timeEater) timeEater.hp = Math.min(timeEater.maxHP, timeEater.hp + 10);
@@ -718,9 +752,7 @@ export function gameTick(mx, my) {
             const d = Math.hypot(state.player.x - p.x, state.player.y - p.y);
             if (d < pickupRadius) {
                 const angle = Math.atan2(state.player.y - p.y, state.player.x - p.x);
-                const acceleration = 0.5;
-                p.vx += Math.cos(angle) * acceleration;
-                p.vy += Math.sin(angle) * acceleration;
+                p.vx += Math.cos(angle) * 0.5; p.vy += Math.sin(angle) * 0.5;
             }
             p.vx *= 0.95; p.vy *= 0.95;
         }
@@ -729,11 +761,14 @@ export function gameTick(mx, my) {
         ctx.fillStyle="#fff"; ctx.font="16px sans-serif"; ctx.textAlign = "center";
         ctx.fillText(p.emoji || powers[p.type]?.emoji || '?', p.x, p.y+6);
         ctx.textAlign = "left";
-        const collectDist = Math.hypot(state.player.x - p.x, state.player.y - p.y);
-        if(collectDist < state.player.r + p.r){
+        if(Math.hypot(state.player.x - p.x, state.player.y - p.y) < state.player.r + p.r){
             play('pickupSound'); 
+            if (state.player.purchasedTalents.has('essence-weaving')) {
+                state.player.health = Math.min(state.player.maxHealth, state.player.health + state.player.maxHealth * 0.02);
+            }
             Cores.handleCoreOnPickup(gameHelpers);
             if (p.customApply) { p.customApply(); state.pickups.splice(i,1); continue; }
+            
             const isOffensive = offensivePowers.includes(p.type);
             const targetInventory = isOffensive ? state.offensiveInventory : state.defensiveInventory;
             const maxSlots = isOffensive ? state.player.unlockedOffensiveSlots : state.player.unlockedDefensiveSlots;
@@ -804,20 +839,12 @@ export function gameTick(mx, my) {
         if (effect.type === 'shockwave') {
             const elapsed = (now - effect.startTime) / 1000; effect.radius = elapsed * effect.speed;
             ctx.strokeStyle = effect.color || `rgba(255, 255, 255, ${1-(effect.radius/effect.maxRadius)})`; ctx.lineWidth = 10;
-            ctx.beginPath(); ctx.arc(effect.x, effect.y, effect.radius, 0, 2 * Math.PI); ctx.stroke();
-            let targets = (effect.caster === state.player) ? state.enemies : [state.player];
+            ctx.beginPath(); ctx.arc(effect.x, effect.y, Math.max(0, effect.radius), 0, 2 * Math.PI); ctx.stroke();
+            let targets = (effect.caster === state.player) ? state.enemies.filter(e => !e.isFriendly) : [state.player];
             targets.forEach(target => {
                 if (!effect.hitEnemies.has(target) && Math.abs(Math.hypot(target.x - effect.x, target.y - effect.y) - effect.radius) < target.r + 5) {
                     if (effect.damage > 0) {
-                        let dmg;
-                        if (target.isPuppet && effect.caster === state.player) {
-                            dmg = target.maxHP / 2;
-                        } else if (target.boss || target === state.player) {
-                            dmg = effect.damage;
-                        } else {
-                            dmg = 1000;
-                        }
-
+                        let dmg = (target.isPuppet && effect.caster === state.player) ? target.maxHP / 2 : (target.boss || target === state.player) ? effect.damage : 1000;
                         if (target === state.player) {
                             if (!target.shield) {
                                 target.health -= dmg;
@@ -825,6 +852,7 @@ export function gameTick(mx, my) {
                             } else target.shield = false;
                         } else {
                             target.hp -= dmg;
+                            if (state.player.equippedAberrationCore === 'basilisk') addStatusEffect.call(target, 'Petrified', '🗿', 3000);
                         }
                         if (target.onDamage) target.onDamage(target, dmg, effect.caster, state, spawnParticlesCallback, play, stopLoopingSfx, gameHelpers);
                     }
@@ -880,7 +908,7 @@ export function gameTick(mx, my) {
             utils.drawCircle(ctx, effect.x, effect.y, effect.r, effect.color || '#fff'); 
             if(effect.x < 0 || effect.x > canvas.width || effect.y < 0 || effect.y > canvas.height) { state.effects.splice(i, 1); continue; }
             if (effect.caster === state.player) {
-                state.enemies.forEach(e => { if (e !== effect.caster && Math.hypot(e.x-effect.x, e.y-effect.y) < e.r + effect.r) { let damage = ((state.player.berserkUntil > now) ? 6 : 3) * state.player.talent_modifiers.damage_multiplier; e.hp -= damage; state.effects.splice(i, 1); } }); 
+                state.enemies.forEach(e => { if (e !== effect.caster && !e.isFriendly && Math.hypot(e.x-effect.x, e.y-effect.y) < e.r + effect.r) { let damage = ((state.player.berserkUntil > now) ? 6 : 3) * state.player.talent_modifiers.damage_multiplier; e.hp -= damage; state.effects.splice(i, 1); } }); 
             } else {
                 if (Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < state.player.r + effect.r) {
                     if (!state.player.shield) {
@@ -903,33 +931,35 @@ export function gameTick(mx, my) {
                     if (Math.hypot(e.x-effect.x, e.y-effect.y) < explosionRadius) { 
                         let damage = ((state.player.berserkUntil > now && effect.caster === state.player) ? 50 : 25)  * state.player.talent_modifiers.damage_multiplier; 
                         if(effect.caster !== state.player) damage = effect.damage;
-                        
                         if(e.health) {
-                            if (!e.shield) {
-                                e.health -= damage;
-                                if(e.health <= 0) state.gameOver = true;
-                            } else {
-                                e.shield = false;
-                            }
-                        } else {
-                            e.hp -= damage; 
-                        }
-
+                            if (!e.shield) { e.health -= damage; if(e.health <= 0) state.gameOver = true; }
+                            else { e.shield = false; }
+                        } else { e.hp -= damage; }
                         if(e.onDamage) e.onDamage(e, damage, effect.caster, state, spawnParticlesCallback, play, stopLoopingSfx, gameHelpers); 
                     } 
                 }); 
                 state.effects.splice(i, 1); 
                 continue; 
             } 
-            ctx.strokeStyle = effect.color || 'rgba(230, 126, 34, 0.8)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(effect.x, effect.y, 50 * (1-progress), 0, Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(effect.x-10, effect.y); ctx.lineTo(effect.x+10, effect.y); ctx.moveTo(effect.x, effect.y-10); ctx.lineTo(effect.x, effect.y+10); ctx.stroke(); 
+            ctx.strokeStyle = effect.color || 'rgba(230, 126, 34, 0.8)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            const warningRadius = 50 * (1 - progress);
+            ctx.arc(effect.x, effect.y, Math.max(0, Math.max(0), warningRadius), 0, Math.PI*2);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(effect.x-10, effect.y);
+            ctx.lineTo(effect.x+10, effect.y);
+            ctx.moveTo(effect.x, effect.y-10);
+            ctx.lineTo(effect.x, effect.y+10);
+            ctx.stroke();
         }
         else if (effect.type === 'black_hole') { 
-            const elapsed = now - effect.startTime;
-            const progress = Math.min(1, elapsed / effect.duration);
+            const elapsed = now - effect.startTime, progress = Math.min(1, elapsed / effect.duration);
             const currentPullRadius = effect.maxRadius * progress; 
             utils.drawCircle(ctx, effect.x, effect.y, effect.radius, effect.color || "#000"); 
             ctx.strokeStyle = effect.color ? `rgba(${effect.color.slice(1).match(/.{1,2}/g).map(v => parseInt(v, 16)).join(',')}, ${0.6 * progress})` : `rgba(155, 89, 182, ${0.6 * progress})`;
-            ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(effect.x, effect.y, currentPullRadius, 0, 2*Math.PI); ctx.stroke();
+            ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(effect.x, effect.y, Math.max(0, currentPullRadius), 0, 2*Math.PI); ctx.stroke();
         }
         else if (effect.type === 'seeking_shrapnel') {
             let closest = null; const sortedEnemies = [...state.enemies].sort((a,b) => Math.hypot(a.x-effect.x, a.y-effect.y) - Math.hypot(b.x-effect.x, b.y-effect.y));
@@ -939,16 +969,265 @@ export function gameTick(mx, my) {
             state.enemies.forEach(e => { if(Math.hypot(e.x - effect.x, e.y - effect.y) < e.r + effect.r) { e.hp -= effect.damage; state.effects.splice(i, 1); }});
             if(now > effect.startTime + effect.life) state.effects.splice(i, 1);
         }
-        else if (effect.type === 'repulsion_field') {
+        else if (effect.type === 'teleport_indicator') {
             if (now > effect.endTime) { state.effects.splice(i, 1); continue; }
-            effect.x = state.player.x; effect.y = state.player.y;
-            const isOverloaded = effect.isOverloaded && now < effect.startTime + 2000;
-            if (isOverloaded) { const pulseAlpha = 0.8 * (1 - (now - effect.startTime) / 2000); ctx.strokeStyle = `rgba(0, 255, 255, ${pulseAlpha})`; ctx.lineWidth = 6;
-            } else { const alpha = (effect.endTime - now) / 5000 * 0.4; ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`; ctx.lineWidth = 4; }
-            ctx.beginPath(); ctx.arc(effect.x, effect.y, effect.radius, 0, 2*Math.PI); ctx.stroke();
+            const progress = 1 - ((effect.endTime - now) / 1000);
+            const warningRadius = effect.r * (1.5 - progress);
+            ctx.strokeStyle = `rgba(255, 0, 0, ${1 - progress})`;
+            ctx.lineWidth = 5 + (10 * progress);
+            ctx.beginPath();
+            ctx.arc(effect.x, effect.y, Math.max(0, Math.max(0), warningRadius), 0, 2 * Math.PI);
+            ctx.stroke();
         }
+        else if (effect.type === 'glitch_zone') {
+            if (now > effect.endTime) { state.player.controlsInverted = false; state.effects.splice(i, 1); continue; }
+            const alpha = (effect.endTime - now) / 5000 * 0.3; ctx.fillStyle = `rgba(253, 121, 168, ${alpha})`; utils.drawCircle(ctx, effect.x, effect.y, effect.r, ctx.fillStyle);
+            if (Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < effect.r + state.player.r) { if (!state.player.controlsInverted) { play('systemErrorSound'); addStatusEffect('Controls Inverted', '🔀', 3000); } state.player.controlsInverted = true; setTimeout(() => state.player.controlsInverted = false, 3000); }
+        }
+        else if (effect.type === 'dilation_field') {
+            playLooping('dilationField');
+            ctx.save();
+            ctx.translate(effect.x, effect.y);
+            ctx.rotate(effect.angle);
+            ctx.fillStyle = 'rgba(189, 195, 199, 0.2)';
+            ctx.beginPath();
+            ctx.arc(0, 0, Math.max(0, effect.r), -Math.PI/2, Math.PI/2, false);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        }
+        // --- CORRECTED BOSS LOGIC BLOCK ---
+        else if (effect.type === 'shrinking_box') {
+            playLooping('wallShrink');
+            const progress = (now - effect.startTime) / effect.duration;
+            const currentSize = Math.max(0, effect.initialSize * (1 - progress));
+            
+            const halfSize = currentSize / 2;
+            const left = effect.x - halfSize, right = effect.x + halfSize, top = effect.y - halfSize, bottom = effect.y + halfSize;
+            
+            ctx.strokeStyle = 'rgba(211, 84, 0, 0.8)'; ctx.lineWidth = 10; ctx.shadowColor = '#d35400'; ctx.shadowBlur = 20;
+
+            const gapSize = 150; 
+            const walls = [{x1:left,y1:top,x2:right,y2:top},{x1:right,y1:top,x2:right,y2:bottom},{x1:right,y1:bottom,x2:left,y2:bottom},{x1:left,y1:bottom,x2:left,y2:top}];
+            
+            walls.forEach((wall, index) => {
+                const wallLength = Math.hypot(wall.x2 - wall.x1, wall.y2 - wall.y1);
+                let hit = false;
+                
+                if (index === effect.gapSide) {
+                    const gapStart = (wallLength - gapSize) * effect.gapPosition;
+                    const gapEnd = gapStart + gapSize;
+                    const p1 = {x:wall.x1+(wall.x2-wall.x1)*(gapStart/wallLength),y:wall.y1+(wall.y2-wall.y1)*(gapStart/wallLength)};
+                    const p2 = {x:wall.x1+(wall.x2-wall.x1)*(gapEnd/wallLength),y:wall.y1+(wall.y2-wall.y1)*(gapEnd/wallLength)};
+                    
+                    ctx.beginPath(); ctx.moveTo(wall.x1,wall.y1); ctx.lineTo(p1.x, p1.y); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(p2.x,p2.y); ctx.lineTo(wall.x2, wall.y2); ctx.stroke();
+
+                    if(utils.lineCircleCollision(wall.x1,wall.y1,p1.x,p1.y,state.player.x,state.player.y,state.player.r) || utils.lineCircleCollision(p2.x,p2.y,wall.x2,wall.y2,state.player.x,state.player.y,state.player.r)) hit=true;
+                } else {
+                    ctx.beginPath(); ctx.moveTo(wall.x1,wall.y1); ctx.lineTo(wall.x2, wall.y2); ctx.stroke();
+                    if(utils.lineCircleCollision(wall.x1,wall.y1,wall.x2,wall.y2,state.player.x,state.player.y,state.player.r)) hit=true;
+                }
+
+                if(hit) {
+                    const player = state.player;
+                    const overlap = 2; 
+                    if (wall.x1 === wall.x2) { // Vertical wall
+                        player.x = wall.x1 + (player.x > wall.x1 ? player.r + overlap : -(player.r + overlap));
+                    }
+                    if (wall.y1 === wall.y2) { // Horizontal wall
+                        player.y = wall.y1 + (player.y > wall.y1 ? player.r + overlap : -(player.r + overlap));
+                    }
+                }
+            });
+            ctx.shadowBlur = 0;
+        }
+        else if (effect.type === 'syphon_cone') {
+            const { source, endTime } = effect;
+            const remainingTime = endTime - now;
+            
+            if (remainingTime > 250) {
+                effect.angle = Math.atan2(state.player.y - source.y, state.player.x - source.x);
+            }
+            
+            const coneAngle = Math.PI / 4;
+            const coneLength = canvas.height;
+            const progress = 1 - (remainingTime) / 2500;
+            ctx.globalAlpha = 0.5 * progress;
+            ctx.fillStyle = '#9b59b6';
+            ctx.beginPath();
+            ctx.moveTo(source.x, source.y);
+            ctx.arc(source.x, source.y, coneLength, effect.angle - coneAngle / 2, effect.angle + coneAngle / 2);
+            ctx.lineTo(source.x, source.y);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+        
+            if (remainingTime <= 0 && !effect.hasFired) {
+                effect.hasFired = true;
+                play('syphonFire');
+                const playerAngle = Math.atan2(state.player.y - source.y, state.player.x - source.x);
+                let angleDiff = Math.abs(effect.angle - playerAngle);
+                if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
+                
+                if (angleDiff < coneAngle / 2) {
+                    const stolenPower = state.offensiveInventory[0];
+                    if (stolenPower) {
+                        play('powerAbsorb');
+                        state.offensiveInventory.shift();
+                        state.offensiveInventory.push(null);
+                        
+                        switch (stolenPower) {
+                            case 'missile':
+                                state.effects.push({ type: 'shockwave', caster: source, x: state.player.x, y: state.player.y, radius: 0, maxRadius: 400, speed: 1000, startTime: Date.now(), hitEnemies: new Set(), damage: 70, color: 'rgba(155, 89, 182, 0.7)' });
+                                break;
+                            case 'chain':
+                                state.effects.push({ type: 'chain_lightning', targets: [state.player], links: [], startTime: Date.now(), durationPerLink: 80, damage: 75, caster: source, color: '#9b59b6' });
+                                break;
+                            case 'shockwave':
+                                state.effects.push({ type: 'shockwave', caster: source, x: source.x, y: source.y, radius: 0, maxRadius: canvas.width, speed: 1000, startTime: Date.now(), hitEnemies: new Set(), damage: 60, color: 'rgba(155, 89, 182, 0.7)' });
+                                break;
+                            case 'black_hole':
+                                state.effects.push({ type: 'black_hole', x: source.x, y: source.y, radius: 30, maxRadius: 400, damageRate: 200, lastDamage: new Map(), startTime: Date.now(), duration: 5000, endTime: Date.now() + 5000, damage: 65, caster: source, color: '#9b59b6' });
+                                break;
+                             case 'orbitalStrike':
+                                state.effects.push({ type: 'orbital_target', x: state.player.x, y: state.player.y, startTime: Date.now(), caster: source, damage: 80, radius: 200, color: 'rgba(155, 89, 182, 0.8)' });
+                                break;
+                            case 'ricochetShot':
+                                 for(let j = -1; j <= 1; j++) {
+                                    const angle = effect.angle + j * 0.3;
+                                    state.effects.push({ type: 'ricochet_projectile', x: source.x, y: source.y, dx: Math.cos(angle) * 12, dy: Math.sin(angle) * 12, r: 15, damage: 50, bounces: 5, initialBounces: 5, hitEnemies: new Set(), caster: source, color: '#9b59b6' });
+                                 }
+                                break;
+                            case 'bulletNova':
+                                state.effects.push({ type: 'nova_controller', startTime: Date.now(), duration: 2500, lastShot: 0, angle: Math.random() * Math.PI * 2, caster: source, color: '#9b59b6', r: 8 });
+                                break;
+                        }
+                    }
+                }
+            }
+        }
+        else if (effect.type === 'paradox_echo') {
+            const elapsed = now - effect.startTime;
+            if (effect.history.length > 0) {
+                const echoPos = effect.history.shift();
+                utils.drawCircle(ctx, echoPos.x, echoPos.y, effect.playerR, 'rgba(129, 236, 236, 0.4)');
+                if (Math.random() < 0.7) {
+                    effect.trail.push({x: echoPos.x, y: echoPos.y, lifeEnd: now + 3000});
+                }
+            } else if (effect.trail.length === 0) {
+                stopLoopingSfx('paradoxTrailHum');
+                state.effects.splice(i, 1);
+                continue;
+            }
+
+            effect.trail.forEach((p, j) => {
+                if (now > p.lifeEnd) {
+                    effect.trail.splice(j, 1);
+                    return;
+                }
+                const lifeProgress = (p.lifeEnd - now) / 3000;
+                ctx.fillStyle = `rgba(231, 76, 60, ${0.4 * lifeProgress})`;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 10, 0, 2 * Math.PI);
+                ctx.fill();
+
+                if (Math.hypot(state.player.x - p.x, state.player.y - p.y) < state.player.r + 10) {
+                     if (!state.player.shield) {
+                        play('magicDispelSound');
+                        state.player.health = 0;
+                        if(state.player.health <= 0) state.gameOver = true;
+                     }
+                }
+            });
+        }
+        else if (effect.type === 'annihilator_beam') {
+            const beamWidth = 2000;
+            ctx.save();
+            ctx.translate(effect.source.x, effect.source.y);
+            ctx.rotate(Math.atan2(effect.pillar.y - effect.source.y, effect.pillar.x - effect.source.x));
+            
+            const grad = ctx.createLinearGradient(0, -beamWidth / 2, 0, beamWidth / 2);
+            grad.addColorStop(0, `rgba(214, 48, 49, 0)`);
+            grad.addColorStop(0.4, `rgba(214, 48, 49, 0.7)`);
+            grad.addColorStop(0.5, `rgba(214, 48, 49, 0.9)`);
+            grad.addColorStop(0.6, `rgba(214, 48, 49, 0.7)`);
+            grad.addColorStop(1, `rgba(214, 48, 49, 0)`);
+            ctx.fillStyle = grad;
+
+            const pillarDist = Math.hypot(effect.pillar.x - effect.source.x, effect.pillar.y - effect.source.y);
+            const shadowAngle = Math.atan2(effect.pillar.r, pillarDist);
+            
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.arc(0, 0, Math.max(0, pillarDist + 2000), shadowAngle, -shadowAngle);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+
+            const angleToPlayer = Math.atan2(state.player.y - effect.source.y, state.player.x - effect.source.x);
+            const angleToPillar = Math.atan2(effect.pillar.y - effect.source.y, effect.pillar.x - effect.source.x);
+            const angleDiff = Math.abs(angleToPlayer - angleToPillar);
+            const pillarAngularSize = Math.atan2(effect.pillar.r, Math.hypot(effect.pillar.x - effect.source.x, effect.pillar.y - effect.source.y));
+            if (angleDiff > pillarAngularSize && !state.player.shield) {
+                state.player.health -= 5;
+                if (state.player.health <= 0) state.gameOver = true;
+            }
+        }
+        else if (effect.type === 'juggernaut_charge_ring') {
+            const progress = (now - effect.startTime) / effect.duration;
+            ctx.strokeStyle = `rgba(99, 110, 114, ${1 - progress})`;
+            ctx.lineWidth = 15 * progress;
+            ctx.beginPath();
+            ctx.arc(effect.source.x, effect.source.y, Math.max(0, effect.source.r + 20 + 80 * progress), 0, 2 * Math.PI);
+            ctx.stroke();
+        }
+        else if (effect.type === 'transient_lightning') {
+            utils.drawLightning(ctx, effect.x1, effect.y1, effect.x2, effect.y2, effect.color, 4);
+        }
+        else if (effect.type === 'miasma_gas') {
+            ctx.fillStyle = "rgba(106, 176, 76, 0.1)";
+            ctx.fillRect(0,0,canvas.width,canvas.height);
+            if (!state.player.shield) { state.player.health -= 0.05; if(state.player.health<=0)state.gameOver=true; }
+        }
+        else if (effect.type === 'charge_indicator') {
+            const progress = (now - effect.source.lastSlam) / effect.slamChargeTime;
+            ctx.strokeStyle = `rgba(106, 176, 76, ${progress})`;
+            ctx.lineWidth = 2 + progress * 8;
+            ctx.beginPath();
+            ctx.arc(effect.source.x, effect.source.y, Math.max(0, effect.radius * progress), 0, 2 * Math.PI);
+            ctx.stroke();
+        }
+        else if (effect.type === 'shaper_rune') {
+            const progress = 1 - (effect.endTime - now) / 4000;
+            const size = effect.r * (1 - progress * 0.5);
+            ctx.save();
+            ctx.globalAlpha = 1 - progress;
+            ctx.strokeStyle = '#f1c40f';
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.arc(effect.x, effect.y, Math.max(0, size), 0, 2 * Math.PI);
+            ctx.stroke();
+            const symbol = { nova: '💫', shockwave: '💥', lasers: '☄️', heal: '❤️', speed_buff: '🚀'}[effect.runeType];
+            ctx.fillStyle = '#f1c40f';
+            ctx.font = `${size * 0.8}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(symbol, effect.x, effect.y);
+            ctx.restore();
+        }
+        else if (effect.type === 'aspect_summon_ring') {
+            const progress = (now - effect.startTime) / effect.duration;
+            ctx.strokeStyle = effect.color;
+            ctx.lineWidth = 15 * (1 - progress);
+            ctx.globalAlpha = 1 - progress;
+            ctx.beginPath();
+            ctx.arc(effect.source.x, effect.source.y, Math.max(0, effect.maxRadius * progress), 0, 2 * Math.PI);
+            ctx.stroke();
+            ctx.globalAlpha = 1.0;
+        }
+        // --- END OF BOSS LOGIC ---
     }
-    
+
     utils.updateParticles(ctx, state.particles);
     updateUI();
     ctx.restore();
