@@ -137,6 +137,8 @@ window.addEventListener('load', () => {
         const allAudioElements = Array.from(document.querySelectorAll('audio'));
 
         function initialize() {
+            canvas.style.cursor = "url('./assets/cursors/crosshair.cur'), crosshair";
+            
             loadPlayerState();
             applyAllTalentEffects();
             mx = canvas.width / 2;
@@ -186,7 +188,7 @@ window.addEventListener('load', () => {
             document.addEventListener('visibilitychange', () => AudioManager.handleVisibilityChange());
             soundBtn.addEventListener("click", () => AudioManager.toggleMute());
             
-            document.querySelectorAll('button, .stage-select-item, .orrery-boss-item, .aberration-core-item').forEach(button => {
+            document.querySelectorAll('button, .stage-select-item, .orrery-boss-item, .aberration-core-item, .talent-node.can-purchase, #aberration-core-socket').forEach(button => {
                 button.addEventListener('mouseenter', () => AudioManager.playSfx('uiHoverSound'));
                 button.addEventListener('click', () => AudioManager.playSfx('uiClickSound'));
             });
