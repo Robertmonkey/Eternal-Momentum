@@ -125,6 +125,7 @@ export const powers={
       state.effects.push({ type: 'chain_lightning', targets: targets, links: [], startTime: Date.now(), durationPerLink: 80, damage: damage, caster: state.player });
     }
   },
+  // --- UPDATED: Gravity Power ---
   gravity:{
     emoji:"🌀",
     desc:"Pulls enemies for 1s",
@@ -133,6 +134,19 @@ export const powers={
         state.gravityActive=true; 
         state.gravityEnd=Date.now()+1000; 
         utils.spawnParticles(state.particles, innerWidth/2, innerHeight/2,"#9b59b6",100,4,40); 
+        
+        // --- NEW: Check for Temporal Collapse talent ---
+        if (state.player.purchasedTalents.has('temporal-collapse')) {
+            setTimeout(() => {
+                state.effects.push({ 
+                    type: 'enemy_only_pull_zone', 
+                    x: innerWidth / 2, 
+                    y: innerHeight / 2, 
+                    r: 250, 
+                    endTime: Date.now() + 4000 
+                });
+            }, 1000); // Activate after the initial gravity pull ends
+        }
     }
   },
   speed:{emoji:"🚀",desc:"Speed Boost for 5s",apply:(utils, game)=>{ state.player.speed*=1.5; game.addStatusEffect('Speed Boost', '🚀', 5000); utils.spawnParticles(state.particles, state.player.x,state.player.y,"#00f5ff",40,3,30); setTimeout(()=>state.player.speed/=1.5,5000); }},
@@ -251,11 +265,14 @@ export function usePower(queueType, utils, game, mx, my){
 
   powerType = inventory[0];
   if (!powerType) {
-      if (queueType === 'offensive' && game.useSyphonCore) {
-        game.useSyphonCore(mx, my);
+      // --- NEW: Logic for Syphon Core ---
+      const core = state.player.equippedAberrationCore;
+      if (core && core.id === 'syphon' && state.player.talent_states.core_states.syphon.canUse) {
+          game.useSyphonCore(mx, my);
       }
       return;
   }
+
 
   let stackedEffect = state.stacked;
   if (!stackedEffect && state.player.purchasedTalents.has('preordinance') && !state.player.preordinanceUsed) {
@@ -265,7 +282,7 @@ export function usePower(queueType, utils, game, mx, my){
   }
 
   const recycleTalent = state.player.purchasedTalents.get('energetic-recycling');
-  const singularityCore = state.player.equippedAberrationCore === 'singularity';
+  const singularityCore = state.player.equippedAberrationCore?.id === 'singularity';
   let consumed = true;
 
   if ((recycleTalent && Math.random() < 0.20) || (singularityCore && Math.random() < 0.15)) {
@@ -284,8 +301,6 @@ export function usePower(queueType, utils, game, mx, my){
 
   const applyArgs = [utils, game, mx, my];
 
-  powers[powerType].apply(...applyArgs);
-  
   if (stackedEffect && powerType !== 'stack') {
     powers[powerType].apply(...applyArgs);
     if(state.stacked) {
@@ -294,6 +309,7 @@ export function usePower(queueType, utils, game, mx, my){
     }
   }
   
+  // --- NEW: Added Singularity Core duplication check ---
   if (singularityCore && powerType !== 'stack' && Math.random() < 0.05) {
       powers[powerType].apply(...applyArgs);
       game.addStatusEffect('Duplicated', '✨', 2000);
@@ -301,8 +317,11 @@ export function usePower(queueType, utils, game, mx, my){
 
 
   utils.spawnParticles(state.particles, state.player.x, state.player.y, "#fff", 20, 3, 25);
+  powers[powerType].apply(...applyArgs);
   
-  if (queueType === 'defensive' && game.useLoopingEyeCore) {
+  // --- NEW: Added Looping Eye Core check ---
+  const core = state.player.equippedAberrationCore;
+  if (core && core.id === 'looping_eye' && !offensivePowers.includes(powerType)) {
       game.useLoopingEyeCore(mx, my);
   }
 }
