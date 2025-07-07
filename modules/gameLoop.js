@@ -962,25 +962,6 @@ export function gameTick(mx, my) {
             const alpha = (effect.endTime - now) / 5000 * 0.3; ctx.fillStyle = `rgba(253, 121, 168, ${alpha})`; utils.drawCircle(ctx, effect.x, effect.y, effect.r, ctx.fillStyle);
             if (Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < effect.r + state.player.r) { if (!state.player.controlsInverted) { play('systemErrorSound'); addStatusEffect('Controls Inverted', '🔀', 3000); } state.player.controlsInverted = true; setTimeout(() => state.player.controlsInverted = false, 3000); }
         }
-        else if (effect.type === 'paradox_echo') {
-            if (!effect.trail[0] || now - effect.trail[0].time > 1000) {
-                if (effect.history.length > 0) {
-                    effect.trail.unshift(effect.history.shift());
-                } else if (effect.trail.length === 0) {
-                    stopLoopingSfx('paradoxTrailHum');
-                    state.effects.splice(i, 1);
-                    continue;
-                }
-            }
-            effect.trail.forEach((p, index) => {
-                const alpha = 1 - (index / effect.trail.length);
-                utils.drawCircle(ctx, p.x, p.y, effect.playerR, `rgba(129, 236, 236, ${alpha * 0.5})`);
-                if (Math.hypot(state.player.x - p.x, state.player.y - p.y) < state.player.r + effect.playerR && !state.player.shield) {
-                    state.player.health -= 0.5; if (state.player.health <= 0) state.gameOver = true;
-                }
-            });
-            effect.trail = effect.trail.slice(0, 50);
-        }
         else if (effect.type === 'dilation_field') {
             playLooping('dilationField');
             ctx.save();
@@ -993,7 +974,118 @@ export function gameTick(mx, my) {
             ctx.fill();
             ctx.restore();
         }
-        // --- RESTORED BOSS LOGIC BLOCK ---
+        // --- CORRECTED BOSS LOGIC BLOCK ---
+        else if (effect.type === 'shrinking_box') {
+            playLooping('wallShrink');
+            const progress = (now - effect.startTime) / effect.duration;
+            const currentSize = Math.max(0, effect.initialSize * (1 - progress));
+            
+            const halfSize = currentSize / 2;
+            const left = effect.x - halfSize, right = effect.x + halfSize, top = effect.y - halfSize, bottom = effect.y + halfSize;
+            
+            ctx.strokeStyle = 'rgba(211, 84, 0, 0.8)'; ctx.lineWidth = 10; ctx.shadowColor = '#d35400'; ctx.shadowBlur = 20;
+
+            const gapSize = 150; // Fixed gap size
+            const walls = [{x1:left,y1:top,x2:right,y2:top},{x1:right,y1:top,x2:right,y2:bottom},{x1:right,y1:bottom,x2:left,y2:bottom},{x1:left,y1:bottom,x2:left,y2:top}];
+            
+            walls.forEach((wall, index) => {
+                const wallLength = Math.hypot(wall.x2 - wall.x1, wall.y2 - wall.y1);
+                let hit = false;
+                
+                if (index === effect.gapSide) {
+                    const gapStart = (wallLength - gapSize) * effect.gapPosition;
+                    const gapEnd = gapStart + gapSize;
+                    const p1 = {x:wall.x1+(wall.x2-wall.x1)*(gapStart/wallLength),y:wall.y1+(wall.y2-wall.y1)*(gapStart/wallLength)};
+                    const p2 = {x:wall.x1+(wall.x2-wall.x1)*(gapEnd/wallLength),y:wall.y1+(wall.y2-wall.y1)*(gapEnd/wallLength)};
+                    
+                    ctx.beginPath(); ctx.moveTo(wall.x1,wall.y1); ctx.lineTo(p1.x, p1.y); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(p2.x,p2.y); ctx.lineTo(wall.x2, wall.y2); ctx.stroke();
+
+                    if(utils.lineCircleCollision(wall.x1,wall.y1,p1.x,p1.y,state.player.x,state.player.y,state.player.r) || utils.lineCircleCollision(p2.x,p2.y,wall.x2,wall.y2,state.player.x,state.player.y,state.player.r)) hit=true;
+                } else {
+                    ctx.beginPath(); ctx.moveTo(wall.x1,wall.y1); ctx.lineTo(wall.x2, wall.y2); ctx.stroke();
+                    if(utils.lineCircleCollision(wall.x1,wall.y1,wall.x2,wall.y2,state.player.x,state.player.y,state.player.r)) hit=true;
+                }
+
+                if(hit) {
+                    const player = state.player;
+                    const overlap = 2; // Buffer to push player out
+                    if (wall.x1 === wall.x2) { // Vertical wall
+                        player.x = wall.x1 + (player.x > wall.x1 ? player.r + overlap : -(player.r + overlap));
+                    }
+                    if (wall.y1 === wall.y2) { // Horizontal wall
+                        player.y = wall.y1 + (player.y > wall.y1 ? player.r + overlap : -(player.r + overlap));
+                    }
+                }
+            });
+            ctx.shadowBlur = 0;
+        }
+        else if (effect.type === 'syphon_cone') {
+            const { source, endTime } = effect;
+            const remainingTime = endTime - now;
+            
+            // Only track the player for the first 2.25 seconds of the 2.5 second charge
+            if (remainingTime > 250) {
+                effect.angle = Math.atan2(state.player.y - source.y, state.player.x - source.x);
+            }
+            
+            const coneAngle = Math.PI / 4;
+            const coneLength = canvas.height;
+            const progress = 1 - (remainingTime) / 2500;
+            ctx.globalAlpha = 0.5 * progress;
+            ctx.fillStyle = '#9b59b6';
+            ctx.beginPath();
+            ctx.moveTo(source.x, source.y);
+            ctx.arc(source.x, source.y, coneLength, effect.angle - coneAngle / 2, effect.angle + coneAngle / 2);
+            ctx.lineTo(source.x, source.y);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+        
+            if (remainingTime <= 0 && !effect.hasFired) {
+                effect.hasFired = true;
+                play('syphonFire');
+                const playerAngle = Math.atan2(state.player.y - source.y, state.player.x - source.x);
+                let angleDiff = Math.abs(effect.angle - playerAngle);
+                if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
+                
+                if (angleDiff < coneAngle / 2) {
+                    const stolenPower = state.offensiveInventory[0];
+                    if (stolenPower) {
+                        play('powerAbsorb');
+                        state.offensiveInventory.shift();
+                        state.offensiveInventory.push(null);
+                    }
+                }
+            }
+        }
+        else if (effect.type === 'paradox_echo') {
+            if (!effect.trail[0] || now - effect.trail[0].time > 1000) {
+                if (effect.history.length > 0) {
+                    effect.trail.unshift(effect.history.shift());
+                } else if (effect.trail.length === 0) {
+                    stopLoopingSfx('paradoxTrailHum');
+                    state.effects.splice(i, 1);
+                    continue;
+                }
+            }
+        
+            const currentPos = effect.trail[0];
+            utils.drawCircle(ctx, currentPos.x, currentPos.y, effect.playerR, 'rgba(129, 236, 236, 0.4)');
+            
+            if(Math.random() < 0.7) {
+                spawnParticlesCallback(currentPos.x, currentPos.y, 'rgba(231, 76, 60, 0.7)', 1, 1, 20, Math.random() * 5 + 2);
+            }
+            
+            state.particles.forEach(p => {
+                if (p.life < p.maxLife * 0.5 && Math.hypot(state.player.x - p.x, state.player.y - p.y) < state.player.r + p.r) {
+                    if (!state.player.shield) {
+                        play('magicDispelSound');
+                        state.player.health = 0;
+                        if(state.player.health <= 0) state.gameOver = true;
+                    }
+                }
+            });
+        }
         else if (effect.type === 'annihilator_beam') {
             const beamWidth = 2000;
             ctx.save();
@@ -1027,32 +1119,6 @@ export function gameTick(mx, my) {
                 if (state.player.health <= 0) state.gameOver = true;
             }
         }
-        else if (effect.type === 'syphon_cone') {
-            const coneWidth = Math.PI / 4;
-            ctx.fillStyle = `rgba(155, 89, 182, 0.3)`;
-            ctx.beginPath();
-            ctx.moveTo(effect.source.x, effect.source.y);
-            ctx.arc(effect.source.x, effect.source.y, Math.max(0, 800), effect.angle - coneWidth/2, effect.angle + coneWidth/2);
-            ctx.closePath();
-            ctx.fill();
-
-            const distToPlayer = Math.hypot(state.player.x - effect.source.x, state.player.y - effect.source.y);
-            const angleToPlayer = Math.atan2(state.player.y - effect.source.y, state.player.x - effect.source.x);
-            const angleDiff = Math.abs(angleToPlayer - effect.angle);
-
-            if (distToPlayer < 800 && angleDiff < coneWidth / 2 && now < effect.endTime && !effect.hasHit) {
-                effect.hasHit = true; 
-                const powerType = state.offensiveInventory[0];
-                if (powerType) { // Fixes crash if player has no power
-                    const powerData = powers[powerType];
-                    if (powerData && powerData.apply) {
-                        powerData.apply(utils, gameHelpers, state.player.x, state.player.y);
-                        state.offensiveInventory[0] = null;
-                        addStatusEffect('Power Siphoned', '💀', 2000);
-                    }
-                }
-            }
-        }
         else if (effect.type === 'juggernaut_charge_ring') {
             const progress = (now - effect.startTime) / effect.duration;
             ctx.strokeStyle = `rgba(99, 110, 114, ${1 - progress})`;
@@ -1066,8 +1132,8 @@ export function gameTick(mx, my) {
         }
         else if (effect.type === 'miasma_gas') {
             ctx.fillStyle = "rgba(106, 176, 76, 0.1)";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            if (!state.player.shield) { state.player.health -= 0.05; if (state.player.health <= 0) state.gameOver = true; }
+            ctx.fillRect(0,0,canvas.width,canvas.height);
+            if (!state.player.shield) { state.player.health -= 0.05; if(state.player.health<=0)state.gameOver=true; }
         }
         else if (effect.type === 'charge_indicator') {
             const progress = (now - effect.source.lastSlam) / effect.slamChargeTime;
@@ -1077,73 +1143,6 @@ export function gameTick(mx, my) {
             ctx.arc(effect.source.x, effect.source.y, Math.max(0, effect.radius * progress), 0, 2 * Math.PI);
             ctx.stroke();
         }
-        else if (effect.type === 'shrinking_box') {
-    playLooping('wallShrink');
-    const progress = (now - effect.startTime) / effect.duration;
-    const currentSize = effect.initialSize * (1 - progress);
-    const halfSize = currentSize / 2;
-    const left = effect.x - halfSize, right = effect.x + halfSize, top = effect.y - halfSize, bottom = effect.y + halfSize;
-    ctx.strokeStyle = 'rgba(211, 84, 0, 0.8)'; ctx.lineWidth = 10; ctx.shadowColor = '#d35400'; ctx.shadowBlur = 20;
-    const gapSize = 150 * (1 - progress);
-    const walls = [{x1:left,y1:top,x2:right,y2:top},{x1:right,y1:top,x2:right,y2:bottom},{x1:right,y1:bottom,x2:left,y2:bottom},{x1:left,y1:bottom,x2:left,y2:top}];
-    walls.forEach((wall, index) => {
-        const wallLength = Math.hypot(wall.x2 - wall.x1, wall.y2 - wall.y1);
-        let hit = false;
-        
-        let wallSegment1 = { x1: wall.x1, y1: wall.y1, x2: wall.x2, y2: wall.y2 };
-        let wallSegment2 = null;
-
-        if (index === effect.gapSide) {
-            const gapStart = (wallLength - gapSize) * effect.gapPosition, gapEnd = gapStart + gapSize;
-            const p1 = {x:wall.x1+(wall.x2-wall.x1)*(gapStart/wallLength),y:wall.y1+(wall.y2-wall.y1)*(gapStart/wallLength)};
-            const p2 = {x:wall.x1+(wall.x2-wall.x1)*(gapEnd/wallLength),y:wall.y1+(wall.y2-wall.y1)*(gapEnd/wallLength)};
-            ctx.beginPath(); ctx.moveTo(wall.x1,wall.y1); ctx.lineTo(p1.x, p1.y); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(p2.x,p2.y); ctx.lineTo(wall.x2, wall.y2); ctx.stroke();
-            
-            wallSegment1 = { x1: wall.x1, y1: wall.y1, x2: p1.x, y2: p1.y };
-            wallSegment2 = { x1: p2.x, y1: p2.y, x2: wall.x2, y2: wall.y2 };
-
-            if(utils.lineCircleCollision(wallSegment1.x1, wallSegment1.y1, wallSegment1.x2, wallSegment1.y2, state.player.x, state.player.y, state.player.r) || 
-               utils.lineCircleCollision(wallSegment2.x1, wallSegment2.y1, wallSegment2.x2, wallSegment2.y2, state.player.x, state.player.y, state.player.r)) {
-               hit = true;
-            }
-
-        } else {
-            ctx.beginPath(); ctx.moveTo(wall.x1,wall.y1); ctx.lineTo(wall.x2, wall.y2); ctx.stroke();
-            if(utils.lineCircleCollision(wall.x1,wall.y1,wall.x2,wall.y2,state.player.x,state.player.y,state.player.r)) {
-                hit=true;
-            }
-        }
-
-        if (hit) {
-            // Player Blocking Logic
-            const overlap = 2; // A small buffer to push the player out
-            if (wall.x1 === wall.x2) { // Vertical wall
-                if (state.player.x < wall.x1) {
-                    state.player.x = wall.x1 - state.player.r - overlap;
-                } else {
-                    state.player.x = wall.x1 + state.player.r + overlap;
-                }
-            }
-            if (wall.y1 === wall.y2) { // Horizontal wall
-                 if (state.player.y < wall.y1) {
-                    state.player.y = wall.y1 - state.player.r - overlap;
-                } else {
-                    state.player.y = wall.y1 + state.player.r + overlap;
-                }
-            }
-
-            // Damage Logic
-            if (!state.player.shield) { 
-                state.player.health-=1; 
-                if(state.player.health<=0) state.gameOver=true;
-            } else if (hit) { 
-                state.player.shield=false; 
-            }
-        }
-    });
-    ctx.shadowBlur = 0;
-}
         else if (effect.type === 'shaper_rune') {
             const progress = 1 - (effect.endTime - now) / 4000;
             const size = effect.r * (1 - progress * 0.5);
@@ -1172,7 +1171,7 @@ export function gameTick(mx, my) {
             ctx.stroke();
             ctx.globalAlpha = 1.0;
         }
-        // --- END OF RESTORED BOSS LOGIC ---
+        // --- END OF BOSS LOGIC ---
     }
 
     utils.updateParticles(ctx, state.particles);
