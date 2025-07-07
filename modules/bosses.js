@@ -1056,13 +1056,14 @@ export const bossData = [{
     mechanics_desc: "Creates multiple zones of temporal distortion that drift around the arena. These zones will drastically slow you, your projectiles, and any enemies inside them. Power-ups that drift into these zones will be consumed, healing the boss.",
     init: b => {
         b.lastAbility = Date.now();
+        b.effects = []; // This boss manages its own effects
     },
     logic: (b, ctx, state, utils) => {
         const canvas = ctx.canvas;
         if (Date.now() - b.lastAbility > 5000) {
             b.lastAbility = Date.now();
             for (let i = 0; i < 4; i++) {
-                state.effects.push({
+                b.effects.push({
                     type: 'slow_zone',
                     x: Math.random() * canvas.width,
                     y: Math.random() * canvas.height,
@@ -1380,6 +1381,7 @@ export const bossData = [{
                 type: 'shrinking_box',
                 startTime: Date.now(),
                 duration: 6000,
+                endTime: Date.now() + 6000,
                 x: state.player.x,
                 y: state.player.y,
                 initialSize: boxSize,
