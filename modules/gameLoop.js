@@ -885,11 +885,11 @@ export function gameTick(mx, my) {
             const elapsed = (now - effect.startTime) / 1000; effect.radius = elapsed * effect.speed;
             ctx.strokeStyle = effect.color || `rgba(255, 255, 255, ${1-(effect.radius/effect.maxRadius)})`; ctx.lineWidth = 10;
             ctx.beginPath(); ctx.arc(effect.x, effect.y, Math.max(0, effect.radius), 0, 2 * Math.PI); ctx.stroke();
-            let targets = (effect.caster === state.player) ? state.enemies.filter(e => !e.isFriendly) : [state.player];
+            let targets = (effect.caster === state.player || effect.caster === 'reflected') ? state.enemies.filter(e => !e.isFriendly) : [state.player];
             targets.forEach(target => {
                 if (!effect.hitEnemies.has(target) && Math.abs(Math.hypot(target.x - effect.x, target.y - effect.y) - effect.radius) < target.r + 5) {
                     if (effect.damage > 0) {
-                        let dmg = (target.isPuppet && effect.caster === state.player) ? target.maxHP / 2 : (target.boss || target === state.player) ? effect.damage : 1000;
+                        let dmg = (target.isPuppet && (effect.caster === state.player || effect.caster === 'reflected')) ? target.maxHP / 2 : (target.boss || target === state.player) ? effect.damage : 1000;
                         if (target === state.player) {
                             if (!target.shield) {
                                 target.health -= dmg;
@@ -944,7 +944,9 @@ export function gameTick(mx, my) {
             utils.drawCircle(ctx, effect.x, effect.y, effect.r, effect.color || '#f1c40f'); 
             if(effect.x < effect.r || effect.x > canvas.width - effect.r) { effect.dx *= -1; effect.bounces--; } 
             if(effect.y < effect.r || effect.y > canvas.height - effect.r) { effect.dy *= -1; effect.bounces--; } 
-            state.enemies.forEach(e => { if (!effect.hitEnemies.has(e) && Math.hypot(e.x - effect.x, e.y - effect.y) < e.r + effect.r) { let damage = ((state.player.berserkUntil > now) ? effect.damage * 2 : effect.damage) * dynamicDamageMultiplier; e.hp -= damage; if (state.player.equippedAberrationCore === 'vampire' && Math.random() < 0.02) { state.pickups.push({ x: e.x, y: e.y, r: 10, type: 'heal', emoji: '🩸', lifeEnd: now + 8000, vx: 0, vy: 0, customApply: () => { state.player.health = Math.min(state.player.maxHealth, state.player.health + 5); }}); } effect.bounces--; const angle = Math.atan2(e.y - effect.y, e.x - effect.x); effect.dx = -Math.cos(angle) * 10; effect.dy = -Math.sin(angle) * 10; effect.hitEnemies.add(e); setTimeout(()=>effect.hitEnemies.delete(e), 200); } }); 
+            if (effect.caster === state.player || effect.caster === 'reflected') {
+                state.enemies.forEach(e => { if (!e.isFriendly && !effect.hitEnemies.has(e) && Math.hypot(e.x - effect.x, e.y - effect.y) < e.r + effect.r) { let damage = ((state.player.berserkUntil > now) ? effect.damage * 2 : effect.damage) * dynamicDamageMultiplier; e.hp -= damage; if (state.player.equippedAberrationCore === 'vampire' && Math.random() < 0.02) { state.pickups.push({ x: e.x, y: e.y, r: 10, type: 'heal', emoji: '🩸', lifeEnd: now + 8000, vx: 0, vy: 0, customApply: () => { state.player.health = Math.min(state.player.maxHealth, state.player.health + 5); }}); } effect.bounces--; const angle = Math.atan2(e.y - effect.y, e.x - effect.x); effect.dx = -Math.cos(angle) * 10; effect.dy = -Math.sin(angle) * 10; effect.hitEnemies.add(e); setTimeout(()=>effect.hitEnemies.delete(e), 200); } }); 
+            }
             if (effect.bounces <= 0) state.effects.splice(i, 1);
         }
         else if (effect.type === 'nova_controller') { 
