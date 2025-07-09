@@ -1,4 +1,4 @@
-// modules/core.js
+// modules/cores.js
 import { state } from './state.js';
 import * as utils from './utils.js';
 import { bossData } from './bosses.js';
@@ -128,36 +128,38 @@ export function applyCoreTickEffects(gameHelpers) {
 export function handleCoreOnEnemyDeath(enemy, gameHelpers) {
     const now = Date.now();
     const { spawnEnemy } = gameHelpers;
-    const coreId = state.player.equippedAberrationCore;
+    let coreId = state.player.equippedAberrationCore;
+
+    // Handle Pantheon Core logic
+    if (coreId === 'pantheon') {
+        coreId = state.player.talent_states.core_states.pantheon.activeCore || null;
+    }
 
     if (!coreId || enemy.isFriendly) return;
 
     switch (coreId) {
         case 'splitter':
-            if (enemy.boss) { // On boss death
-                for (let wave = 0; wave < 2; wave++) {
-                    setTimeout(() => {
-                        for (let j = 0; j < 3; j++) {
-                            const minion = spawnEnemy(false, null, { x: enemy.x, y: enemy.y });
-                            if (minion) {
-                                minion.isFriendly = true;
-                                minion.customColor = '#ffaa00';
-                                minion.hp = 10;
-                                minion.lifeEnd = now + 10000;
-                            }
-                        }
-                    }, wave * 1000);
-                }
-            } else { // On normal enemy death
-                if (now > (state.player.talent_states.core_states.splitter.cooldownUntil || 0)) {
-                    state.player.talent_states.core_states.splitter.cooldownUntil = now + 20000;
-                    const minion = spawnEnemy(false, null, { x: enemy.x, y: enemy.y });
-                    if (minion) {
-                        minion.isFriendly = true;
-                        minion.customColor = '#ffaa00';
-                        minion.hp = 10;
-                        minion.lifeEnd = now + 10000;
-                    }
+            // This logic now applies to any non-boss enemy death
+            if (!enemy.boss && now > (state.player.talent_states.core_states.splitter.cooldownUntil || 0)) {
+                // Set the 2-second cooldown
+                state.player.talent_states.core_states.splitter.cooldownUntil = now + 2000;
+                
+                // Spawn 3 seeking projectiles instead of minions
+                for (let i = 0; i < 3; i++) {
+                    const angle = Math.random() * Math.PI * 2; // Start at a random angle
+                    state.effects.push({
+                        type: 'seeking_shrapnel',
+                        x: enemy.x,
+                        y: enemy.y,
+                        dx: Math.cos(angle) * 4,
+                        dy: Math.sin(angle) * 4,
+                        r: 7,
+                        speed: 5,
+                        damage: 8 * state.player.talent_modifiers.damage_multiplier,
+                        life: 3000,
+                        startTime: now,
+                        targetIndex: i // Each projectile seeks a different enemy
+                    });
                 }
             }
             break;
@@ -231,7 +233,12 @@ export function handleCoreOnPlayerDamage(enemy, gameHelpers) {
  */
 export function handleCoreOnCollision(enemy, gameHelpers) {
     const now = Date.now();
-    const coreId = state.player.equippedAberrationCore;
+    let coreId = state.player.equippedAberrationCore;
+
+    // Handle Pantheon Core logic
+    if (coreId === 'pantheon') {
+        coreId = state.player.talent_states.core_states.pantheon.activeCore || null;
+    }
 
     if (!coreId || enemy.isFriendly) return;
 
@@ -241,6 +248,18 @@ export function handleCoreOnCollision(enemy, gameHelpers) {
                 enemy.isInfected = true;
                 enemy.infectionEnd = now + 10000;
              }
+            break;
+        case 'juggernaut':
+            const juggernautState = state.player.talent_states.core_states.juggernaut;
+            if (juggernautState.isCharging && !enemy.boss) {
+                // Instantly defeat the enemy
+                enemy.hp = 0;
+                // Create the shockwave
+                state.effects.push({ type: 'shockwave', caster: state.player, x: enemy.x, y: enemy.y, radius: 0, maxRadius: 120, speed: 600, startTime: now, hitEnemies: new Set(), damage: 10, color: 'rgba(99, 110, 114, 0.7)' });
+                // Reset the charge state
+                juggernautState.isCharging = false;
+                juggernautState.lastMoveTime = 0;
+            }
             break;
     }
 }
