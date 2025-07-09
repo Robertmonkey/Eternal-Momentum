@@ -265,14 +265,12 @@ export function usePower(queueType, utils, game, mx, my){
 
   powerType = inventory[0];
   if (!powerType) {
-      // --- NEW: Logic for Syphon Core ---
       const core = state.player.equippedAberrationCore;
       if (core && core.id === 'syphon' && state.player.talent_states.core_states.syphon.canUse) {
           game.useSyphonCore(mx, my);
       }
       return;
   }
-
 
   let stackedEffect = state.stacked;
   if (!stackedEffect && state.player.purchasedTalents.has('preordinance') && !state.player.preordinanceUsed) {
@@ -309,19 +307,23 @@ export function usePower(queueType, utils, game, mx, my){
     }
   }
   
-  // --- NEW: Added Singularity Core duplication check ---
   if (singularityCore && powerType !== 'stack' && Math.random() < 0.05) {
       powers[powerType].apply(...applyArgs);
       game.addStatusEffect('Duplicated', '✨', 2000);
   }
 
-
   utils.spawnParticles(state.particles, state.player.x, state.player.y, "#fff", 20, 3, 25);
   powers[powerType].apply(...applyArgs);
   
-  // --- NEW: Added Looping Eye Core check ---
-  const core = state.player.equippedAberrationCore;
-  if (core && core.id === 'looping_eye' && !offensivePowers.includes(powerType)) {
-      game.useLoopingEyeCore(mx, my);
+  // --- Core integrations for defensive powers ---
+  if (!offensivePowers.includes(powerType)) {
+      // Logic for Reflector Core
+      if (state.player.equippedAberrationCore === 'reflector') {
+        game.addStatusEffect('Reflective Ward', '💎', 2000);
+      }
+      // Logic for Looping Eye Core
+      if (state.player.equippedAberrationCore === 'looping_eye') {
+          game.useLoopingEyeCore(mx, my);
+      }
   }
 }
