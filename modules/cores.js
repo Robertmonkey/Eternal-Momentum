@@ -5,18 +5,29 @@ import { bossData } from './bosses.js';
 import { showUnlockNotification } from './ui.js';
 
 /**
+ * Standardized function to get the currently active core ID, accounting for Pantheon.
+ * @returns {string|null} The ID of the core whose logic should be executed.
+ */
+function getActiveCoreId() {
+    let coreId = state.player.equippedAberrationCore;
+    if (coreId === 'pantheon') {
+        return state.player.talent_states.core_states.pantheon.activeCore || null;
+    }
+    return coreId;
+}
+
+/**
  * Applies passive, per-tick effects for equipped Aberration Cores.
- * @param {object} gameHelpers - An object containing helper functions like play, spawnEnemy, etc.
  */
 export function applyCoreTickEffects(gameHelpers) {
     const now = Date.now();
     const { play } = gameHelpers;
     const ctx = document.getElementById("gameCanvas").getContext("2d");
 
-    let coreId = state.player.equippedAberrationCore;
+    let equippedCoreId = state.player.equippedAberrationCore;
 
-    // Handle Pantheon Core's aspect shifting
-    if (coreId === 'pantheon') {
+    // Handle Pantheon Core's aspect shifting separately first
+    if (equippedCoreId === 'pantheon') {
         if (now > (state.player.talent_states.core_states.pantheon.lastCycleTime || 0) + 60000) {
             const unlockedCores = Array.from(state.player.unlockedAberrationCores).filter(id => id !== 'pantheon');
             if (unlockedCores.length > 0) {
@@ -27,11 +38,13 @@ export function applyCoreTickEffects(gameHelpers) {
             }
             state.player.talent_states.core_states.pantheon.lastCycleTime = now;
         }
-        coreId = state.player.talent_states.core_states.pantheon.activeCore || null;
     }
+    
+    // Now, get the single active core ID to apply effects for
+    const activeCoreId = getActiveCoreId();
 
-    if (coreId) {
-        switch (coreId) {
+    if (activeCoreId) {
+        switch (activeCoreId) {
             case 'vampire':
                 if (now - state.player.talent_states.phaseMomentum.lastDamageTime > 5000) {
                     state.player.health = Math.min(state.player.maxHealth, state.player.health + (1 / 60));
@@ -41,7 +54,9 @@ export function applyCoreTickEffects(gameHelpers) {
                 if (now > (state.player.talent_states.core_states.gravity?.lastPulseTime || 0) + 10000) {
                     if (!state.player.talent_states.core_states.gravity) state.player.talent_states.core_states.gravity = {};
                     state.player.talent_states.core_states.gravity.lastPulseTime = now;
-                    state.effects.push({ type: 'player_pull_pulse', x: state.player.x, y: state.player.y, maxRadius: 300, startTime: now, duration: 1000 });
+                    // The effect now repels enemies and pulls pickups
+                    state.effects.push({ type: 'player_pull_pulse', x: state.player.x, y: state.player.y, maxRadius: 400, startTime: now, duration: 250 });
+                    play('gravitySound');
                 }
                 break;
             case 'swarm_link':
@@ -120,33 +135,19 @@ export function applyCoreTickEffects(gameHelpers) {
     }
 }
 
-/**
- * Applies Core effects that trigger when an enemy is defeated.
- * @param {object} enemy - The enemy that was just defeated.
- * @param {object} gameHelpers - An object containing helper functions like play, spawnEnemy, etc.
- */
 export function handleCoreOnEnemyDeath(enemy, gameHelpers) {
     const now = Date.now();
     const { spawnEnemy } = gameHelpers;
-    let coreId = state.player.equippedAberrationCore;
+    const activeCoreId = getActiveCoreId();
 
-    // Handle Pantheon Core logic
-    if (coreId === 'pantheon') {
-        coreId = state.player.talent_states.core_states.pantheon.activeCore || null;
-    }
+    if (!activeCoreId || enemy.isFriendly) return;
 
-    if (!coreId || enemy.isFriendly) return;
-
-    switch (coreId) {
+    switch (activeCoreId) {
         case 'splitter':
-            // This logic now applies to any non-boss enemy death
             if (!enemy.boss && now > (state.player.talent_states.core_states.splitter.cooldownUntil || 0)) {
-                // Set the 2-second cooldown
-                state.player.talent_states.core_states.splitter.cooldownUntil = now + 2000;
-                
-                // Spawn 3 seeking projectiles instead of minions
+                state.player.talent_states.core_states.splitter.cooldownUntil = now + 500;
                 for (let i = 0; i < 3; i++) {
-                    const angle = Math.random() * Math.PI * 2; // Start at a random angle
+                    const angle = Math.random() * Math.PI * 2;
                     state.effects.push({
                         type: 'seeking_shrapnel',
                         x: enemy.x,
@@ -158,7 +159,7 @@ export function handleCoreOnEnemyDeath(enemy, gameHelpers) {
                         damage: 8 * state.player.talent_modifiers.damage_multiplier,
                         life: 3000,
                         startTime: now,
-                        targetIndex: i // Each projectile seeks a different enemy
+                        targetIndex: i
                     });
                 }
             }
@@ -199,19 +200,13 @@ export function handleCoreOnEnemyDeath(enemy, gameHelpers) {
     }
 }
 
-/**
- * Applies Core effects that trigger when the player takes damage.
- * @param {object} enemy - The enemy that damaged the player.
- * @param {object} gameHelpers - An object containing helper functions.
- */
 export function handleCoreOnPlayerDamage(enemy, gameHelpers) {
     const now = Date.now();
-    const { play } = gameHelpers;
-    const coreId = state.player.equippedAberrationCore;
+    const activeCoreId = getActiveCoreId();
 
-    if (!coreId) return;
+    if (!activeCoreId) return;
 
-    switch (coreId) {
+    switch (activeCoreId) {
         case 'mirror_mirage':
             if (now > (state.player.talent_states.core_states.mirror_mirage.cooldownUntil || 0)) {
                 state.player.talent_states.core_states.mirror_mirage.cooldownUntil = now + 12000;
@@ -226,23 +221,13 @@ export function handleCoreOnPlayerDamage(enemy, gameHelpers) {
     }
 }
 
-/**
- * Applies Core effects that trigger when the player collides with an enemy.
- * @param {object} enemy - The enemy the player collided with.
- * @param {object} gameHelpers - An object containing helper functions.
- */
 export function handleCoreOnCollision(enemy, gameHelpers) {
     const now = Date.now();
-    let coreId = state.player.equippedAberrationCore;
+    const activeCoreId = getActiveCoreId();
 
-    // Handle Pantheon Core logic
-    if (coreId === 'pantheon') {
-        coreId = state.player.talent_states.core_states.pantheon.activeCore || null;
-    }
+    if (!activeCoreId || enemy.isFriendly) return;
 
-    if (!coreId || enemy.isFriendly) return;
-
-    switch (coreId) {
+    switch (activeCoreId) {
         case 'parasite':
              if (state.player.talent_states.phaseMomentum.active && !enemy.boss) {
                 enemy.isInfected = true;
@@ -252,11 +237,8 @@ export function handleCoreOnCollision(enemy, gameHelpers) {
         case 'juggernaut':
             const juggernautState = state.player.talent_states.core_states.juggernaut;
             if (juggernautState.isCharging && !enemy.boss) {
-                // Instantly defeat the enemy
                 enemy.hp = 0;
-                // Create the shockwave
                 state.effects.push({ type: 'shockwave', caster: state.player, x: enemy.x, y: enemy.y, radius: 0, maxRadius: 120, speed: 600, startTime: now, hitEnemies: new Set(), damage: 10, color: 'rgba(99, 110, 114, 0.7)' });
-                // Reset the charge state
                 juggernautState.isCharging = false;
                 juggernautState.lastMoveTime = 0;
             }
@@ -264,52 +246,38 @@ export function handleCoreOnCollision(enemy, gameHelpers) {
     }
 }
 
-/**
- * Applies Core effects that trigger when the player's shield breaks.
- */
 export function handleCoreOnShieldBreak() {
-    const coreId = state.player.equippedAberrationCore;
-    if (coreId === 'emp') {
+    const activeCoreId = getActiveCoreId();
+    if (activeCoreId === 'emp') {
         state.effects = state.effects.filter(ef => ef.type !== 'nova_bullet' && ef.type !== 'ricochet_projectile' && ef.type !== 'seeking_shrapnel');
         utils.spawnParticles(state.particles, state.player.x, state.player.y, '#3498db', 50, 4, 30);
     }
 }
 
-
-/**
- * Applies Core effects that trigger when the player would take fatal damage.
- * @param {object} enemy - The enemy dealing the damage.
- * @param {object} gameHelpers - An object containing helper functions.
- * @returns {boolean} - True if the death was prevented, otherwise false.
- */
 export function handleCoreOnFatalDamage(enemy, gameHelpers) {
     const now = Date.now();
-    const coreId = state.player.equippedAberrationCore;
+    const activeCoreId = getActiveCoreId();
 
-    if (coreId === 'epoch_ender' && enemy.boss && now > (state.player.talent_states.core_states.epoch_ender.cooldownUntil || 0)) {
+    if (activeCoreId === 'epoch_ender' && enemy.boss && now > (state.player.talent_states.core_states.epoch_ender.cooldownUntil || 0)) {
         const history = state.player.talent_states.core_states.epoch_ender.history;
         const rewindState = history[0];
         if (rewindState) {
             state.player.x = rewindState.x;
             state.player.y = rewindState.y;
             state.player.health = rewindState.health;
-            state.player.talent_states.core_states.epoch_ender.cooldownUntil = now + 120000; // 2 min cooldown
+            state.player.talent_states.core_states.epoch_ender.cooldownUntil = now + 120000;
             gameHelpers.play('timeRewind');
-            return true; // Death was prevented
+            return true;
         }
     }
-    return false; // Death was not prevented
+    return false;
 }
 
-/**
- * Applies Core effects when a power-up is collected.
- * @param {object} gameHelpers - An object containing helper functions.
- */
 export function handleCoreOnPickup(gameHelpers) {
     const { addStatusEffect } = gameHelpers;
-    const coreId = state.player.equippedAberrationCore;
+    const activeCoreId = getActiveCoreId();
 
-    if (coreId === 'obelisk') {
+    if (activeCoreId === 'obelisk') {
         const currentCharges = state.player.statusEffects.find(e => e.name === 'Conduit Charge');
         if (!currentCharges || currentCharges.count < 3) {
             addStatusEffect('Conduit Charge', '⚡', 99999);
@@ -317,16 +285,9 @@ export function handleCoreOnPickup(gameHelpers) {
     }
 }
 
-/**
- * Handles core logic for using an empty ability slot.
- * @param {number} mx - mouse x
- * @param {number} my - mouse y
- * @param {object} gameHelpers - An object containing helper functions.
- * @returns {boolean} - True if a core action was taken.
- */
 export function handleCoreOnEmptySlot(mx, my, gameHelpers) {
-    const coreId = state.player.equippedAberrationCore;
-    if (coreId === 'syphon' && state.player.talent_states.core_states.syphon.canUse) {
+    const activeCoreId = getActiveCoreId();
+    if (activeCoreId === 'syphon' && state.player.talent_states.core_states.syphon.canUse) {
         gameHelpers.play('syphonFire');
         const angle = Math.atan2(my - state.player.y, mx - state.player.x);
         state.effects.push({
@@ -342,17 +303,11 @@ export function handleCoreOnEmptySlot(mx, my, gameHelpers) {
     return false;
 }
 
-/**
- * Handles core logic when a defensive power is used.
- * @param {number} mx - mouse x
- * @param {number} my - mouse y
- * @param {object} gameHelpers - An object containing helper functions.
- */
 export function handleCoreOnDefensivePower(mx, my, gameHelpers) {
      const { play } = gameHelpers;
-     const coreId = state.player.equippedAberrationCore;
+     const activeCoreId = getActiveCoreId();
 
-     if (coreId === 'looping_eye') {
+     if (activeCoreId === 'looping_eye') {
         play('chargeUpSound');
         state.effects.push({
             type: 'teleport_indicator',
