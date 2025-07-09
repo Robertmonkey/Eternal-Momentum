@@ -720,7 +720,8 @@ export function gameTick(mx, my) {
                             state.player.contingencyUsed = true; state.player.health = 1;
                             addStatusEffect('Contingency Protocol', '🛡️', 3000);
                             const invulnShieldEndTime = now + 3000;
-                            state.player.shield = true; state.player.shield_end_time = invulnShieldEndTime;
+                            state.player.shield = true;
+                            state.player.shield_end_time = invulnShieldEndTime;
                             setTimeout(()=> { if(state.player.shield_end_time <= invulnShieldEndTime) state.player.shield = false; }, 3000);
                         } else {
                             state.player.health -= damage; 
@@ -864,15 +865,14 @@ export function gameTick(mx, my) {
             });
 
             // Logic for Reflector Core projectile reflection
-            if (hasReflectiveWard && effect.caster !== state.player) {
+            if (hasReflectiveWard && effect.caster !== state.player && effect.caster !== 'reflected') {
                 const distToPlayer = Math.hypot(state.player.x - effect.x, state.player.y - effect.y);
                 if (distToPlayer < state.player.r + effect.r) {
                     effect.dx *= -1;
                     effect.dy *= -1;
-                    effect.caster = state.player;
+                    effect.caster = 'reflected'; // Prevent re-reflection and mark as friendly
                     effect.color = '#2ecc71'; // Change color to indicate reflection
                     play('reflectorOnHit');
-                    continue; // Skip the rest of the logic for this frame
                 }
             }
 
@@ -964,7 +964,7 @@ export function gameTick(mx, my) {
         else if (effect.type === 'nova_bullet') { 
             utils.drawCircle(ctx, effect.x, effect.y, effect.r, effect.color || '#fff'); 
             if(effect.x < 0 || effect.x > canvas.width || effect.y < 0 || effect.y > canvas.height) { state.effects.splice(i, 1); continue; }
-            if (effect.caster === state.player) {
+            if (effect.caster === state.player || effect.caster === 'reflected') {
                 state.enemies.forEach(e => { if (e !== effect.caster && !e.isFriendly && Math.hypot(e.x-effect.x, e.y-effect.y) < e.r + effect.r) { let damage = ((state.player.berserkUntil > now) ? 6 : 3) * state.player.talent_modifiers.damage_multiplier * dynamicDamageMultiplier; e.hp -= damage; if (state.player.equippedAberrationCore === 'vampire' && Math.random() < 0.02) { state.pickups.push({ x: e.x, y: e.y, r: 10, type: 'heal', emoji: '🩸', lifeEnd: now + 8000, vx: 0, vy: 0, customApply: () => { state.player.health = Math.min(state.player.maxHealth, state.player.health + 5); }}); } state.effects.splice(i, 1); } }); 
             } else {
                 if (Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < state.player.r + effect.r) {
