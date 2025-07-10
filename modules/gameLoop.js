@@ -546,7 +546,6 @@ export function gameTick(mx, my) {
                     }
                 }
             } else {
-                // Increase essence gain per kill
                 addEssence(75);
                 Cores.handleCoreOnEnemyDeath(e, gameHelpers);
                 if (state.player.purchasedTalents.has('thermal-runaway') && state.player.berserkUntil > now) {
@@ -658,9 +657,10 @@ export function gameTick(mx, my) {
                 if(Math.hypot(e.x - zone.x, e.y - zone.y) < zone.r) enemySpeedMultiplier = 0.5;
             });
 
-            state.effects.forEach(effect => { 
-                if (effect.type === 'architect_pillar') {
-                    if (Math.hypot(e.x - effect.x, e.y - effect.y) < e.r + effect.r) {
+            state.effects.forEach(effect => {
+                 if (effect.type === 'architect_pillar') {
+                    const dist = Math.hypot(e.x - effect.x, e.y - effect.y);
+                    if (dist < e.r + effect.r) {
                         const angle = Math.atan2(e.y - effect.y, e.x - effect.x);
                         e.x = effect.x + Math.cos(angle) * (e.r + effect.r);
                         e.y = effect.y + Math.sin(angle) * (e.r + effect.r);
@@ -904,7 +904,7 @@ export function gameTick(mx, my) {
                         } else {
                             target.hp -= dmg * dynamicDamageMultiplier;
                             // Vampire Core check
-                            if ((effect.caster === state.player || effect.caster === 'reflected') && state.player.equippedAberrationCore === 'vampire' && Math.random() < 0.02) {
+                            if ((effect.caster === state.player || effect.caster === 'reflected') && (state.player.equippedAberrationCore === 'vampire' || (state.player.equippedAberrationCore === 'pantheon' && state.player.talent_states.core_states.pantheon.activeCore === 'vampire')) && Math.random() < 0.02) {
                                 state.pickups.push({ x: target.x, y: target.y, r: 10, type: 'heal', emoji: '🩸', lifeEnd: now + 8000, vx: 0, vy: 0, customApply: () => { state.player.health = Math.min(state.player.maxHealth, state.player.health + 5); }});
                             }
                             if (state.player.equippedAberrationCore === 'basilisk') addStatusEffect.call(target, 'Petrified', '🗿', 3000);
@@ -931,7 +931,7 @@ export function gameTick(mx, my) {
                     } else {
                         dmg *= dynamicDamageMultiplier;
                         // Vampire Core check
-                        if (state.player.equippedAberrationCore === 'vampire' && Math.random() < 0.02) {
+                        if ((state.player.equippedAberrationCore === 'vampire' || (state.player.equippedAberrationCore === 'pantheon' && state.player.talent_states.core_states.pantheon.activeCore === 'vampire')) && Math.random() < 0.02) {
                             state.pickups.push({ x: to.x, y: to.y, r: 10, type: 'heal', emoji: '🩸', lifeEnd: now + 8000, vx: 0, vy: 0, customApply: () => { state.player.health = Math.min(state.player.maxHealth, state.player.health + 5); }});
                         }
                     }
@@ -951,7 +951,7 @@ export function gameTick(mx, my) {
             if(effect.x < effect.r || effect.x > canvas.width - effect.r) { effect.dx *= -1; effect.bounces--; } 
             if(effect.y < effect.r || effect.y > canvas.height - effect.r) { effect.dy *= -1; effect.bounces--; } 
             if (effect.caster === state.player || effect.caster === 'reflected') {
-                state.enemies.forEach(e => { if (!e.isFriendly && !effect.hitEnemies.has(e) && Math.hypot(e.x - effect.x, e.y - effect.y) < e.r + effect.r) { let damage = ((state.player.berserkUntil > now) ? effect.damage * 2 : effect.damage) * dynamicDamageMultiplier; e.hp -= damage; if (state.player.equippedAberrationCore === 'vampire' && Math.random() < 0.02) { state.pickups.push({ x: e.x, y: e.y, r: 10, type: 'heal', emoji: '🩸', lifeEnd: now + 8000, vx: 0, vy: 0, customApply: () => { state.player.health = Math.min(state.player.maxHealth, state.player.health + 5); }}); } effect.bounces--; const angle = Math.atan2(e.y - effect.y, e.x - effect.x); effect.dx = -Math.cos(angle) * 10; effect.dy = -Math.sin(angle) * 10; effect.hitEnemies.add(e); setTimeout(()=>effect.hitEnemies.delete(e), 200); } }); 
+                state.enemies.forEach(e => { if (!e.isFriendly && !effect.hitEnemies.has(e) && Math.hypot(e.x - effect.x, e.y - effect.y) < e.r + effect.r) { let damage = ((state.player.berserkUntil > now) ? effect.damage * 2 : effect.damage) * dynamicDamageMultiplier; e.hp -= damage; if ((state.player.equippedAberrationCore === 'vampire' || (state.player.equippedAberrationCore === 'pantheon' && state.player.talent_states.core_states.pantheon.activeCore === 'vampire')) && Math.random() < 0.02) { state.pickups.push({ x: e.x, y: e.y, r: 10, type: 'heal', emoji: '🩸', lifeEnd: now + 8000, vx: 0, vy: 0, customApply: () => { state.player.health = Math.min(state.player.maxHealth, state.player.health + 5); }}); } effect.bounces--; const angle = Math.atan2(e.y - effect.y, e.x - effect.x); effect.dx = -Math.cos(angle) * 10; effect.dy = -Math.sin(angle) * 10; effect.hitEnemies.add(e); setTimeout(()=>effect.hitEnemies.delete(e), 200); } }); 
             }
             if (effect.bounces <= 0) state.effects.splice(i, 1);
         }
@@ -973,7 +973,7 @@ export function gameTick(mx, my) {
             utils.drawCircle(ctx, effect.x, effect.y, effect.r, effect.color || '#fff'); 
             if(effect.x < 0 || effect.x > canvas.width || effect.y < 0 || effect.y > canvas.height) { state.effects.splice(i, 1); continue; }
             if (effect.caster === state.player || effect.caster === 'reflected') {
-                state.enemies.forEach(e => { if (e !== effect.caster && !e.isFriendly && Math.hypot(e.x-effect.x, e.y-effect.y) < e.r + effect.r) { let damage = ((state.player.berserkUntil > now) ? 6 : 3) * state.player.talent_modifiers.damage_multiplier * dynamicDamageMultiplier; e.hp -= damage; if (state.player.equippedAberrationCore === 'vampire' && Math.random() < 0.02) { state.pickups.push({ x: e.x, y: e.y, r: 10, type: 'heal', emoji: '🩸', lifeEnd: now + 8000, vx: 0, vy: 0, customApply: () => { state.player.health = Math.min(state.player.maxHealth, state.player.health + 5); }}); } state.effects.splice(i, 1); } }); 
+                state.enemies.forEach(e => { if (e !== effect.caster && !e.isFriendly && Math.hypot(e.x-effect.x, e.y-effect.y) < e.r + effect.r) { let damage = ((state.player.berserkUntil > now) ? 6 : 3) * state.player.talent_modifiers.damage_multiplier * dynamicDamageMultiplier; e.hp -= damage; if ((state.player.equippedAberrationCore === 'vampire' || (state.player.equippedAberrationCore === 'pantheon' && state.player.talent_states.core_states.pantheon.activeCore === 'vampire')) && Math.random() < 0.02) { state.pickups.push({ x: e.x, y: e.y, r: 10, type: 'heal', emoji: '🩸', lifeEnd: now + 8000, vx: 0, vy: 0, customApply: () => { state.player.health = Math.min(state.player.maxHealth, state.player.health + 5); }}); } state.effects.splice(i, 1); } }); 
             } else {
                 if (Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < state.player.r + effect.r) {
                     if (!state.player.shield) {
@@ -999,7 +999,7 @@ export function gameTick(mx, my) {
                         if(e.health) {
                             if (!e.shield) { e.health -= damage; if(e.health <= 0) state.gameOver = true; }
                             else { e.shield = false; }
-                        } else { e.hp -= damage; if (effect.caster === state.player && state.player.equippedAberrationCore === 'vampire' && Math.random() < 0.02) { state.pickups.push({ x: e.x, y: e.y, r: 10, type: 'heal', emoji: '🩸', lifeEnd: now + 8000, vx: 0, vy: 0, customApply: () => { state.player.health = Math.min(state.player.maxHealth, state.player.health + 5); }}); } }
+                        } else { e.hp -= damage; if (effect.caster === state.player && (state.player.equippedAberrationCore === 'vampire' || (state.player.equippedAberrationCore === 'pantheon' && state.player.talent_states.core_states.pantheon.activeCore === 'vampire')) && Math.random() < 0.02) { state.pickups.push({ x: e.x, y: e.y, r: 10, type: 'heal', emoji: '🩸', lifeEnd: now + 8000, vx: 0, vy: 0, customApply: () => { state.player.health = Math.min(state.player.maxHealth, state.player.health + 5); }}); } }
                         if(e.onDamage) e.onDamage(e, damage, effect.caster, state, spawnParticlesCallback, play, stopLoopingSfx, gameHelpers); 
                     } 
                 }); 
@@ -1031,58 +1031,51 @@ export function gameTick(mx, my) {
             if(sortedEnemies[effect.targetIndex]) closest = sortedEnemies[effect.targetIndex]; else if (sortedEnemies.length > 0) closest = sortedEnemies[0];
             if(closest){ const angle = Math.atan2(closest.y - effect.y, closest.x - effect.x); const turnSpeed = 0.1; effect.dx = effect.dx * (1-turnSpeed) + (Math.cos(angle) * effect.speed) * turnSpeed; effect.dy = effect.dy * (1-turnSpeed) + (Math.sin(angle) * effect.speed) * turnSpeed; }
             utils.drawCircle(ctx, effect.x, effect.y, effect.r, '#ff9944');
-            state.enemies.forEach(e => { if(!e.isFriendly && Math.hypot(e.x - effect.x, e.y - effect.y) < e.r + effect.r) { e.hp -= (effect.damage * dynamicDamageMultiplier); if (state.player.equippedAberrationCore === 'vampire' && Math.random() < 0.02) { state.pickups.push({ x: e.x, y: e.y, r: 10, type: 'heal', emoji: '🩸', lifeEnd: now + 8000, vx: 0, vy: 0, customApply: () => { state.player.health = Math.min(state.player.maxHealth, state.player.health + 5); }}); } state.effects.splice(i, 1); }});
+            state.enemies.forEach(e => { if(!e.isFriendly && Math.hypot(e.x - effect.x, e.y - effect.y) < e.r + effect.r) { e.hp -= (effect.damage * dynamicDamageMultiplier); if ((state.player.equippedAberrationCore === 'vampire' || (state.player.equippedAberrationCore === 'pantheon' && state.player.talent_states.core_states.pantheon.activeCore === 'vampire')) && Math.random() < 0.02) { state.pickups.push({ x: e.x, y: e.y, r: 10, type: 'heal', emoji: '🩸', lifeEnd: now + 8000, vx: 0, vy: 0, customApply: () => { state.player.health = Math.min(state.player.maxHealth, state.player.health + 5); }}); } state.effects.splice(i, 1); }});
             if(now > effect.startTime + effect.life) state.effects.splice(i, 1);
         }
         else if (effect.type === 'small_freeze') {
-            // Logic for Glacial Propagation
             state.enemies.forEach(e => {
                 if (!e.isFriendly && !e.frozen && Math.hypot(e.x - effect.x, e.y - effect.y) < effect.radius) {
-                    if (Math.random() < 0.5) { // 50% chance to freeze
+                    if (Math.random() < 0.5) {
                         e.frozen = true;
                         e.wasFrozen = true;
                         e._dx = e.dx;
                         e._dy = e.dy;
                         e.dx = e.dy = 0;
-                        e.frozenUntil = now + 1000; // Freeze for 1 second
+                        e.frozenUntil = now + 1000;
                     }
                 }
             });
-            state.effects.splice(i, 1); // Effect is instantaneous
+            state.effects.splice(i, 1);
         }
         else if (effect.type === 'player_pull_pulse') {
-            const progress = (now - effect.startTime) / effect.duration;
-            if (progress >= 1) {
-                state.effects.splice(i, 1);
-                continue;
-            }
-            const currentRadius = effect.maxRadius * progress;
-            // Repel enemies
+            const radius = 600;
+            const repelForce = 12; 
+            const pullForce = 2.5;
+
             state.enemies.forEach(e => {
                 if (!e.boss && !e.isFriendly) {
                     const dist = Math.hypot(e.x - effect.x, e.y - effect.y);
-                    if (dist < currentRadius) {
+                    if (dist < radius && dist > 0) {
                         const angle = Math.atan2(e.y - effect.y, e.x - effect.x);
-                        e.x += Math.cos(angle) * 8;
-                        e.y += Math.sin(angle) * 8;
+                        e.x += Math.cos(angle) * repelForce;
+                        e.y += Math.sin(angle) * repelForce;
                     }
                 }
             });
-            // Pull pickups
             state.pickups.forEach(p => {
                 const dist = Math.hypot(p.x - effect.x, p.y - effect.y);
-                if (dist < currentRadius) {
+                if (dist < radius && dist > 0) {
                     const angle = Math.atan2(effect.y - p.y, effect.x - p.x);
-                    p.vx += Math.cos(angle) * 1.5;
-                    p.vy += Math.sin(angle) * 1.5;
+                    p.vx += Math.cos(angle) * pullForce;
+                    p.vy += Math.sin(angle) * pullForce;
                 }
             });
-            state.effects.splice(i, 1); // This is an instantaneous pulse
+            state.effects.splice(i, 1);
         }
         else if (effect.type === 'architect_pillar') {
-            // Draw the pillar
             utils.drawCircle(ctx, effect.x, effect.y, effect.r, '#7f8c8d');
-            // No collision needed here, it's handled in enemy movement logic
         }
         else if (effect.type === 'repulsion_field') {
             if (Date.now() > effect.endTime) { state.effects.splice(i, 1); continue; }
