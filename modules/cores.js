@@ -40,7 +40,6 @@ export function applyCoreTickEffects(gameHelpers) {
         }
     }
     
-    // Now, get the single active core ID to apply effects for
     const activeCoreId = getActiveCoreId();
 
     if (activeCoreId) {
@@ -54,8 +53,7 @@ export function applyCoreTickEffects(gameHelpers) {
                 if (now > (state.player.talent_states.core_states.gravity?.lastPulseTime || 0) + 10000) {
                     if (!state.player.talent_states.core_states.gravity) state.player.talent_states.core_states.gravity = {};
                     state.player.talent_states.core_states.gravity.lastPulseTime = now;
-                    // The effect now repels enemies and pulls pickups
-                    state.effects.push({ type: 'player_pull_pulse', x: state.player.x, y: state.player.y, maxRadius: 400, startTime: now, duration: 250 });
+                    state.effects.push({ type: 'player_pull_pulse', x: state.player.x, y: state.player.y, maxRadius: 600, startTime: now, duration: 250 });
                     play('gravitySound');
                 }
                 break;
