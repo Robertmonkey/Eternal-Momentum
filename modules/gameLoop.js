@@ -120,7 +120,6 @@ function handleCoreUnlocks(newLevel) {
 function levelUp() {
     state.player.level++;
     state.player.essence -= state.player.essenceToNextLevel;
-    // Reduce level scaling cost
     state.player.essenceToNextLevel = Math.floor(state.player.essenceToNextLevel * 1.12);
     state.player.ascensionPoints += 1;
     utils.spawnParticles(state.particles, state.player.x, state.player.y, '#00ffff', 80, 6, 50, 5);
@@ -660,6 +659,13 @@ export function gameTick(mx, my) {
             });
 
             state.effects.forEach(effect => { 
+                if (effect.type === 'architect_pillar') {
+                    if (Math.hypot(e.x - effect.x, e.y - effect.y) < e.r + effect.r) {
+                        const angle = Math.atan2(e.y - effect.y, e.x - effect.x);
+                        e.x = effect.x + Math.cos(angle) * (e.r + effect.r);
+                        e.y = effect.y + Math.sin(angle) * (e.r + effect.r);
+                    }
+                }
                 if (effect.type === 'black_hole' && e.id !== 'fractal_horror') {
                     const elapsed = now - effect.startTime, progress = Math.min(1, elapsed / effect.duration);
                     const currentPullRadius = effect.maxRadius * progress, dist = Math.hypot(e.x - effect.x, e.y - effect.y);
@@ -898,7 +904,7 @@ export function gameTick(mx, my) {
                         } else {
                             target.hp -= dmg * dynamicDamageMultiplier;
                             // Vampire Core check
-                            if (state.player.equippedAberrationCore === 'vampire' && Math.random() < 0.02) {
+                            if ((effect.caster === state.player || effect.caster === 'reflected') && state.player.equippedAberrationCore === 'vampire' && Math.random() < 0.02) {
                                 state.pickups.push({ x: target.x, y: target.y, r: 10, type: 'heal', emoji: '🩸', lifeEnd: now + 8000, vx: 0, vy: 0, customApply: () => { state.player.health = Math.min(state.player.maxHealth, state.player.health + 5); }});
                             }
                             if (state.player.equippedAberrationCore === 'basilisk') addStatusEffect.call(target, 'Petrified', '🗿', 3000);
@@ -1043,6 +1049,40 @@ export function gameTick(mx, my) {
                 }
             });
             state.effects.splice(i, 1); // Effect is instantaneous
+        }
+        else if (effect.type === 'player_pull_pulse') {
+            const progress = (now - effect.startTime) / effect.duration;
+            if (progress >= 1) {
+                state.effects.splice(i, 1);
+                continue;
+            }
+            const currentRadius = effect.maxRadius * progress;
+            // Repel enemies
+            state.enemies.forEach(e => {
+                if (!e.boss && !e.isFriendly) {
+                    const dist = Math.hypot(e.x - effect.x, e.y - effect.y);
+                    if (dist < currentRadius) {
+                        const angle = Math.atan2(e.y - effect.y, e.x - effect.x);
+                        e.x += Math.cos(angle) * 8;
+                        e.y += Math.sin(angle) * 8;
+                    }
+                }
+            });
+            // Pull pickups
+            state.pickups.forEach(p => {
+                const dist = Math.hypot(p.x - effect.x, p.y - effect.y);
+                if (dist < currentRadius) {
+                    const angle = Math.atan2(effect.y - p.y, effect.x - p.x);
+                    p.vx += Math.cos(angle) * 1.5;
+                    p.vy += Math.sin(angle) * 1.5;
+                }
+            });
+            state.effects.splice(i, 1); // This is an instantaneous pulse
+        }
+        else if (effect.type === 'architect_pillar') {
+            // Draw the pillar
+            utils.drawCircle(ctx, effect.x, effect.y, effect.r, '#7f8c8d');
+            // No collision needed here, it's handled in enemy movement logic
         }
         else if (effect.type === 'repulsion_field') {
             if (Date.now() > effect.endTime) { state.effects.splice(i, 1); continue; }
