@@ -125,7 +125,6 @@ export const powers={
       state.effects.push({ type: 'chain_lightning', targets: targets, links: [], startTime: Date.now(), durationPerLink: 80, damage: damage, caster: state.player });
     }
   },
-  // --- UPDATED: Gravity Power ---
   gravity:{
     emoji:"🌀",
     desc:"Pulls enemies for 1s",
@@ -135,17 +134,16 @@ export const powers={
         state.gravityEnd=Date.now()+1000; 
         utils.spawnParticles(state.particles, innerWidth/2, innerHeight/2,"#9b59b6",100,4,40); 
         
-        // --- NEW: Check for Temporal Collapse talent ---
         if (state.player.purchasedTalents.has('temporal-collapse')) {
             setTimeout(() => {
                 state.effects.push({ 
-                    type: 'enemy_only_pull_zone', 
+                    type: 'slow_zone', 
                     x: innerWidth / 2, 
                     y: innerHeight / 2, 
                     r: 250, 
                     endTime: Date.now() + 4000 
                 });
-            }, 1000); // Activate after the initial gravity pull ends
+            }, 1000);
         }
     }
   },
