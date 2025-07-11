@@ -941,12 +941,9 @@ export function gameTick(mx, my) {
                 state.pickups.splice(i,1);
             } else {
                 if(state.player.purchasedTalents.has('overload-protocol')) {
-                    const power = powers[p.type];
-                    if (power && power.apply) {
-                        addStatusEffect('Auto-Used', p.emoji || powers[p.type]?.emoji || '?', 2000);
-                        usePower(p.type, true);
-                        state.pickups.splice(i, 1);
-                    }
+                    addStatusEffect('Auto-Used', powers[p.type]?.emoji || '?', 2000);
+                    usePower(p.type, true);
+                    state.pickups.splice(i, 1);
                 } else {
                     utils.spawnParticles(state.particles, p.x, p.y, "#f00", 15, 2, 20); 
                     state.pickups.splice(i,1);
