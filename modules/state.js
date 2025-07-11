@@ -24,6 +24,7 @@ export const state = {
     
     unlockedAberrationCores: new Set(),
     equippedAberrationCore: null,
+    activePantheonBuffs: [], // New state for Pantheon Core
     
     talent_modifiers: {
         damage_multiplier: 1.0,
@@ -31,7 +32,7 @@ export const state = {
         pickup_radius_bonus: 0,
         essence_gain_modifier: 1.0,
         power_spawn_rate_modifier: 1.0,
-        pull_resistance_modifier: 0, // Added for completeness as ascension.js uses it
+        pull_resistance_modifier: 0,
     },
 
     talent_states: {
@@ -42,65 +43,29 @@ export const state = {
         reactivePlating: {
             cooldownUntil: 0,
         },
-        core_states: {
-            architect: {
-                lastPillarTime: 0,
-            },
-            mirror_mirage: {
-                cooldownUntil: 0,
-            },
-            puppeteer: {
-                lastConversion: 0,
-            },
-            splitter: {
-                cooldownUntil: 0,
-            },
-            swarm_link: {
-                tail: [],
-                enemiesForNextSegment: 0,
-            },
-            epoch_ender: {
-                cooldownUntil: 0,
-                history: [],
-            },
-            pantheon: {
-                lastCycleTime: 0,
-                activeCore: null,
-            },
-            syphon: {
-                canUse: true,
-            },
-            juggernaut: {
-                isCharging: false,
-                lastMoveTime: 0,
-            },
-            miasma: {
-                isPurifying: false,
-            },
-            annihilator: {
-                cooldownUntil: 0,
-                attunedEnemy: null,
-                isChargingBeam: false,
-            },
-            shaper_of_fate: {
-                isDisabled: false,
-            },
-            helix_weaver: {
-                lastBolt: 0,
-            },
-            temporal_paradox: {
-                lastEcho: 0,
-            },
-            obelisk: {
-                charges: 0,
-            },
-            gravity: {
-                lastPulseTime: 0,
-            }
+        core_states: { // --- ALL CORE STATES INITIALIZED ---
+            architect: { lastPillarTime: 0 },
+            mirror_mirage: { lastDecoyTime: 0 },
+            puppeteer: { lastConversion: 0 },
+            splitter: { cooldownUntil: 0 },
+            swarm_link: { tail: [], enemiesForNextSegment: 0 },
+            epoch_ender: { cooldownUntil: 0, history: [] },
+            pantheon: { lastCycleTime: 0 },
+            syphon: { canUse: true },
+            juggernaut: { isCharging: false, lastMoveTime: 0 },
+            miasma: { isPurifying: false, lastMoveTime: 0 },
+            annihilator: { cooldownUntil: 0, attunedEnemy: null, isChargingBeam: false },
+            shaper_of_fate: { isDisabled: false },
+            helix_weaver: { lastBolt: 0 },
+            temporal_paradox: { lastEcho: 0 },
+            obelisk: { }, // Charges are now handled via status effects
+            gravity: { lastPulseTime: 0 },
+            looper: { lastDefensivePower: null }
         }
     }
   },
-  enemies:[], pickups:[], effects: [], particles: [], decoy:null, 
+  enemies:[], pickups:[], effects: [], particles: [], 
+  decoys:[], // Changed from decoy:null to support multiple decoys
   currentStage: 1,
   currentBoss:null, 
   bossActive:false,
@@ -161,6 +126,7 @@ export function resetGame(isArena = false) {
     state.player.y = canvas.height / 2;
     state.player.health = state.player.maxHealth;
     state.player.statusEffects = [];
+    state.player.activePantheonBuffs = []; // Reset Pantheon buffs
     state.player.shield = false;
     state.player.berserkUntil = 0;
     state.player.talent_states.phaseMomentum.lastDamageTime = Date.now();
@@ -169,30 +135,50 @@ export function resetGame(isArena = false) {
     state.player.contingencyUsed = false;
     state.player.preordinanceUsed = false;
     
+    // Reset all core-specific states to their default values
     Object.keys(state.player.talent_states.core_states).forEach(key => {
         const coreState = state.player.talent_states.core_states[key];
-        Object.keys(coreState).forEach(prop => {
-            if (Array.isArray(coreState[prop])) {
-                coreState[prop] = [];
-            } else if (typeof coreState[prop] === 'boolean') {
-                 // Correctly reset syphon's canUse state
-                coreState[prop] = key === 'syphon' ? true : false;
-            } else if (coreState[prop] === null) {
-                // Do nothing for properties that should be null
-            }
-            else {
-                coreState[prop] = 0;
-            }
-        });
+        switch (key) {
+            case 'swarm_link':
+                coreState.tail = [];
+                coreState.enemiesForNextSegment = 0;
+                break;
+            case 'epoch_ender':
+                coreState.history = [];
+                coreState.cooldownUntil = 0;
+                break;
+            case 'syphon':
+                coreState.canUse = true;
+                break;
+            case 'juggernaut':
+                coreState.isCharging = false;
+                coreState.lastMoveTime = 0;
+                break;
+             case 'miasma':
+                coreState.isPurifying = false;
+                coreState.lastMoveTime = 0;
+                break;
+            case 'looper':
+                coreState.lastDefensivePower = null;
+                break;
+            default:
+                 Object.keys(coreState).forEach(prop => {
+                    if (Array.isArray(coreState[prop])) {
+                        coreState[prop] = [];
+                    } else if (typeof coreState[prop] === 'boolean') {
+                        coreState[prop] = false;
+                    } else if(coreState[prop] !== null) {
+                        coreState[prop] = 0;
+                    }
+                });
+                break;
+        }
     });
-    // Ensure Pantheon's active core is cleared
-    if (state.player.talent_states.core_states.pantheon) {
-        state.player.talent_states.core_states.pantheon.activeCore = null;
-    }
 
 
     Object.assign(state, {
-        enemies: [], pickups: [], effects: [], particles: [], decoy: null,
+        enemies: [], pickups: [], effects: [], particles: [], 
+        decoys: [], // Reset decoys array
         offensiveInventory: [null, null, null], 
         defensiveInventory: [null, null, null], 
         currentBoss: null, bossActive: false, stacked: false, gameOver: false, 
