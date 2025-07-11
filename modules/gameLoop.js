@@ -48,7 +48,6 @@ const gameHelpers = {
     stopLoopingSfx,
     playLooping,
     addEssence,
-    // These now use the main usePower function or are handled in cores.js
     useSyphonCore: (mx, my) => Cores.handleCoreOnEmptySlot(mx, my, gameHelpers),
     useLoopingEyeCore: (powerKey, mx, my) => Cores.handleCoreOnDefensivePower(powerKey, mx, my, gameHelpers)
 };
@@ -339,9 +338,10 @@ export function gameTick(mx, my) {
         const progress = (now - annihilationEvent.startTime) / (annihilationEvent.endTime - annihilationEvent.startTime);
         if (progress >= 0.75) { // Beam is active
             state.enemies.forEach(enemy => {
+                if (enemy.isFriendly) return;
                 let isSafe = false;
                 for (const other of state.enemies) {
-                    if (enemy !== other && utils.isPointInShadow(other, enemy, state.player.x, state.player.y)) {
+                    if (enemy !== other && !other.isFriendly && utils.isPointInShadow(other, enemy, state.player.x, state.player.y)) {
                         isSafe = true;
                         break;
                     }
@@ -1244,7 +1244,74 @@ export function gameTick(mx, my) {
         }
         else if (effect.type === 'annihilator_beam') {
             if (Date.now() > effect.endTime) { state.effects.splice(i, 1); continue; }
-            // This is the old Annihilator beam logic, which we are not using.
+            const { source, pillar } = effect; if(!source || !pillar || source.hp <= 0) { state.effects.splice(i, 1); continue; }
+            
+            const alpha = (effect.endTime - Date.now()) / 1200; 
+            
+            ctx.save();
+            ctx.fillStyle = `rgba(214, 48, 49, ${alpha * 0.7})`;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            const distToPillar = Math.hypot(pillar.x - source.x, pillar.y - source.y);
+            if (distToPillar > pillar.r) {
+                const angleToPillar = Math.atan2(pillar.y - source.y, pillar.x - source.x);
+                const angleToTangent = Math.asin(pillar.r / distToPillar);
+                const angle1 = angleToPillar - angleToTangent;
+                const angle2 = angleToPillar + angleToTangent;
+        
+                const distToTangentPoint = Math.sqrt(distToPillar**2 - pillar.r**2);
+                const t1x = source.x + distToTangentPoint * Math.cos(angle1);
+                const t1y = source.y + distToTangentPoint * Math.sin(angle1);
+                const t2x = source.x + distToTangentPoint * Math.cos(angle2);
+                const t2y = source.y + distToTangentPoint * Math.sin(angle2);
+
+                const maxDist = Math.hypot(canvas.width, canvas.height) * 2;
+                const p1x = t1x + maxDist * Math.cos(angle1);
+                const p1y = t1y + maxDist * Math.sin(angle1);
+                const p2x = t2x + maxDist * Math.cos(angle2);
+                const p2y = t2y + maxDist * Math.sin(angle2);
+                
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.beginPath();
+                ctx.arc(pillar.x, pillar.y, pillar.r, 0, 2 * Math.PI);
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.moveTo(t1x, t1y);
+                ctx.lineTo(p1x, p1y);
+                ctx.lineTo(p2x, p2y);
+                ctx.lineTo(t2x, t2y);
+                ctx.closePath();
+                ctx.fill();
+            }
+            ctx.restore();
+
+            const allTargets = [state.player, ...state.enemies.filter(t => t !== source)];
+            allTargets.forEach(target => {
+                const distToPillarCheck = Math.hypot(pillar.x - source.x, pillar.y - source.y);
+                if (distToPillarCheck <= pillar.r) return;
+
+                const angleToPillarCheck = Math.atan2(pillar.y - source.y, pillar.x - source.x);
+                const angleToTangentCheck = Math.asin(pillar.r / distToPillarCheck);
+                const targetAngle = Math.atan2(target.y - source.y, target.x - source.x);
+                let angleDiff = (targetAngle - angleToPillarCheck + Math.PI * 3) % (Math.PI * 2) - Math.PI;
+
+                const isSafe = Math.abs(angleDiff) < angleToTangentCheck && Math.hypot(target.x - source.x, target.y - source.y) > distToPillarCheck;
+                
+                if (!isSafe && (target.health > 0 || target.hp > 0)) {
+                    if (target === state.player) {
+                        if (state.player.shield) return;
+                        target.health -= 999;
+                        if (target.health <= 0) state.gameOver = true;
+                    } else {
+                        if (target.boss) {
+                            target.hp -= 500;
+                        } else {
+                            target.hp -= 999;
+                        }
+                    }
+                }
+            });
         }
         else if (effect.type === 'core_annihilation_event') { // The NEW Annihilator
              const progress = (now - effect.startTime) / (effect.endTime - effect.startTime);
@@ -1273,7 +1340,6 @@ export function gameTick(mx, my) {
                  if (!state.gameOver) {
                      const copiedPower = powers[effect.powerToCopy];
                      if (copiedPower) {
-                         // Use a dummy origin object for the cast
                          const echoOrigin = { x: effect.x, y: effect.y };
                          usePower(effect.powerToCopy, true, { mx: effect.mx, my: effect.my, damageModifier: 0.5, origin: echoOrigin });
                          play('mirrorSwap');
@@ -1302,12 +1368,29 @@ export function gameTick(mx, my) {
                 }
             }
         }
-        else if (effect.type === 'charge_indicator') {
-            const progress = (Date.now() - effect.startTime) / effect.duration;
-            ctx.fillStyle = effect.color || 'rgba(255, 255, 255, 0.2)';
+        else if (effect.type === 'juggernaut_charge_ring') {
+            const progress = (Date.now() - effect.startTime) / effect.duration; if (progress >= 1) { state.effects.splice(i, 1); continue; }
+            ctx.strokeStyle = `rgba(255,255,255, ${0.8 * (1-progress)})`; ctx.lineWidth = 15; ctx.beginPath(); ctx.arc(effect.source.x, effect.source.y, effect.source.r + (100 * progress), 0, Math.PI*2); ctx.stroke();
+        }
+        else if (effect.type === 'teleport_indicator') {
+            if (now > effect.endTime) { state.effects.splice(i, 1); continue; }
+            const progress = 1 - ((effect.endTime - now) / 1000);
+            ctx.strokeStyle = `rgba(255, 0, 0, ${1 - progress})`;
+            ctx.lineWidth = 5 + (10 * progress);
             ctx.beginPath();
-            ctx.arc(effect.source.x, effect.source.y, Math.max(0, effect.radius * progress), 0, 2 * Math.PI);
-            ctx.fill();
+            ctx.arc(effect.x, effect.y, Math.max(0, effect.r * (1.5 - progress)), 0, 2 * Math.PI);
+            ctx.stroke();
+        }
+        else if (effect.type === 'slow_zone') {
+            if (Date.now() > effect.endTime) { state.effects.splice(i, 1); continue; }
+            const alpha = (effect.endTime - Date.now()) / 6000 * 0.4;
+            for(let j=0; j<3; j++) {
+                ctx.strokeStyle = `rgba(223, 230, 233, ${alpha * (0.5 + Math.sin(now/200 + j*2)*0.5)})`;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(effect.x, effect.y, effect.r * (0.6 + j*0.2), 0, Math.PI*2);
+                ctx.stroke();
+            }
         }
         else if (effect.type === 'paradox_echo') {
             const elapsed = Date.now() - effect.startTime;
@@ -1543,6 +1626,13 @@ export function gameTick(mx, my) {
             ctx.arc(effect.source.x, effect.source.y, currentRadius, 0, 2 * Math.PI);
             ctx.stroke();
             ctx.globalAlpha = 1.0;
+        }
+        else if (effect.type === 'charge_indicator') {
+            const progress = (Date.now() - effect.startTime) / effect.duration;
+            ctx.fillStyle = effect.color || 'rgba(255, 255, 255, 0.2)';
+            ctx.beginPath();
+            ctx.arc(effect.source.x, effect.source.y, Math.max(0, effect.radius * progress), 0, 2 * Math.PI);
+            ctx.fill();
         }
     }
     
