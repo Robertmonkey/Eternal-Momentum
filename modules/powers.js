@@ -164,7 +164,7 @@ export const powers={
           e._dy=e.dy;
           e.dx=e.dy=0;
           e.frozenUntil = Date.now() + 4000;
-          // Basilisk Core Integration
+          
           if (playerHasCore('basilisk')) {
             e.petrifiedUntil = Date.now() + 3000;
           }
@@ -181,7 +181,7 @@ export const powers={
           });
       },4000);
   }},
-  decoy:{emoji:"🔮",desc:"Decoy lasts 5s",apply:(utils, game, mx, my)=>{
+  decoy:{emoji:"🔮",desc:"Decoy lasts until destroyed.",apply:(utils, game, mx, my)=>{
       const isMobile = state.player.purchasedTalents.has('quantum-duplicate');
       const decoy = {
           x: mx, y: my, r: 20,
@@ -289,17 +289,15 @@ export function usePower(powerKey, isFreeCast = false, options = {}){
   if (!power) return;
   
   const { play, addStatusEffect } = window.gameHelpers;
-  const slotId = power.type === 'offensive' ? 'slot-off-0' : 'slot-def-0';
+  const queueType = offensivePowers.includes(powerKey) ? 'offensive' : 'defensive';
+  const slotId = queueType === 'offensive' ? 'slot-off-0' : 'slot-def-0';
   const slotEl = document.getElementById(slotId);
   let consumed = !isFreeCast;
 
-  // --- SINGULARITY & RECYCLING TALENT LOGIC ---
   if (consumed) {
       let recycled = false;
-      if (state.player.purchasedTalents.has('energetic-recycling') && Math.random() < 0.20) {
-          recycled = true;
-      }
-      if (playerHasCore('singularity') && Math.random() < 0.15) {
+      // CORRECTED RECYCLE LOGIC
+      if ((state.player.purchasedTalents.has('energetic-recycling') && Math.random() < 0.20) || (playerHasCore('singularity') && Math.random() < 0.15)) {
           recycled = true;
       }
       if (recycled) {
@@ -310,7 +308,7 @@ export function usePower(powerKey, isFreeCast = false, options = {}){
   }
 
   if (consumed) {
-      const inventory = power.type === 'offensive' ? state.offensiveInventory : state.defensiveInventory;
+      const inventory = queueType === 'offensive' ? state.offensiveInventory : state.defensiveInventory;
       inventory.shift();
       inventory.push(null);
   }
@@ -321,8 +319,7 @@ export function usePower(powerKey, isFreeCast = false, options = {}){
   // Use mouse position from window scope
   const mx = window.mousePosition.x;
   const my = window.mousePosition.y;
-
-  // --- CORE & POWER LOGIC ---
+  
   const applyArgs = [utils, window.gameHelpers, mx, my, options];
   
   if (power.type === 'offensive' && playerHasCore('temporal_paradox')) {
