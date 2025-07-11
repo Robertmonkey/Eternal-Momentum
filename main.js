@@ -7,6 +7,7 @@ import { gameTick, spawnBossesForStage, addStatusEffect, addEssence } from './mo
 import { usePower } from './modules/powers.js';
 import * as utils from './modules/utils.js';
 import { renderAscensionGrid, applyAllTalentEffects } from './modules/ascension.js';
+import * as Cores from './modules/cores.js'; // <-- ADDED THIS LINE
 
 window.addAP = function(amount) {
     if (typeof amount !== 'number' || amount <= 0) {
@@ -134,6 +135,7 @@ window.addEventListener('load', () => {
         const aberrationCoreMenuBtn = document.getElementById('aberrationCoreMenuBtn');
 
         let mx = 0, my = 0;
+        window.mousePosition = { x: 0, y: 0 };
         const allAudioElements = Array.from(document.querySelectorAll('audio'));
 
         function initialize() {
@@ -171,25 +173,27 @@ window.addEventListener('load', () => {
                 const clientY = e.clientY ?? e.touches[0].clientY;
                 mx = clientX - rect.left;
                 my = clientY - rect.top;
-                // Update mouse position for other modules that might need it
-                window.mousePosition = { x: clientX, y: clientY };
+                
+                window.mousePosition.x = mx;
+                window.mousePosition.y = my;
             }
             
             canvas.addEventListener("mousemove", setPlayerTarget);
             canvas.addEventListener("touchmove", e => { e.preventDefault(); setPlayerTarget(e); }, { passive: false });
             canvas.addEventListener("touchstart", e => { e.preventDefault(); setPlayerTarget(e); }, { passive: false });
-
-            // CORRECTED POWER USAGE LOGIC
+            
             const useOffensivePowerWrapper = () => {
-                if (state.offensiveInventory[0]) {
-                    usePower(state.offensiveInventory[0]);
+                const powerKey = state.offensiveInventory[0];
+                if (powerKey) {
+                    usePower(powerKey);
                 } else {
-                    Cores.handleCoreOnEmptySlot(mx, my, gameHelpers);
+                    Cores.handleCoreOnEmptySlot(mx, my, window.gameHelpers);
                 }
             };
             const useDefensivePowerWrapper = () => {
-                if (state.defensiveInventory[0]) {
-                    usePower(state.defensiveInventory[0]);
+                const powerKey = state.defensiveInventory[0];
+                if (powerKey) {
+                    usePower(powerKey);
                 }
             };
 
