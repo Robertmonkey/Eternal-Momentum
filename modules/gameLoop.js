@@ -299,7 +299,7 @@ export function spawnEnemy(isBoss = false, bossId = null, location = null) {
 }
 
 export function spawnPickup() {
-    if (state.player.talent_states.core_states.shaper_of_fate?.isDisabled) return;
+    if (playerHasCore('shaper_of_fate') && state.player.talent_states.core_states.shaper_of_fate?.isDisabled) return;
     const available = [...state.player.unlockedPowers];
     if (available.length === 0) return;
 
@@ -326,13 +326,13 @@ export function gameTick(mx, my) {
     if (state.isPaused) return true;
     const now = Date.now();
 
-    // --- Dynamic Damage Multiplier for Aethel & Umbra Core ---
+    // --- Dynamic Damage Multiplier for Cores ---
     let dynamicDamageMultiplier = 1.0;
     if (playerHasCore('aethel_and_umbra') && state.player.health <= state.player.maxHealth * 0.5) {
         dynamicDamageMultiplier = 1.10;
     }
     
-    // Annihilator Core damage logic
+    // --- Annihilator Core Damage Logic ---
     const annihilationEvent = state.effects.find(e => e.type === 'core_annihilation_event');
     if (annihilationEvent) {
         const progress = (now - annihilationEvent.startTime) / (annihilationEvent.endTime - annihilationEvent.startTime);
@@ -369,7 +369,7 @@ export function gameTick(mx, my) {
             if (!state.bossActive && state.bossSpawnCooldownEnd > 0 && now > state.bossSpawnCooldownEnd) {
                 state.bossSpawnCooldownEnd = 0;
                 spawnBossesForStage(state.currentStage);
-                if (playerHasCore('shaper_of_fate')) {
+                if (playerHasCore('shaper_of_fate') && !state.player.talent_states.core_states.shaper_of_fate.isDisabled) {
                      for(let i=0; i < 3; i++) {
                          state.pickups.push({
                             x: Math.random() * canvas.width * 0.8 + canvas.width * 0.1,
@@ -377,7 +377,6 @@ export function gameTick(mx, my) {
                             r: 12, type: 'rune_of_fate', lifeEnd: now + 999999
                          });
                     }
-                    if(!state.player.talent_states.core_states.shaper_of_fate) state.player.talent_states.core_states.shaper_of_fate = {};
                     state.player.talent_states.core_states.shaper_of_fate.isDisabled = true;
                 }
             }
@@ -525,7 +524,7 @@ export function gameTick(mx, my) {
     if(playerHasCore('sentinel_pair') && state.decoys.length > 0) {
         const decoy = state.decoys[0]; // Tether to first decoy
         for(const enemy of state.enemies) {
-            if(!enemy.isFriendly && utils.lineCircleCollision(state.player, decoy, enemy)) {
+            if(!enemy.isFriendly && utils.lineCircleCollision(state.player.x, state.player.y, decoy.x, decoy.y, enemy.x, enemy.y, enemy.r)) {
                 enemy.hp -= 0.5 * state.player.talent_modifiers.damage_multiplier;
             }
         }
@@ -1318,7 +1317,7 @@ export function gameTick(mx, my) {
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 // Telegraph safe zones from player's perspective
                 state.enemies.forEach(e => {
-                    utils.drawShadowCone(ctx, state.player.x, state.player.y, e.x, e.y, 'rgba(0,0,0,0.1)');
+                    if (!e.isFriendly) utils.drawShadowCone(ctx, state.player.x, state.player.y, e.x, e.y, 'rgba(0,0,0,0.1)');
                 });
              } else { // Beam
                 ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
@@ -1326,7 +1325,7 @@ export function gameTick(mx, my) {
                 ctx.save();
                 ctx.globalCompositeOperation = 'destination-out';
                 state.enemies.forEach(e => {
-                    utils.drawShadowCone(ctx, state.player.x, state.player.y, e.x, e.y, 'white');
+                    if (!e.isFriendly) utils.drawShadowCone(ctx, state.player.x, state.player.y, e.x, e.y, 'white');
                 });
                 ctx.restore();
              }
