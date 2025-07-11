@@ -171,20 +171,32 @@ window.addEventListener('load', () => {
                 const clientY = e.clientY ?? e.touches[0].clientY;
                 mx = clientX - rect.left;
                 my = clientY - rect.top;
+                // Update mouse position for other modules that might need it
+                window.mousePosition = { x: clientX, y: clientY };
             }
             
             canvas.addEventListener("mousemove", setPlayerTarget);
             canvas.addEventListener("touchmove", e => { e.preventDefault(); setPlayerTarget(e); }, { passive: false });
             canvas.addEventListener("touchstart", e => { e.preventDefault(); setPlayerTarget(e); }, { passive: false });
 
-            const gameHelpers = { addStatusEffect, addEssence };
-            const useOffensivePower = () => { if (state.offensiveInventory[0]) usePower('offensive', utils, gameHelpers, mx, my); };
-            const useDefensivePower = () => { if (state.defensiveInventory[0]) usePower('defensive', utils, gameHelpers, mx, my); };
+            // CORRECTED POWER USAGE LOGIC
+            const useOffensivePowerWrapper = () => {
+                if (state.offensiveInventory[0]) {
+                    usePower(state.offensiveInventory[0]);
+                } else {
+                    Cores.handleCoreOnEmptySlot(mx, my, gameHelpers);
+                }
+            };
+            const useDefensivePowerWrapper = () => {
+                if (state.defensiveInventory[0]) {
+                    usePower(state.defensiveInventory[0]);
+                }
+            };
 
-            canvas.addEventListener("click", e => { if (e.target.id === 'gameCanvas') useOffensivePower(); });
-            canvas.addEventListener("contextmenu", e => { e.preventDefault(); useDefensivePower(); });
-            document.getElementById('slot-off-0').addEventListener('click', useOffensivePower);
-            document.getElementById('slot-def-0').addEventListener('click', useDefensivePower);
+            canvas.addEventListener("click", e => { if (e.target.id === 'gameCanvas') useOffensivePowerWrapper(); });
+            canvas.addEventListener("contextmenu", e => { e.preventDefault(); useDefensivePowerWrapper(); });
+            document.getElementById('slot-off-0').addEventListener('click', useOffensivePowerWrapper);
+            document.getElementById('slot-def-0').addEventListener('click', useDefensivePowerWrapper);
             document.addEventListener('visibilitychange', () => AudioManager.handleVisibilityChange());
             soundBtn.addEventListener("click", () => AudioManager.toggleMute());
             
