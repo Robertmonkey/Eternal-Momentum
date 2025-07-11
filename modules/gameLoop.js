@@ -332,7 +332,7 @@ export function gameTick(mx, my) {
         dynamicDamageMultiplier = 1.10;
     }
     
-    // --- Annihilator Core Damage Logic ---
+    // Annihilator Core damage logic
     const annihilationEvent = state.effects.find(e => e.type === 'core_annihilation_event');
     if (annihilationEvent) {
         const progress = (now - annihilationEvent.startTime) / (annihilationEvent.endTime - annihilationEvent.startTime);
@@ -1134,8 +1134,9 @@ export function gameTick(mx, my) {
             ctx.strokeStyle = effect.color || 'rgba(230, 126, 34, 0.8)';
             ctx.lineWidth = 3;
             ctx.beginPath();
+            // CORRECTED NEGATIVE RADIUS BUG
             const warningRadius = 50 * (1 - progress);
-            ctx.arc(effect.x, effect.y, Math.max(0, Math.max(0), warningRadius), 0, Math.PI*2);
+            ctx.arc(effect.x, effect.y, Math.max(0, warningRadius), 0, Math.PI*2);
             ctx.stroke();
             ctx.beginPath();
             ctx.moveTo(effect.x-10, effect.y);
