@@ -357,7 +357,22 @@ window.addEventListener('load', () => {
                 else if (gameLoopId) state.isPaused = false;
             });
             
-            unequipCoreBtn.addEventListener('click', () => onCoreEquip(null));
+            unequipCoreBtn.addEventListener('click', () => {
+                const isEquipped = state.player.equippedAberrationCore !== null;
+                 if (!state.gameOver && gameLoopId && isEquipped) {
+                    showCustomConfirm(
+                        "|| DESTABILIZE TIMELINE? ||",
+                        "Attuning to nothing requires a full system recalibration. The current timeline will collapse, forcing a restart of the stage. Do you wish to proceed?",
+                        () => {
+                            equipCore(null);
+                            aberrationCoreModal.style.display = 'none';
+                            startSpecificLevel(state.currentStage);
+                        }
+                    );
+                } else {
+                    equipCore(null);
+                }
+            });
 
             storyBtn.addEventListener("click", () => {
                 const storyTitle = "ETERNAL MOMENTUM";
@@ -496,7 +511,6 @@ window.addEventListener('load', () => {
             setupHomeScreen();
         }
         
-        // This is the key change to fix the "stuck on loading" bug
         setTimeout(() => {
             loadingScreen.style.opacity = '0';
             loadingScreen.addEventListener('transitionend', () => {
@@ -505,7 +519,6 @@ window.addEventListener('load', () => {
                 requestAnimationFrame(() => {
                      homeScreen.classList.add('visible');
                 });
-                // Initialize the game's logic AFTER the screen has faded out
                 initialize();
             }, { once: true });
         }, 500);
