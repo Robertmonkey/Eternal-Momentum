@@ -124,11 +124,6 @@ canvas { display:block; width:100vw; height:100vh; }
 .ability-slot:hover { background-color: rgba(0, 255, 255, 0.2); transform: translateY(-5px); }
 .ability-slot.main:hover { background-color: rgba(240, 0, 255, 0.2); }
 .ability-slot.empty { font-size: 24px; color: var(--disabled-color); cursor: var(--cursor-default); }
-.ability-slot .ability-key {
-  position: absolute; bottom: 5px; left:0; right: 0; text-align: center;
-  font-size: 0.7rem; color: #aaa;
-  display: none; 
-}
 .ability-slot.activated { transform: translateY(-5px) scale(1.1); box-shadow: 0 0 15px #fff; }
 
 .ability-queue { display: flex; flex-direction: column; justify-content: center; gap: 4px; }
@@ -160,7 +155,7 @@ canvas { display:block; width:100vw; height:100vh; }
   max-width: 280px;
 }
 
-#status-effects-bar {
+#status-effects-bar, #pantheon-buffs-bar {
   display: flex;
   gap: 6px;
   height: 28px;
@@ -172,18 +167,28 @@ canvas { display:block; width:100vw; height:100vh; }
   opacity: 0;
   transition: opacity 0.3s ease-in-out;
 }
-#status-effects-bar.visible { opacity: 1; }
-.status-icon {
+#status-effects-bar.visible, #pantheon-buffs-bar.visible { opacity: 1; }
+
+.status-icon, .pantheon-buff-icon {
   width: 24px; height: 24px; font-size: 16px;
   display: flex;
   align-items: center; justify-content: center; position: relative;
   background: rgba(0,0,0,0.5); border-radius: 50%; overflow: hidden;
 }
-.status-icon .cooldown-overlay {
-  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(0,0,0,0.7); transform-origin: bottom;
-  transition: transform 0.2s linear;
+.cooldown-overlay {
+  position: absolute; bottom: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.7); transform-origin: top;
+  transition: transform 0.1s linear;
 }
+.status-icon .cooldown-overlay {
+    transform-origin: bottom;
+}
+.pantheon-buff-inner-icon {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+}
+
 
 #health-bar-container {
   position: relative;
@@ -265,8 +270,6 @@ canvas { display:block; width:100vw; height:100vh; }
   text-shadow: 0 0 8px var(--primary-glow);
   pointer-events: all;
 }
-/* --- END COMMAND BAR REWORK --- */
-
 
 [data-tooltip-text]:hover::before {
   content: attr(data-tooltip-text);
@@ -471,7 +474,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
 }
 @keyframes core-active-glow {
     0% { box-shadow: 0 0 12px var(--nexus-glow); }
-    50% { box-shadow: 0 0 24px #0f0, 0 0 8px #fff; }
+    50% { box-shadow: 0 0 24px var(--nexus-glow), 0 0 8px #fff; }
     100% { box-shadow: 0 0 12px var(--nexus-glow); }
 }
 
@@ -494,8 +497,9 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     display: flex;
 }
 #aberration-core-socket.active {
-    border-color: var(--nexus-glow);
+    border-color: var(--nexus-glow); /* DYNAMIC GLOW */
     animation: core-active-glow 2.5s infinite;
+    box-shadow: 0 0 15px var(--nexus-glow); /* DYNAMIC GLOW */
 }
 #aberration-core-socket:hover {
     transform: scale(1.1);
@@ -509,9 +513,21 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     align-items: center;
     justify-content: center;
     font-size: 20px;
-    color: var(--primary-glow);
+    color: var(--font-color);
     position: relative;
     overflow: hidden;
+}
+/* NEW: Style for the cooldown overlay */
+#aberration-core-cooldown {
+    position: absolute;
+    bottom: 0; 
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    transform: scaleY(0); /* Cooldown starts empty */
+    transform-origin: bottom; /* Fills from bottom to top */
+    transition: transform 0.1s linear;
 }
 
 
@@ -624,7 +640,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     display: flex;
     align-items: center;
     justify-content: center;
-    cursor: var(--not-allowed);
+    cursor: var(--cursor-not-allowed);
     transition: all 0.2s ease-in-out;
     z-index: 2;
 }
