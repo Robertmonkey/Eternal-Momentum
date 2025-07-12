@@ -90,19 +90,6 @@ function preloadAssets() {
     });
 }
 
-let gameLoopId = null;
-const startSpecificLevel = (levelNum) => {
-    if (gameLoopId) cancelAnimationFrame(gameLoopId);
-    applyAllTalentEffects();
-    resetGame(false); 
-    state.currentStage = levelNum; 
-    document.getElementById('gameOverMenu').style.display = 'none';
-    document.getElementById('levelSelectModal').style.display = 'none';
-    state.isPaused = false;
-    updateUI();
-    loop();
-};
-
 window.addEventListener('load', () => {
     preloadAssets().then(() => {
         const canvas = document.getElementById("gameCanvas");
@@ -150,6 +137,7 @@ window.addEventListener('load', () => {
         let mx = 0, my = 0;
         window.mousePosition = { x: 0, y: 0 };
         const allAudioElements = Array.from(document.querySelectorAll('audio'));
+        let gameLoopId = null;
 
         function initialize() {
             canvas.style.cursor = "url('./assets/cursors/crosshair.cur'), crosshair";
@@ -179,6 +167,42 @@ window.addEventListener('load', () => {
             }
         }
 
+        function loop() {
+            if (!gameTick(mx, my)) {
+                if (gameLoopId) {
+                    cancelAnimationFrame(gameLoopId);
+                    gameLoopId = null;
+                }
+                return;
+            }
+            gameLoopId = requestAnimationFrame(loop);
+        }
+
+        const startSpecificLevel = (levelNum) => {
+            if (gameLoopId) cancelAnimationFrame(gameLoopId);
+            applyAllTalentEffects();
+            resetGame(false); 
+            state.currentStage = levelNum; 
+            gameOverMenu.style.display = 'none';
+            levelSelectModal.style.display = 'none';
+            state.isPaused = false;
+            updateUI();
+            loop();
+        };
+
+        const startOrreryEncounter = (bossList) => {
+            if (gameLoopId) cancelAnimationFrame(gameLoopId);
+            applyAllTalentEffects();
+            resetGame(true); 
+            state.customOrreryBosses = bossList; 
+            state.currentStage = 999; 
+            gameOverMenu.style.display = 'none';
+            orreryModal.style.display = 'none';
+            state.isPaused = false;
+            updateUI();
+            loop();
+        };
+
         function equipCore(coreId) {
             state.player.equippedAberrationCore = coreId;
             savePlayerState();
@@ -188,7 +212,6 @@ window.addEventListener('load', () => {
 
         const onCoreEquip = (coreId) => {
             const isEquipped = state.player.equippedAberrationCore === coreId;
-            // If the game is running and the player is trying to switch to a DIFFERENT core
             if (!state.gameOver && gameLoopId && !isEquipped) {
                 showCustomConfirm(
                     "|| DESTABILIZE TIMELINE? ||",
@@ -454,41 +477,7 @@ window.addEventListener('load', () => {
                 );
             });
         }
-
-        function loop() {
-            if (!gameTick(mx, my)) {
-                if (gameLoopId) {
-                    cancelAnimationFrame(gameLoopId);
-                    gameLoopId = null;
-                }
-                return;
-            }
-            gameLoopId = requestAnimationFrame(loop);
-        }
         
-        const startOrreryEncounter = (bossList) => {
-            if (gameLoopId) cancelAnimationFrame(gameLoopId);
-            applyAllTalentEffects();
-            resetGame(true); 
-            state.customOrreryBosses = bossList; 
-            state.currentStage = 999; 
-            gameOverMenu.style.display = 'none';
-            orreryModal.style.display = 'none';
-            state.isPaused = false;
-            updateUI();
-            loop();
-        };
-        
-        setTimeout(() => {
-            loadingScreen.style.opacity = '0';
-            loadingScreen.addEventListener('transitionend', () => {
-                loadingScreen.style.display = 'none';
-                homeScreen.style.display = 'flex';
-                requestAnimationFrame(() => {
-                     homeScreen.classList.add('visible');
-                });
-            }, { once: true });
-            initialize();
-        }, 500);
+        initialize();
     });
 });
