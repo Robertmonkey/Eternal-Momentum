@@ -33,8 +33,6 @@ function stopAllLoopingSounds() {
 const spawnParticlesCallback = (x, y, c, n, spd, life, r) => utils.spawnParticles(state.particles, x, y, c, n, spd, life, r);
 const gameHelpers = {
     addStatusEffect, spawnEnemy, spawnPickup, play, stopLoopingSfx, playLooping, addEssence,
-    useSyphonCore: (mx, my) => Cores.handleCoreOnEmptySlot(mx, my, gameHelpers),
-    useLoopingEyeCore: (powerKey, mx, my) => Cores.handleCoreOnDefensivePower(powerKey, mx, my, gameHelpers)
 };
 window.gameHelpers = gameHelpers;
 
@@ -484,7 +482,6 @@ export function gameTick(mx, my) {
         ctx.globalAlpha = 1.0;
     }
     
-    const equippedCoreId = state.player.equippedAberrationCore;
     if (equippedCoreId && !isPhased && !juggernautCharge) {
         const coreData = bossData.find(b => b.id === equippedCoreId);
         if (coreData) {
@@ -1182,7 +1179,7 @@ export function gameTick(mx, my) {
                 ctx.fillStyle = `rgba(255, 0, 0, ${pulse * 0.1})`;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 state.enemies.filter(e => e.boss).forEach(e => {
-                    utils.drawShadowCone(ctx, state.player.x, state.player.y, e.x, e.y, 'rgba(0,0,0,0.1)');
+                    utils.drawShadowCone(ctx, state.player.x, state.player.y, e, 'rgba(0,0,0,0.1)');
                 });
              } else {
                 ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
@@ -1190,7 +1187,7 @@ export function gameTick(mx, my) {
                 ctx.save();
                 ctx.globalCompositeOperation = 'destination-out';
                 state.enemies.filter(e => e.boss).forEach(e => {
-                    utils.drawShadowCone(ctx, state.player.x, state.player.y, e.x, e.y, 'white');
+                    utils.drawShadowCone(ctx, state.player.x, state.player.y, e, 'white');
                 });
                 ctx.restore();
                 state.enemies.forEach(enemy => {
@@ -1213,10 +1210,10 @@ export function gameTick(mx, my) {
              const progress = (now - effect.startTime) / 1000;
              if (progress >= 1) {
                  if (!state.gameOver) {
-                     const copiedPower = powers[effect.powerToCopy];
+                     const copiedPower = powers[effect.powerKey];
                      if (copiedPower) {
                          const echoOrigin = { x: effect.x, y: effect.y };
-                         usePower(effect.powerToCopy, true, { mx: effect.mx, my: effect.my, damageModifier: 0.5, origin: echoOrigin });
+                         usePower(effect.powerKey, true, { mx: effect.mx, my: effect.my, damageModifier: 0.5, origin: echoOrigin });
                          play('mirrorSwap');
                      }
                  }
@@ -1250,7 +1247,7 @@ export function gameTick(mx, my) {
             state.player.x += Math.cos(effect.angle) * chargeSpeed;
             state.player.y += Math.sin(effect.angle) * chargeSpeed;
             state.enemies.forEach(e => {
-                if (!effect.hitEnemies.has(e) && Math.hypot(state.player.x - e.x, state.player.y - e.y) < state.player.r + e.r) {
+                if (!e.isFriendly && !effect.hitEnemies.has(e) && Math.hypot(state.player.x - e.x, state.player.y - e.y) < state.player.r + e.r) {
                     if (e.boss) {
                         e.hp -= 200;
                         const knockbackStrength = 25;
