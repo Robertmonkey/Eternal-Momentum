@@ -6,8 +6,7 @@ import { showUnlockNotification } from './ui.js';
 import { powers } from './powers.js';
 
 // --- NEW HELPER FUNCTION ---
-// Checks if the player has a specific core active, either equipped or from a Pantheon buff.
-function playerHasCore(coreId) {
+export function playerHasCore(coreId) {
     if (state.player.equippedAberrationCore === coreId) {
         return true;
     }
@@ -80,7 +79,6 @@ export function applyCoreTickEffects(gameHelpers) {
         state.player.talent_states.core_states.swarm_link.tail.forEach(c => {
             c.x += (prev.x - c.x) * 0.2;
             c.y += (prev.y - c.y) * 0.2;
-            // Use orange color and add particle trail for visibility
             const segmentRadius = 6 + Math.sin(now / 200);
             utils.drawCircle(ctx, c.x, c.y, segmentRadius, "orange"); 
             utils.spawnParticles(state.particles, c.x, c.y, 'rgba(255, 165, 0, 0.5)', 1, 0.5, 10, 2);
@@ -136,7 +134,6 @@ export function applyCoreTickEffects(gameHelpers) {
 
         if (miasmaState.isPurifying) {
             state.player.health = Math.min(state.player.maxHealth, state.player.health + (0.5 / 60));
-            // Visual effect will be handled in gameLoop.js
         }
     }
     
@@ -273,11 +270,12 @@ export function handleCoreOnPlayerDamage(damage, enemy, gameHelpers) {
     if (damageTaken > 0) {
         if (playerHasCore('mirror_mirage')) {
             if (state.decoys.length < 3 && now > (state.player.talent_states.core_states.mirror_mirage.lastDecoyTime || 0)) {
-                state.player.talent_states.core_states.mirror_mirage.lastDecoyTime = now + 250; // Short internal cooldown
+                state.player.talent_states.core_states.mirror_mirage.lastDecoyTime = now + 250; 
                 const newDecoy = { 
                     x: state.player.x, y: state.player.y, r: 20, 
-                    hp: 25, // Give decoy health
-                    isTaunting: true, isMobile: false 
+                    hp: 25, 
+                    isTaunting: true, 
+                    isMobile: false // Mirror Mirage decoys are stationary
                 };
                 state.decoys.push(newDecoy);
                 gameHelpers.play('mirrorSwap');
@@ -360,14 +358,13 @@ export function handleCoreOnPickup(gameHelpers) {
 }
 
 export function handleCoreOnEmptySlot(mx, my, gameHelpers) {
-    if (playerHasCore('syphon') && state.player.talent_states.core_states.syphon.canUse) {
+    if (playerHasCore('syphon')) {
         gameHelpers.play('gravitySound');
-        state.effects.push({
-            type: 'syphon_pull',
-            source: state.player,
-            endTime: Date.now() + 1000,
+        state.pickups.forEach(p => {
+             const pullStrength = 5;
+             const angle = Math.atan2(state.player.y - p.y, state.player.x - p.x);
+             p.vx += Math.cos(angle) * pullStrength; p.vy += Math.sin(angle) * pullStrength;
         });
-        state.player.talent_states.core_states.syphon.canUse = false;
         return true;
     }
     return false;
@@ -389,24 +386,20 @@ export function handleCoreOnDefensivePower(powerKey, mx, my, gameHelpers) {
         const looperState = state.player.talent_states.core_states.looper;
         looperState.lastDefensivePower = powerKey;
 
-        // Visual feedback for the primed echo
         gameHelpers.addStatusEffect('Echo Primed', '🔁', 3000);
 
         setTimeout(() => {
             if (looperState.lastDefensivePower) {
                 const powerToEcho = looperState.lastDefensivePower;
-                looperState.lastDefensivePower = null; // Consume it
+                looperState.lastDefensivePower = null; 
                 
-                // Check if the game is over before trying to cast
                 if(state.gameOver) return;
 
-                // Re-use the main power function, but mark it as a free cast
                 const power = powers[powerToEcho];
                 if (power) {
-                    play('mirrorSwap'); // Echo sound
-                    // Create a visual effect for the echo
+                    play('mirrorSwap'); 
                     state.effects.push({ type: 'shockwave', caster: state.player, x: state.player.x, y: state.player.y, radius: 0, maxRadius: 100, speed: 500, startTime: Date.now(), damage: 0, color: 'rgba(26, 188, 156, 0.5)' });
-                    power.apply(utils, gameHelpers, mx, my);
+                    usePower(powerToEcho, true);
                 }
             }
         }, 3000);
