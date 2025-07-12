@@ -11,17 +11,65 @@ export function playerHasCore(coreId) {
     return state.player.activePantheonBuffs.some(buff => buff.coreId === coreId);
 }
 
+// NEW: Master function to activate core powers on LMB+RMB click
+export function activateCorePower(mx, my, gameHelpers) {
+    const now = Date.now();
+    const coreId = state.player.equippedAberrationCore;
+    if (!coreId) return;
+
+    const coreState = state.player.talent_states.core_states[coreId];
+    if (!coreState || now < (coreState.cooldownUntil || 0)) {
+        gameHelpers.play('talentError');
+        return; // On cooldown
+    }
+
+    // This acts as a router for all core active abilities
+    switch (coreId) {
+        case 'juggernaut':
+            coreState.cooldownUntil = now + 8000;
+            const angle = Math.atan2(my - state.player.y, mx - state.player.x);
+            state.effects.push({
+                type: 'juggernaut_player_charge',
+                startTime: now,
+                duration: 700,
+                angle: angle,
+                hitEnemies: new Set()
+            });
+            gameHelpers.play('chargeDashSound');
+            break;
+        
+        case 'syphon':
+            coreState.cooldownUntil = now + 5000;
+            gameHelpers.play('syphonFire');
+            const syphonAngle = Math.atan2(my - state.player.y, mx - state.player.x);
+            state.effects.push({
+                type: 'syphon_cone',
+                startTime: now,
+                duration: 1500,
+                angle: syphonAngle,
+                source: state.player
+            });
+            break;
+
+        default:
+            // Core has no active ability on this trigger
+            break;
+    }
+}
+
+
 /**
  * Applies passive, per-tick effects for equipped Aberration Cores.
  */
 export function applyCoreTickEffects(gameHelpers) {
     const now = Date.now();
     const { play, addStatusEffect } = gameHelpers;
+    const ctx = document.getElementById("gameCanvas").getContext("2d");
 
     // --- PANTHEON CORE LOGIC ---
     if (state.player.equippedAberrationCore === 'pantheon') {
         const pantheonState = state.player.talent_states.core_states.pantheon;
-        if (now > (pantheonState.lastCycleTime || 0) + 10000) { // Cycle every 10 seconds
+        if (now > (pantheonState.lastCycleTime || 0) + 10000) {
             pantheonState.lastCycleTime = now;
             
             const unlockedCores = Array.from(state.player.unlockedAberrationCores);
@@ -34,7 +82,7 @@ export function applyCoreTickEffects(gameHelpers) {
                 
                 state.player.activePantheonBuffs.push({
                     coreId: newCoreId,
-                    endTime: now + 30000 // Each buff lasts 30 seconds
+                    endTime: now + 30000
                 });
 
                 showUnlockNotification(`Pantheon Attuned: ${coreData.name}`, 'Aspect Gained');
@@ -42,7 +90,6 @@ export function applyCoreTickEffects(gameHelpers) {
             }
         }
     }
-    // Clean up expired Pantheon buffs
     state.player.activePantheonBuffs = state.player.activePantheonBuffs.filter(buff => now < buff.endTime);
 
 
@@ -62,14 +109,29 @@ export function applyCoreTickEffects(gameHelpers) {
             gravityState.lastPulseTime = now;
             state.effects.push({ 
                 type: 'player_pull_pulse', 
-                x: state.player.x, 
-                y: state.player.y, 
-                maxRadius: 600, 
-                startTime: now, 
-                duration: 500
+                x: state.player.x, y: state.player.y, 
+                maxRadius: 600, startTime: now, duration: 500
             });
             play('gravitySound');
         }
+    }
+
+    if (playerHasCore('swarm_link')) {
+        const swarmState = state.player.talent_states.core_states.swarm_link;
+        let prev = state.player;
+        swarmState.tail.forEach(c => {
+            c.x += (prev.x - c.x) * 0.2;
+            c.y += (prev.y - c.y) * 0.2;
+            const segmentRadius = 6 + Math.sin(now / 200);
+            utils.drawCircle(ctx, c.x, c.y, segmentRadius, "orange"); 
+            utils.spawnParticles(state.particles, c.x, c.y, 'rgba(255, 165, 0, 0.5)', 1, 0.5, 10, 2);
+            prev = c;
+            state.enemies.forEach(e => {
+                if (!e.isFriendly && Math.hypot(e.x - c.x, e.y - c.y) < e.r + segmentRadius) {
+                    e.hp -= 0.2 * state.player.talent_modifiers.damage_multiplier;
+                }
+            });
+        });
     }
     
     if (playerHasCore('architect')) {
@@ -182,16 +244,9 @@ export function handleCoreOnEnemyDeath(enemy, gameHelpers) {
                 const angle = Math.random() * Math.PI * 2;
                 state.effects.push({
                     type: 'player_fragment',
-                    x: enemy.x,
-                    y: enemy.y,
-                    dx: Math.cos(angle) * 4,
-                    dy: Math.sin(angle) * 4,
-                    r: 10,
-                    speed: 5,
-                    damage: 8 * state.player.talent_modifiers.damage_multiplier,
-                    life: 4000,
-                    startTime: now,
-                    targetIndex: i
+                    x: enemy.x, y: enemy.y, dx: Math.cos(angle) * 4, dy: Math.sin(angle) * 4,
+                    r: 10, speed: 5, damage: 8 * state.player.talent_modifiers.damage_multiplier,
+                    life: 4000, startTime: now, targetIndex: i
                 });
             }
             gameHelpers.play('splitterOnDeath');
@@ -200,7 +255,7 @@ export function handleCoreOnEnemyDeath(enemy, gameHelpers) {
     
     if (playerHasCore('swarm_link')) {
         const swarmState = state.player.talent_states.core_states.swarm_link;
-        swarmState.enemiesForNextSegment++;
+        swarmState.enemiesForNextSegment = (swarmState.enemiesForNextSegment || 0) + 1;
         if (swarmState.enemiesForNextSegment >= 2 && swarmState.tail.length < 50) {
             swarmState.enemiesForNextSegment = 0;
             const lastSegment = swarmState.tail.length > 0 ? swarmState.tail[swarmState.tail.length - 1] : state.player;
@@ -262,7 +317,7 @@ export function handleCoreOnPlayerDamage(damage, enemy, gameHelpers) {
                 state.decoys.push({ 
                     x: state.player.x, y: state.player.y, r: 20, 
                     expires: now + 3000,
-                    isTaunting: true, isMobile: false
+                    isTaunting: true, isMobile: false, hp: 1
                 });
                 gameHelpers.play('mirrorSwap');
                 utils.spawnParticles(state.particles, state.player.x, state.player.y, '#ff00ff', 40, 4);
@@ -318,7 +373,7 @@ export function handleCoreOnDamageDealt(target) {
 
     if(playerHasCore('basilisk')) {
         if(target.wasFrozen || target.petrifiedUntil > Date.now()){
-             // Damage is amplified in gameLoop, this is just a hook
+             // Damage amplification is handled in gameLoop
         }
     }
 }
@@ -365,41 +420,7 @@ export function handleCoreOnPickup(gameHelpers) {
 }
 
 export function handleCoreOnEmptySlot(mx, my, gameHelpers) {
-    const now = Date.now();
-
-    if (playerHasCore('juggernaut')) {
-        const juggernautState = state.player.talent_states.core_states.juggernaut;
-        if (now > (juggernautState.cooldownUntil || 0)) {
-            juggernautState.cooldownUntil = now + 8000;
-            const angle = Math.atan2(my - state.player.y, mx - state.player.x);
-            state.effects.push({
-                type: 'juggernaut_player_charge',
-                startTime: now,
-                duration: 700,
-                angle: angle,
-                hitEnemies: new Set()
-            });
-            gameHelpers.play('chargeDashSound');
-            return true;
-        }
-    }
-
-    if (playerHasCore('syphon')) {
-        const syphonState = state.player.talent_states.core_states.syphon;
-        if (now > (syphonState.cooldownUntil || 0)) {
-            syphonState.cooldownUntil = now + 5000;
-            gameHelpers.play('syphonFire');
-            const angle = Math.atan2(my - state.player.y, mx - state.player.x);
-            state.effects.push({
-                type: 'syphon_cone',
-                startTime: now,
-                duration: 1500,
-                angle: angle,
-                source: state.player
-            });
-            return true;
-        }
-    }
+    // This function is now deprecated in favor of activateCorePower, but is kept for potential future use.
     return false;
 }
 
