@@ -482,6 +482,7 @@ export function gameTick(mx, my) {
         ctx.globalAlpha = 1.0;
     }
     
+    const equippedCoreId = state.player.equippedAberrationCore; // THIS LINE WAS MISSING
     if (equippedCoreId && !isPhased && !juggernautCharge) {
         const coreData = bossData.find(b => b.id === equippedCoreId);
         if (coreData) {
