@@ -16,7 +16,7 @@ const offSlot = document.getElementById('slot-off-0');
 const defSlot = document.getElementById('slot-def-0');
 const bossContainer = document.getElementById("bossHpContainer");
 const statusBar = document.getElementById('status-effects-bar');
-const pantheonBar = document.getElementById('pantheon-buffs-bar'); // New element for Pantheon
+const pantheonBar = document.getElementById('pantheon-buffs-bar');
 const bossBannerEl = document.getElementById("bossBanner");
 const levelSelectList = document.getElementById("level-select-list");
 const notificationBanner = document.getElementById('unlock-notification');
@@ -36,7 +36,6 @@ const aberrationCoreIcon = document.getElementById('aberration-core-icon');
 const aberrationCoreListContainer = document.getElementById('aberration-core-list-container');
 const equippedCoreNameEl = document.getElementById('aberration-core-equipped-name');
 
-// NEW function to display Pantheon buffs
 function updatePantheonUI() {
     if (!pantheonBar) return;
     const now = Date.now();
@@ -57,7 +56,7 @@ function updatePantheonUI() {
 
         const innerIcon = document.createElement('div');
         innerIcon.className = 'pantheon-buff-inner-icon';
-        if (coreData.id === 'pantheon') { // Should not happen but good practice
+        if (coreData.id === 'pantheon') {
             innerIcon.classList.add('pantheon-icon-bg');
         } else {
             innerIcon.style.backgroundColor = coreData.color;
@@ -93,7 +92,49 @@ function updateStatusEffectsUI() {
     });
 }
 
+function updateCoreCooldownUI() {
+    const coreId = state.player.equippedAberrationCore;
+    const cooldownOverlay = document.getElementById('aberration-core-cooldown');
+
+    if (!coreId || !cooldownOverlay) {
+        if (cooldownOverlay) cooldownOverlay.style.transform = 'scaleY(1)'; // Set to full if no core
+        return;
+    }
+
+    const coreState = state.player.talent_states.core_states[coreId];
+    if (!coreState || !coreState.cooldownUntil || Date.now() >= coreState.cooldownUntil) {
+        cooldownOverlay.style.transform = 'scaleY(0)'; // Ready to use
+        return;
+    }
+    
+    const cooldowns = { 
+        juggernaut: 8000, 
+        syphon: 5000,
+        mirror_mirage: 12000,
+        // Passive cores can have cooldowns too
+        annihilator: 25000, 
+        gravity: 6000,
+        architect: 15000,
+        helix_weaver: 5000,
+        puppeteer: 8000
+    };
+    const duration = cooldowns[coreId];
+    if(!duration) {
+         cooldownOverlay.style.transform = 'scaleY(0)';
+         return;
+    }
+    
+    // Determine start time based on which property is used
+    const lastTime = coreState.lastDecoyTime || coreState.lastPillarTime || coreState.lastConversion || coreState.lastPulseTime || coreState.lastBolt || (coreState.cooldownUntil - duration);
+    const elapsed = Date.now() - lastTime;
+    const progress = Math.min(1, elapsed / duration);
+    
+    cooldownOverlay.style.transform = `scaleY(${1 - progress})`; // Fills up as it cools down
+}
+
 function updateAberrationCoreUI() {
+    if (!aberrationCoreSocket) return;
+
     if (state.player.level >= 10) {
         aberrationCoreSocket.classList.add('unlocked');
     } else {
@@ -106,9 +147,13 @@ function updateAberrationCoreUI() {
 
     if (coreData) {
         aberrationCoreSocket.classList.add('active');
-        aberrationCoreIcon.style.backgroundColor = coreData.color;
-        aberrationCoreIcon.innerHTML = ''; // Clear text like '◎'
+        aberrationCoreSocket.style.setProperty('--nexus-glow', coreData.color);
+        aberrationCoreIcon.style.backgroundColor = 'transparent';
+        if (!document.getElementById('aberration-core-cooldown')) {
+             aberrationCoreIcon.innerHTML = `<div id="aberration-core-cooldown" class="cooldown-overlay"></div>`;
+        }
         aberrationCoreSocket.setAttribute('data-tooltip-text', `Core Attuned: ${coreData.name}`);
+        
         if(coreData.id === 'pantheon') {
             aberrationCoreIcon.classList.add('pantheon-icon-bg');
         } else {
@@ -116,8 +161,13 @@ function updateAberrationCoreUI() {
         }
     } else {
         aberrationCoreSocket.classList.remove('active');
+        aberrationCoreSocket.style.setProperty('--nexus-glow', 'var(--nexus-glow)'); // Reset to default CSS variable
         aberrationCoreIcon.style.backgroundColor = 'transparent';
-        aberrationCoreIcon.innerText = '◎';
+        if (aberrationCoreIcon.firstChild?.id !== 'aberration-core-cooldown') {
+            aberrationCoreIcon.innerHTML = `<div id="aberration-core-cooldown" class="cooldown-overlay"></div>◎`;
+        } else {
+             aberrationCoreIcon.innerHTML = document.getElementById('aberration-core-cooldown').outerHTML + '◎';
+        }
         aberrationCoreSocket.setAttribute('data-tooltip-text', 'No Core Attuned');
         aberrationCoreIcon.classList.remove('pantheon-icon-bg');
     }
@@ -133,6 +183,7 @@ export function updateUI() {
     apDisplay.innerText = `AP: ${state.player.ascensionPoints}`;
     
     updateAberrationCoreUI(); 
+    updateCoreCooldownUI();
 
     const healthPct = Math.max(0, state.player.health) / state.player.maxHealth;
     healthBarValue.style.width = `${healthPct * 100}%`;
@@ -206,11 +257,7 @@ export function updateUI() {
     }
     
     const GRID_THRESHOLD = 4;
-    if (bossesToDisplay.length >= GRID_THRESHOLD) {
-        bossContainer.classList.add('grid-layout');
-    } else {
-        bossContainer.classList.remove('grid-layout');
-    }
+    bossContainer.classList.toggle('grid-layout', bossesToDisplay.length >= GRID_THRESHOLD);
 
     bossesToDisplay.forEach(boss => {
         let wrapper = document.getElementById('boss-hp-' + boss.instanceId);
@@ -240,10 +287,10 @@ export function updateUI() {
     });
     
     updateStatusEffectsUI();
-    updatePantheonUI(); // Call the new Pantheon UI update function
+    updatePantheonUI();
 }
 
-function showBossInfo(bossIds, type) {
+export function showBossInfo(bossIds, type) {
     let title = '';
     let content = '';
 
