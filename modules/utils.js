@@ -25,6 +25,75 @@ export function drawCrystal(ctx, x, y, size, color) {
     ctx.fill();
 }
 
+/**
+ * Draws a player-like shape. Used for the Temporal Paradox echo.
+ */
+export function drawPlayer(ctx, player, color) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, player.r, 0, 2 * Math.PI);
+    ctx.fill();
+}
+
+/**
+ * Draws a shadow cone from a source point, occluded by a shadow-casting object.
+ * Used for the player's Annihilator Core effect.
+ */
+export function drawShadowCone(ctx, sourceX, sourceY, shadowCaster, color) {
+    const distToCaster = Math.hypot(shadowCaster.x - sourceX, shadowCaster.y - sourceY);
+    if (distToCaster <= shadowCaster.r) return; // Source is inside the caster
+
+    const angleToCaster = Math.atan2(shadowCaster.y - sourceY, shadowCaster.x - sourceX);
+    const angleToTangent = Math.asin(shadowCaster.r / distToCaster);
+    
+    // Points on the circle where the shadow begins
+    const angle1 = angleToCaster - angleToTangent;
+    const angle2 = angleToCaster + angleToTangent;
+    
+    const t1x = shadowCaster.x + shadowCaster.r * Math.cos(angle1);
+    const t1y = shadowCaster.y + shadowCaster.r * Math.sin(angle1);
+    const t2x = shadowCaster.x + shadowCaster.r * Math.cos(angle2);
+    const t2y = shadowCaster.y + shadowCaster.r * Math.sin(angle2);
+
+    const maxDist = Math.hypot(ctx.canvas.width, ctx.canvas.height) * 2;
+
+    // Extend the lines far beyond the screen
+    const p1x = t1x + maxDist * (t1x - sourceX) / distToCaster;
+    const p1y = t1y + maxDist * (t1y - sourceY) / distToCaster;
+    const p2x = t2x + maxDist * (t2x - sourceX) / distToCaster;
+    const p2y = t2y + maxDist * (t2y - sourceY) / distToCaster;
+
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(t1x, t1y);
+    ctx.lineTo(p1x, p1y);
+    ctx.lineTo(p2x, p2y);
+    ctx.lineTo(t2x, t2y);
+    ctx.closePath();
+    ctx.fill();
+}
+
+/**
+ * Checks if a point is within the shadow cast by an object from a light source.
+ */
+export function isPointInShadow(shadowCaster, point, sourceX, sourceY) {
+    const distToCaster = Math.hypot(shadowCaster.x - sourceX, shadowCaster.y - sourceY);
+    if (distToCaster <= shadowCaster.r) return false;
+
+    const angleToCaster = Math.atan2(shadowCaster.y - sourceY, shadowCaster.x - sourceX);
+    const angleToTangent = Math.asin(shadowCaster.r / distToCaster);
+    
+    const pointAngle = Math.atan2(point.y - sourceY, point.x - sourceX);
+    
+    // Normalize angles to be within a consistent range
+    let angleDiff = (pointAngle - angleToCaster);
+    while (angleDiff <= -Math.PI) angleDiff += 2 * Math.PI;
+    while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+
+    // Check if the point is within the angular width of the shadow and farther away than the caster
+    return Math.abs(angleDiff) < angleToTangent && Math.hypot(point.x - sourceX, point.y - sourceY) > distToCaster;
+}
+
 
 export function spawnParticles(particles, x, y, c, n, spd, life, r = 3) {
     for (let i = 0; i < n; i++) {
