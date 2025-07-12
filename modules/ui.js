@@ -16,6 +16,7 @@ const offSlot = document.getElementById('slot-off-0');
 const defSlot = document.getElementById('slot-def-0');
 const bossContainer = document.getElementById("bossHpContainer");
 const statusBar = document.getElementById('status-effects-bar');
+const pantheonBar = document.getElementById('pantheon-buffs-bar'); // New element for Pantheon
 const bossBannerEl = document.getElementById("bossBanner");
 const levelSelectList = document.getElementById("level-select-list");
 const notificationBanner = document.getElementById('unlock-notification');
@@ -30,12 +31,42 @@ const bossInfoTitle = document.getElementById('bossInfoModalTitle');
 const bossInfoContent = document.getElementById('bossInfoModalContent');
 const closeBossInfoBtn = document.getElementById('closeBossInfoModalBtn');
 
-// --- NEW: Aberration Core UI elements ---
 const aberrationCoreSocket = document.getElementById('aberration-core-socket');
 const aberrationCoreIcon = document.getElementById('aberration-core-icon');
 const aberrationCoreListContainer = document.getElementById('aberration-core-list-container');
 const equippedCoreNameEl = document.getElementById('aberration-core-equipped-name');
 
+// NEW function to display Pantheon buffs
+function updatePantheonUI() {
+    if (!pantheonBar) return;
+    const now = Date.now();
+    const buffs = state.player.activePantheonBuffs;
+
+    pantheonBar.classList.toggle('visible', buffs.length > 0);
+    pantheonBar.innerHTML = '';
+
+    buffs.forEach(buff => {
+        const coreData = bossData.find(b => b.id === buff.coreId);
+        if (!coreData) return;
+
+        const remaining = (buff.endTime - now) / 1000;
+        
+        const iconEl = document.createElement('div');
+        iconEl.className = 'pantheon-buff-icon';
+        iconEl.setAttribute('data-tooltip-text', `${coreData.name} (${remaining.toFixed(1)}s)`);
+
+        const innerIcon = document.createElement('div');
+        innerIcon.className = 'pantheon-buff-inner-icon';
+        if (coreData.id === 'pantheon') { // Should not happen but good practice
+            innerIcon.classList.add('pantheon-icon-bg');
+        } else {
+            innerIcon.style.backgroundColor = coreData.color;
+        }
+
+        iconEl.appendChild(innerIcon);
+        pantheonBar.appendChild(iconEl);
+    });
+}
 
 function updateStatusEffectsUI() {
     const now = Date.now();
@@ -62,7 +93,6 @@ function updateStatusEffectsUI() {
     });
 }
 
-// --- NEW: Function to update the Aberration Core socket UI ---
 function updateAberrationCoreUI() {
     if (state.player.level >= 10) {
         aberrationCoreSocket.classList.add('unlocked');
@@ -102,7 +132,7 @@ export function updateUI() {
     ascensionText.innerText = `LVL ${state.player.level}`;
     apDisplay.innerText = `AP: ${state.player.ascensionPoints}`;
     
-    updateAberrationCoreUI(); // --- NEW: Call the update function
+    updateAberrationCoreUI(); 
 
     const healthPct = Math.max(0, state.player.health) / state.player.maxHealth;
     healthBarValue.style.width = `${healthPct * 100}%`;
@@ -210,6 +240,7 @@ export function updateUI() {
     });
     
     updateStatusEffectsUI();
+    updatePantheonUI(); // Call the new Pantheon UI update function
 }
 
 function showBossInfo(bossIds, type) {
@@ -347,7 +378,6 @@ export function showCustomConfirm(title, text, onConfirm) {
     customConfirm.style.display = 'flex';
 }
 
-// --- UPDATED: Function to populate the Aberration Core modal with unlock fix ---
 export function populateAberrationCoreMenu(onEquip) {
     if (!aberrationCoreListContainer) return;
     aberrationCoreListContainer.innerHTML = '';
@@ -362,11 +392,10 @@ export function populateAberrationCoreMenu(onEquip) {
     bossData.forEach(core => {
         if (!core.core_desc) return;
 
-        // --- FIX: Check level requirement and update save file if newly unlocked ---
         let isUnlocked = state.player.unlockedAberrationCores.has(core.id);
         if (!isUnlocked && state.player.level >= core.unlock_level) {
             state.player.unlockedAberrationCores.add(core.id);
-            savePlayerState(); // Persist the unlock immediately
+            savePlayerState(); 
             isUnlocked = true;
         }
         
