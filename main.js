@@ -204,13 +204,6 @@ window.addEventListener('load', () => {
             loop();
         };
 
-        function equipCore(coreId) {
-            state.player.equippedAberrationCore = coreId;
-            savePlayerState();
-            populateAberrationCoreMenu(onCoreEquip);
-            updateUI();
-        }
-
         const onCoreEquip = (coreId) => {
             const isEquipped = state.player.equippedAberrationCore === coreId;
             if (!state.gameOver && gameLoopId && !isEquipped) {
@@ -227,6 +220,13 @@ window.addEventListener('load', () => {
                 equipCore(coreId);
             }
         };
+
+        function equipCore(coreId) {
+            state.player.equippedAberrationCore = coreId;
+            savePlayerState();
+            populateAberrationCoreMenu(onCoreEquip);
+            updateUI();
+        }
 
         function setupHomeScreen() {
             const hasSaveData = localStorage.getItem('eternalMomentumSave') !== null;
@@ -350,7 +350,7 @@ window.addEventListener('load', () => {
                 openAberrationCoreMenu();
             });
 
-            closeAberrationCoreBtn.addEventListener('click', () => {
+            closeAberrationCoreBtn.addEventListener("click", () => {
                 aberrationCoreModal.style.display = 'none';
                 AudioManager.playSfx('uiModalClose');
                 if (state.gameOver) gameOverMenu.style.display = 'flex';
@@ -511,6 +511,7 @@ window.addEventListener('load', () => {
             setupHomeScreen();
         }
         
+        // This is the key change to fix the "stuck on loading" bug
         setTimeout(() => {
             loadingScreen.style.opacity = '0';
             loadingScreen.addEventListener('transitionend', () => {
@@ -519,6 +520,7 @@ window.addEventListener('load', () => {
                 requestAnimationFrame(() => {
                      homeScreen.classList.add('visible');
                 });
+                // Initialize the game's logic AFTER the screen has faded out
                 initialize();
             }, { once: true });
         }, 500);
