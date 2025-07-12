@@ -181,16 +181,18 @@ export const powers={
           });
       },4000);
   }},
-  decoy:{emoji:"🔮",desc:"Decoy lasts until destroyed.",apply:(utils, game, mx, my)=>{
+  decoy:{emoji:"🔮",desc:"Decoy lasts 5s",apply:(utils, game)=>{
+      // THIS IS THE ORIGINAL DECOY LOGIC
       const isMobile = state.player.purchasedTalents.has('quantum-duplicate');
-      const decoy = {
-          x: mx, y: my, r: 20,
-          hp: 50, // Decoys now have health
+      state.decoy={
+          x:state.player.x,
+          y:state.player.y,
+          r:20,
+          expires:Date.now()+5000,
           isTaunting: true,
           isMobile: isMobile
       };
-      state.decoys.push(decoy);
-      utils.spawnParticles(state.particles, state.player.x, state.player.y, "#8e44ad", 50, 3, 30);
+      utils.spawnParticles(state.particles, state.player.x,state.player.y,"#8e44ad",50,3,30);
   }},
   stack:{emoji:"🧠",desc:"Double next power-up",apply:(utils, game)=>{ state.stacked=true; game.addStatusEffect('Stacked', '🧠', 60000); utils.spawnParticles(state.particles, state.player.x,state.player.y,"#aaa",40,4,30); }},
   score: {emoji: "💎", desc: "Gain a large amount of Essence.", apply: (utils, game) => { game.addEssence(200 + state.player.level * 10); utils.spawnParticles(state.particles, state.player.x, state.player.y, "#f1c40f", 40, 4, 30); }},
@@ -296,8 +298,10 @@ export function usePower(powerKey, isFreeCast = false, options = {}){
 
   if (consumed) {
       let recycled = false;
-      // CORRECTED RECYCLE LOGIC
-      if ((state.player.purchasedTalents.has('energetic-recycling') && Math.random() < 0.20) || (playerHasCore('singularity') && Math.random() < 0.15)) {
+      if (state.player.purchasedTalents.has('energetic-recycling') && Math.random() < 0.20) {
+          recycled = true;
+      }
+      if (playerHasCore('singularity') && Math.random() < 0.15) {
           recycled = true;
       }
       if (recycled) {
