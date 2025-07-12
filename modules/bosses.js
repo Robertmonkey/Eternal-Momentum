@@ -95,7 +95,7 @@ export const bossData = [{
     difficulty_tier: 1,
     archetype: 'aggressor',
     unlock_level: 20,
-    core_desc: "After avoiding damage for 5 seconds, regenerate 1 health per second. Also, dealing damage has a 2% chance to spawn a small health pickup.",
+    core_desc: "Damaging enemies has a 10% chance to spawn a seeking Blood Orb that heals you for 2% of your maximum health.",
     description: "A parasitic entity that rapidly regenerates vitality if left untouched. Sustained assault is the only path to victory.",
     lore: "A symbiotic organism from a timeline where life evolved without death, only the endless transfer of vitality. The Unraveling severed its connection to its ecosystem, leaving it in a state of perpetual starvation. It now drains the life force of anything it touches, not out of malice, but from a desperate, instinctual need to mend a wound that can never heal.",
     mechanics_desc: "Rapidly regenerates health if it hasn't taken damage for a few seconds. A sustained, constant assault is required to defeat it. Occasionally drops health pickups when hit.",
@@ -139,7 +139,7 @@ export const bossData = [{
     difficulty_tier: 1,
     archetype: 'field_control',
     unlock_level: 25,
-    core_desc: "Every 10 seconds, you pulse with gravitational force, powerfully repelling all non-boss enemies and pulling all power-ups towards you.",
+    core_desc: "Every 6 seconds, you pulse with gravitational force, powerfully repelling all non-boss enemies and pulling all power-ups towards you.",
     description: "Warps the battlefield with a ring of gravitational wells that impede movement.",
     lore: "The tormented ghost of a lead scientist who, in a desperate attempt to halt the Unraveling, tried to anchor their reality by creating a supermassive black hole. The experiment failed catastrophically, collapsing their universe and binding the scientist's consciousness to the resulting gravitational anomalies.",
     mechanics_desc: "Constantly surrounded by a ring of gravitational wells. These wells will significantly slow your movement and pull you towards their center if you enter their radius.",
@@ -488,7 +488,7 @@ export const bossData = [{
     difficulty_tier: 2,
     archetype: 'aggressor',
     unlock_level: 60,
-    core_desc: "After moving continuously for 3 seconds, build a 'Charge.' Your next collision with a non-boss enemy instantly destroys it and creates a small shockwave.",
+    core_desc: "Using an empty power-up slot unleashes a high-speed charge in your current direction. The charge destroys non-boss enemies and damages and knocks back bosses.",
     description: "A relentless force of nature. It periodically charges with immense speed, growing faster as it takes damage.",
     lore: "A creature of pure, unstoppable biological drive from a world where evolution's only law was 'survival of the strongest.' As its reality decayed, it was locked in a perpetual charge against an enemy it could never reach: the Unraveling itself. The more its existence frays (as it takes damage), the more desperate and reckless its charge becomes.",
     mechanics_desc: "A highly aggressive boss that moves faster as its health gets lower. Periodically, it will stop and charge a high-speed dash towards you that is difficult to avoid and deals heavy collision damage.",
@@ -756,7 +756,7 @@ export const bossData = [{
     difficulty_tier: 2,
     archetype: 'field_control',
     unlock_level: 80,
-    core_desc: "Enemies damaged by your Shockwave or Freeze powers are briefly 'Petrified,' causing them to take 15% more damage from all sources for 3 seconds.",
+    core_desc: "Enemies damaged by your Shockwave or Freeze powers are briefly 'Petrified,' causing them to take 20% more damage from all sources for 3 seconds.",
     description: "Its presence crystallizes spacetime, generating expanding Stasis Fields that petrify any who linger within.",
     lore: "The collective memory of a race that had transcended physical form, existing as living history. To prevent their memories from being erased by the Unraveling, they attempted to crystallize their entire timeline into a static, unchanging moment. They are now trapped in that moment, their very presence slowing spacetime to a crawl as a defense mechanism.",
     mechanics_desc: "Generates large Stasis Fields in the four quadrants of the arena that grow larger as the Basilisk loses health. Standing inside an active field will rapidly build a stun meter; if it fills, you will be petrified for a few seconds.",
@@ -830,7 +830,7 @@ export const bossData = [{
     difficulty_tier: 2,
     archetype: 'field_control',
     unlock_level: 85,
-    core_desc: "Every 25 seconds, attune to a non-boss enemy, making it an invulnerable 'Pillar of Shadow' for 4s. At the end, fire a short-range Annihilation Beam.",
+    core_desc: "Every 25 seconds, unleash an Annihilation Beam from your position. Bosses cast shadows behind them, creating safe zones. The beam destroys non-bosses and deals 500 damage to bosses.",
     description: "Creates an unassailable Obelisk and unleashes an Annihilation Beam that erases anything not shielded by the pillar's shadow.",
     lore: "In its timeline, the Obelisk was a monument of salvation—a device that could cast a 'reality shadow' to shield its world from the Unraveling. The Annihilator was its sworn guardian. When the Obelisk failed, the guardian's mind shattered, inverting its purpose. It now endlessly recreates its catastrophic failure, attempting to erase the universe that its sacred pillar could not save.",
     mechanics_desc: "Creates a permanent, impassable Obelisk in the center of the arena. It will periodically charge and fire an arena-wide Annihilation Beam. The Obelisk is the only safe place; use it to block the beam's line of sight.",
@@ -1339,7 +1339,7 @@ export const bossData = [{
     difficulty_tier: 3,
     archetype: 'specialist',
     unlock_level: 120,
-    core_desc: "Attempting to use an empty inventory slot unleashes a 'Syphon Cone' that pulls all power-ups within its range to you. Can't be used again until inventory is full.",
+    core_desc: "Attempting to use an empty inventory slot unleashes a 'Syphon Cone' that pulls all power-ups within its range to you.",
     description: "Targets and drains power directly, stealing your most powerful offensive ability and unleashing a corrupted version of it.",
     lore: "In its universe, abstract concepts like knowledge and power were tangible energies that could be 'siphoned.' This Aberration was a librarian-priest, a guardian of sacred powers. Corrupted by the Unraveling, its instinct to 'archive' has become a hungry desire to steal and corrupt the powers of others, unleashing twisted versions of their own strengths.",
     mechanics_desc: "Targets you with a telegraphed cone attack. If you are hit, it will steal your primary offensive power-up and unleash a powerful, corrupted version of it. Evade the cone to protect your abilities.",
@@ -1993,7 +1993,7 @@ export const bossData = [{
     difficulty_tier: 3,
     archetype: 'aggressor',
     unlock_level: 155,
-    core_desc: "Your core is a nexus of possibilities. Every 60 seconds, it randomly attunes to a different Aberration Core that you have unlocked for the next minute.",
+    core_desc: "Your core attunes to a new, random Aberration Core every 10 seconds. Each attunement lasts for 30 seconds, allowing up to three powers to be active at once.",
     description: "An ultimate being that channels the Aspects of other powerful entities, cycling through their abilities to create an unpredictable, multi-faceted threat.",
     lore: "At the precipice of total non-existence, the final consciousnesses of a thousand collapsing timelines merged into a single, gestalt being to survive. The Pantheon is not one entity, but a chorus of dying gods, heroes, and monsters screaming in unison. It wields the memories and powers of the worlds it has lost, making it an unpredictable and tragic echo of a thousand apocalypses.",
     mechanics_desc: "Does not have its own attacks. Instead, it channels the Aspects of other Aberrations, cycling through their primary abilities. Pay close attention to the visual cues of its active Aspects, as its attack patterns will change completely throughout the fight.",
@@ -2202,5 +2202,4 @@ export const bossData = [{
         delete b.clones;
         delete b.petrifyZones;
     }
-}
-];
+}];
