@@ -2,12 +2,12 @@
 import { state, resetGame, loadPlayerState, savePlayerState } from './modules/state.js';
 import { bossData } from './modules/bosses.js';
 import { AudioManager } from './modules/audio.js';
-import { updateUI, populateLevelSelect, showCustomConfirm, populateOrreryMenu, populateAberrationCoreMenu } from './modules/ui.js';
+import { updateUI, populateLevelSelect, showCustomConfirm, populateOrreryMenu, populateAberrationCoreMenu, showUnlockNotification } from './modules/ui.js';
 import { gameTick, spawnBossesForStage, addStatusEffect, addEssence } from './modules/gameLoop.js';
 import { usePower } from './modules/powers.js';
 import * as utils from './modules/utils.js';
 import { renderAscensionGrid, applyAllTalentEffects } from './modules/ascension.js';
-import * as Cores from './modules/cores.js'; // <-- ADDED THIS LINE
+import * as Cores from './modules/cores.js';
 
 window.addAP = function(amount) {
     if (typeof amount !== 'number' || amount <= 0) {
@@ -90,6 +90,19 @@ function preloadAssets() {
     });
 }
 
+let gameLoopId = null;
+const startSpecificLevel = (levelNum) => {
+    if (gameLoopId) cancelAnimationFrame(gameLoopId);
+    applyAllTalentEffects();
+    resetGame(false); 
+    state.currentStage = levelNum; 
+    document.getElementById('gameOverMenu').style.display = 'none';
+    document.getElementById('levelSelectModal').style.display = 'none';
+    state.isPaused = false;
+    updateUI();
+    loop();
+};
+
 window.addEventListener('load', () => {
     preloadAssets().then(() => {
         const canvas = document.getElementById("gameCanvas");
@@ -166,6 +179,31 @@ window.addEventListener('load', () => {
             }
         }
 
+        function equipCore(coreId) {
+            state.player.equippedAberrationCore = coreId;
+            savePlayerState();
+            populateAberrationCoreMenu(onCoreEquip); // Repopulate to update equipped status
+            updateUI();
+        }
+
+        const onCoreEquip = (coreId) => {
+            const isEquipped = state.player.equippedAberrationCore === coreId;
+            // If the game is running and the player is trying to switch to a DIFFERENT core
+            if (!state.gameOver && gameLoopId && !isEquipped) {
+                showCustomConfirm(
+                    "|| DESTABILIZE TIMELINE? ||",
+                    "Attuning a new Aberration Core requires a full system recalibration. The current timeline will collapse, forcing a restart of the stage. Do you wish to proceed?",
+                    () => {
+                        equipCore(coreId);
+                        aberrationCoreModal.style.display = 'none';
+                        startSpecificLevel(state.currentStage); 
+                    }
+                );
+            } else if (!isEquipped) {
+                equipCore(coreId);
+            }
+        };
+
         function setupEventListeners() {
             function setPlayerTarget(e) {
                 const rect = canvas.getBoundingClientRect();
@@ -183,6 +221,7 @@ window.addEventListener('load', () => {
             canvas.addEventListener("touchstart", e => { e.preventDefault(); setPlayerTarget(e); }, { passive: false });
             
             const useOffensivePowerWrapper = () => {
+                if (state.gameOver || state.isPaused) return;
                 const powerKey = state.offensiveInventory[0];
                 if (powerKey) {
                     usePower(powerKey);
@@ -191,6 +230,7 @@ window.addEventListener('load', () => {
                 }
             };
             const useDefensivePowerWrapper = () => {
+                if (state.gameOver || state.isPaused) return;
                 const powerKey = state.defensiveInventory[0];
                 if (powerKey) {
                     usePower(powerKey);
@@ -256,16 +296,9 @@ window.addEventListener('load', () => {
                     return;
                 }
                 state.isPaused = true;
-                populateAberrationCoreMenu(equipCore);
+                populateAberrationCoreMenu(onCoreEquip);
                 aberrationCoreModal.style.display = 'flex';
                 AudioManager.playSfx('uiModalOpen');
-            };
-
-            const equipCore = (coreId) => {
-                state.player.equippedAberrationCore = coreId;
-                savePlayerState();
-                populateAberrationCoreMenu(equipCore);
-                updateUI();
             };
 
             aberrationCoreSocket.addEventListener('click', openAberrationCoreMenu);
@@ -285,10 +318,19 @@ window.addEventListener('load', () => {
             });
             
             unequipCoreBtn.addEventListener('click', () => {
-                state.player.equippedAberrationCore = null;
-                savePlayerState();
-                populateAberrationCoreMenu(equipCore);
-                updateUI();
+                 if (!state.gameOver && gameLoopId && state.player.equippedAberrationCore !== null) {
+                    showCustomConfirm(
+                        "|| DESTABILIZE TIMELINE? ||",
+                        "Attuning to nothing requires a full system recalibration. The current timeline will collapse, forcing a restart of the stage. Do you wish to proceed?",
+                        () => {
+                            equipCore(null);
+                            aberrationCoreModal.style.display = 'none';
+                            startSpecificLevel(state.currentStage);
+                        }
+                    );
+                } else {
+                    equipCore(null);
+                }
             });
 
             storyBtn.addEventListener("click", () => {
@@ -413,29 +455,17 @@ window.addEventListener('load', () => {
             });
         }
 
-        let gameLoopId = null;
         function loop() {
             if (!gameTick(mx, my)) {
                 if (gameLoopId) {
                     cancelAnimationFrame(gameLoopId);
+                    gameLoopId = null;
                 }
                 return;
             }
             gameLoopId = requestAnimationFrame(loop);
         }
         
-        const startSpecificLevel = (levelNum) => {
-            if (gameLoopId) cancelAnimationFrame(gameLoopId);
-            applyAllTalentEffects();
-            resetGame(false); 
-            state.currentStage = levelNum; 
-            gameOverMenu.style.display = 'none';
-            levelSelectModal.style.display = 'none';
-            state.isPaused = false;
-            updateUI();
-            loop();
-        };
-
         const startOrreryEncounter = (bossList) => {
             if (gameLoopId) cancelAnimationFrame(gameLoopId);
             applyAllTalentEffects();
