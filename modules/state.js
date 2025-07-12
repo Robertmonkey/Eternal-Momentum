@@ -2,6 +2,8 @@
 import { offensivePowers } from './powers.js';
 
 export const state = {
+  LMB_down: false, // NEW - to track left mouse button state
+  RMB_down: false, // NEW - to track right mouse button state
   player:{
     x:0, y:0, r:20, speed:1.0,
     maxHealth:100, health:100,
@@ -51,16 +53,16 @@ export const state = {
             swarm_link: { tail: [], enemiesForNextSegment: 0 },
             epoch_ender: { cooldownUntil: 0, history: [] },
             pantheon: { lastCycleTime: 0 },
-            syphon: { canUse: true },
-            juggernaut: { isCharging: false, lastMoveTime: 0 },
-            miasma: { isPurifying: false, lastMoveTime: 0 },
+            syphon: { cooldownUntil: 0 },
+            juggernaut: { cooldownUntil: 0 },
+            miasma: { isPurifying: false, stillStartTime: null },
             annihilator: { cooldownUntil: 0 },
             shaper_of_fate: { isDisabled: false },
             helix_weaver: { lastBolt: 0 },
             temporal_paradox: { lastEcho: 0 },
             obelisk: { },
             gravity: { lastPulseTime: 0 },
-            looper: { lastDefensivePower: null }
+            looper: { isShifting: false }
         }
     }
   },
@@ -135,7 +137,6 @@ export function resetGame(isArena = false) {
     state.player.contingencyUsed = false;
     state.player.preordinanceUsed = false;
     
-    // CORRECTED CORE STATE RESET LOGIC
     state.player.talent_states.core_states = {
         architect: { lastPillarTime: 0 },
         mirror_mirage: { lastDecoyTime: 0 },
@@ -144,18 +145,17 @@ export function resetGame(isArena = false) {
         swarm_link: { tail: [], enemiesForNextSegment: 0 },
         epoch_ender: { cooldownUntil: 0, history: [] },
         pantheon: { lastCycleTime: 0 },
-        syphon: { canUse: true },
-        juggernaut: { isCharging: false, lastMoveTime: 0 },
-        miasma: { isPurifying: false, lastMoveTime: 0 },
+        syphon: { cooldownUntil: 0 },
+        juggernaut: { cooldownUntil: 0 },
+        miasma: { isPurifying: false, stillStartTime: null },
         annihilator: { cooldownUntil: 0 },
         shaper_of_fate: { isDisabled: false },
         helix_weaver: { lastBolt: 0 },
         temporal_paradox: { lastEcho: 0 },
         obelisk: { },
         gravity: { lastPulseTime: 0 },
-        looper: { lastDefensivePower: null }
+        looper: { isShifting: false }
     };
-
 
     Object.assign(state, {
         enemies: [], pickups: [], effects: [], particles: [], 
