@@ -11,7 +11,7 @@ import * as Cores from './cores.js';
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-// --- NEW HELPER FUNCTION ---
+// --- Helper Function ---
 function playerHasCore(coreId) {
     if (state.player.equippedAberrationCore === coreId) return true;
     return state.player.activePantheonBuffs.some(buff => buff.coreId === coreId);
@@ -705,7 +705,8 @@ export function gameTick(mx, my) {
         if(!e.isFriendly) {
             const hasPhased = playerHasCore('quantum_shadow') && state.player.statusEffects.some(eff => eff.name === 'Phased');
             const pDist = Math.hypot(state.player.x-e.x,state.player.y-e.y);
-            if(pDist < e.r+state.player.r && !hasPhased){
+            const juggernautCharging = state.effects.some(eff => eff.type === 'juggernaut_player_charge');
+            if(pDist < e.r+state.player.r && !hasPhased && !juggernautCharging){
                 if (state.player.talent_states.phaseMomentum.active && !e.boss) {
                     // No collision damage
                 } else {
@@ -901,10 +902,10 @@ export function gameTick(mx, my) {
                         } else {
                             if (playerHasCore('basilisk')) {
                                 target.petrifiedUntil = now + 3000;
-                                target.wasFrozen = true; // For cryo shatter synergy
+                                target.wasFrozen = true;
                             }
                             let finalDmg = dmg * dynamicDamageMultiplier;
-                            if(target.petrifiedUntil > now) finalDmg *= 1.20; // 20% more damage
+                            if(target.petrifiedUntil > now) finalDmg *= 1.20;
                             target.hp -= finalDmg;
                             Cores.handleCoreOnDamageDealt(target);
                         }
@@ -1109,45 +1110,59 @@ export function gameTick(mx, my) {
         else if (effect.type === 'annihilator_beam') {
             if (Date.now() > effect.endTime) { state.effects.splice(i, 1); continue; }
             const { source, pillar } = effect; if(!source || !pillar || source.hp <= 0) { state.effects.splice(i, 1); continue; }
+            
             const alpha = (effect.endTime - Date.now()) / 1200; 
+            
             ctx.save();
             ctx.fillStyle = `rgba(214, 48, 49, ${alpha * 0.7})`;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
             const distToPillar = Math.hypot(pillar.x - source.x, pillar.y - source.y);
             if (distToPillar > pillar.r) {
                 const angleToPillar = Math.atan2(pillar.y - source.y, pillar.x - source.x);
                 const angleToTangent = Math.asin(pillar.r / distToPillar);
                 const angle1 = angleToPillar - angleToTangent;
                 const angle2 = angleToPillar + angleToTangent;
+        
                 const distToTangentPoint = Math.sqrt(distToPillar**2 - pillar.r**2);
                 const t1x = source.x + distToTangentPoint * Math.cos(angle1);
                 const t1y = source.y + distToTangentPoint * Math.sin(angle1);
                 const t2x = source.x + distToTangentPoint * Math.cos(angle2);
                 const t2y = source.y + distToTangentPoint * Math.sin(angle2);
+
                 const maxDist = Math.hypot(canvas.width, canvas.height) * 2;
                 const p1x = t1x + maxDist * Math.cos(angle1);
                 const p1y = t1y + maxDist * Math.sin(angle1);
                 const p2x = t2x + maxDist * Math.cos(angle2);
                 const p2y = t2y + maxDist * Math.sin(angle2);
+                
                 ctx.globalCompositeOperation = 'destination-out';
                 ctx.beginPath();
                 ctx.arc(pillar.x, pillar.y, pillar.r, 0, 2 * Math.PI);
                 ctx.fill();
+
                 ctx.beginPath();
-                ctx.moveTo(t1x, t1y); ctx.lineTo(p1x, p1y); ctx.lineTo(p2x, p2y); ctx.lineTo(t2x, t2y);
+                ctx.moveTo(t1x, t1y);
+                ctx.lineTo(p1x, p1y);
+                ctx.lineTo(p2x, p2y);
+                ctx.lineTo(t2x, t2y);
                 ctx.closePath();
                 ctx.fill();
             }
             ctx.restore();
+
             const allTargets = [state.player, ...state.enemies.filter(t => t !== source)];
             allTargets.forEach(target => {
                 const distToPillarCheck = Math.hypot(pillar.x - source.x, pillar.y - source.y);
                 if (distToPillarCheck <= pillar.r) return;
+
                 const angleToPillarCheck = Math.atan2(pillar.y - source.y, pillar.x - source.x);
                 const angleToTangentCheck = Math.asin(pillar.r / distToPillarCheck);
                 const targetAngle = Math.atan2(target.y - source.y, target.x - source.x);
                 let angleDiff = (targetAngle - angleToPillarCheck + Math.PI * 3) % (Math.PI * 2) - Math.PI;
+
                 const isSafe = Math.abs(angleDiff) < angleToTangentCheck && Math.hypot(target.x - source.x, target.y - source.y) > distToPillarCheck;
+                
                 if (!isSafe && (target.health > 0 || target.hp > 0)) {
                     if (target === state.player) {
                         if (state.player.shield) return;
