@@ -3,47 +3,42 @@ import { state } from './state.js';
 import * as utils from './utils.js';
 import { bossData } from './bosses.js';
 import { showUnlockNotification } from './ui.js';
-import { powers } from './powers.js';
+import { usePower } from './powers.js';
 
-// --- NEW HELPER FUNCTION ---
+// Helper function to check for core presence (equipped or via Pantheon)
 export function playerHasCore(coreId) {
-    if (state.player.equippedAberrationCore === coreId) {
-        return true;
-    }
+    if (state.player.equippedAberrationCore === coreId) return true;
     return state.player.activePantheonBuffs.some(buff => buff.coreId === coreId);
 }
-
 
 /**
  * Applies passive, per-tick effects for equipped Aberration Cores.
  */
 export function applyCoreTickEffects(gameHelpers) {
     const now = Date.now();
-    const { play } = gameHelpers;
-    const ctx = document.getElementById("gameCanvas").getContext("2d");
+    const { play, addStatusEffect } = gameHelpers;
 
     // --- PANTHEON CORE LOGIC ---
     if (state.player.equippedAberrationCore === 'pantheon') {
-        if (now > (state.player.talent_states.core_states.pantheon.lastCycleTime || 0) + 10000) {
-            state.player.talent_states.core_states.pantheon.lastCycleTime = now;
+        const pantheonState = state.player.talent_states.core_states.pantheon;
+        if (now > (pantheonState.lastCycleTime || 0) + 10000) { // Cycle every 10 seconds
+            pantheonState.lastCycleTime = now;
             
-            if (state.player.activePantheonBuffs.length < 3) {
-                const unlockedCores = Array.from(state.player.unlockedAberrationCores);
-                const activeBuffIds = state.player.activePantheonBuffs.map(b => b.coreId);
-                const availablePool = unlockedCores.filter(id => id !== 'pantheon' && !activeBuffIds.includes(id));
+            const unlockedCores = Array.from(state.player.unlockedAberrationCores);
+            const activeBuffIds = state.player.activePantheonBuffs.map(b => b.coreId);
+            const availablePool = unlockedCores.filter(id => id !== 'pantheon' && !activeBuffIds.includes(id));
 
-                if (availablePool.length > 0) {
-                    const newCoreId = availablePool[Math.floor(Math.random() * availablePool.length)];
-                    const coreData = bossData.find(b => b.id === newCoreId);
-                    
-                    state.player.activePantheonBuffs.push({
-                        coreId: newCoreId,
-                        endTime: now + 30000
-                    });
+            if (availablePool.length > 0) {
+                const newCoreId = availablePool[Math.floor(Math.random() * availablePool.length)];
+                const coreData = bossData.find(b => b.id === newCoreId);
+                
+                state.player.activePantheonBuffs.push({
+                    coreId: newCoreId,
+                    endTime: now + 30000 // Each buff lasts 30 seconds
+                });
 
-                    showUnlockNotification(`Pantheon Attuned: ${coreData.name}`, 'Aspect Gained');
-                    play('shaperAttune');
-                }
+                showUnlockNotification(`Pantheon Attuned: ${coreData.name}`, 'Aspect Gained');
+                play('shaperAttune');
             }
         }
     }
@@ -55,49 +50,36 @@ export function applyCoreTickEffects(gameHelpers) {
 
     if (playerHasCore('vampire')) {
         if (now - state.player.talent_states.phaseMomentum.lastDamageTime > 5000) {
-            state.player.health = Math.min(state.player.maxHealth, state.player.health + (1 / 60));
+            if (state.player.health < state.player.maxHealth) {
+                 state.player.health = Math.min(state.player.maxHealth, state.player.health + (1 / 60));
+            }
         }
     }
     
     if (playerHasCore('gravity')) {
-        if (now > (state.player.talent_states.core_states.gravity?.lastPulseTime || 0) + 10000) {
-            state.player.talent_states.core_states.gravity.lastPulseTime = now;
+        const gravityState = state.player.talent_states.core_states.gravity;
+        if (now > (gravityState.lastPulseTime || 0) + 6000) {
+            gravityState.lastPulseTime = now;
             state.effects.push({ 
                 type: 'player_pull_pulse', 
                 x: state.player.x, 
                 y: state.player.y, 
                 maxRadius: 600, 
                 startTime: now, 
-                duration: 500 // Make it visible
+                duration: 500
             });
             play('gravitySound');
         }
     }
     
-    if (playerHasCore('swarm_link')) {
-        let prev = state.player;
-        state.player.talent_states.core_states.swarm_link.tail.forEach(c => {
-            c.x += (prev.x - c.x) * 0.2;
-            c.y += (prev.y - c.y) * 0.2;
-            const segmentRadius = 6 + Math.sin(now / 200);
-            utils.drawCircle(ctx, c.x, c.y, segmentRadius, "orange"); 
-            utils.spawnParticles(state.particles, c.x, c.y, 'rgba(255, 165, 0, 0.5)', 1, 0.5, 10, 2);
-            prev = c;
-            state.enemies.forEach(e => {
-                if (Math.hypot(e.x - c.x, e.y - c.y) < e.r + segmentRadius && !e.isFriendly) {
-                    e.hp -= 0.2 * state.player.talent_modifiers.damage_multiplier;
-                }
-            });
-        });
-    }
-    
     if (playerHasCore('architect')) {
-        if (now > (state.player.talent_states.core_states.architect.lastPillarTime || 0) + 15000) {
-            state.player.talent_states.core_states.architect.lastPillarTime = now;
+        const architectState = state.player.talent_states.core_states.architect;
+        if (now > (architectState.lastPillarTime || 0) + 15000) {
+            architectState.lastPillarTime = now;
             play('architectBuild');
             
-            const ringRadius = 250;
-            const pillarCount = 12;
+            const ringRadius = 150;
+            const pillarCount = 4;
             for (let i = 0; i < pillarCount; i++) {
                 const angle = (i / pillarCount) * 2 * Math.PI;
                 const pillarX = state.player.x + ringRadius * Math.cos(angle);
@@ -108,37 +90,39 @@ export function applyCoreTickEffects(gameHelpers) {
     }
 
     if (playerHasCore('annihilator')) {
-        if (now > (state.player.talent_states.core_states.annihilator.cooldownUntil || 0)) {
-            state.player.talent_states.core_states.annihilator.cooldownUntil = now + 25000;
-            state.effects.push({ type: 'core_annihilation_event', startTime: now, endTime: now + 4000 });
+        const annihilatorState = state.player.talent_states.core_states.annihilator;
+        if (now > (annihilatorState.cooldownUntil || 0)) {
+            annihilatorState.cooldownUntil = now + 25000;
+            state.effects.push({ type: 'player_annihilation_beam', startTime: now, endTime: now + 4000 });
             play('powerSirenSound');
         }
     }
 
     if (playerHasCore('miasma')) {
         const miasmaState = state.player.talent_states.core_states.miasma;
-        const moveDist = Math.hypot(state.player.dx_for_miasma_check || 0, state.player.dy_for_miasma_check || 0);
+        const moveDist = Math.hypot(window.mousePosition.x - state.player.x, window.mousePosition.y - state.player.y);
 
-        if (moveDist < 0.1) { // Player is considered still
-            if (!miasmaState.lastMoveTime) {
-                 miasmaState.lastMoveTime = now;
+        if (moveDist < state.player.r) {
+            if (!miasmaState.stillStartTime) {
+                 miasmaState.stillStartTime = now;
             }
-            if (now - miasmaState.lastMoveTime > 3000 && !miasmaState.isPurifying) {
+            if (now - miasmaState.stillStartTime > 3000 && !miasmaState.isPurifying) {
                 miasmaState.isPurifying = true;
                 play('ventPurify');
             }
         } else {
-            miasmaState.lastMoveTime = now;
+            miasmaState.stillStartTime = null;
             miasmaState.isPurifying = false;
         }
 
-        if (miasmaState.isPurifying) {
-            state.player.health = Math.min(state.player.maxHealth, state.player.health + (0.5 / 60));
+        if (miasmaState.isPurifying && state.player.health < state.player.maxHealth) {
+            state.player.health = Math.min(state.player.maxHealth, state.player.health + (1 / 60));
         }
     }
     
     if (playerHasCore('puppeteer')) {
-        if (now > (state.player.talent_states.core_states.puppeteer.lastConversion || 0) + 8000) {
+        const puppeteerState = state.player.talent_states.core_states.puppeteer;
+        if (now > (puppeteerState.lastConversion || 0) + 8000) {
             let farthestEnemy = null;
             let maxDist = 0;
             state.enemies.forEach(e => {
@@ -153,7 +137,7 @@ export function applyCoreTickEffects(gameHelpers) {
 
             const currentPuppetCount = state.enemies.filter(e => e.isFriendly && e.id === 'puppet').length;
             if (farthestEnemy && currentPuppetCount < 3) {
-                state.player.talent_states.core_states.puppeteer.lastConversion = now;
+                puppeteerState.lastConversion = now;
                 play('puppeteerConvert');
                 farthestEnemy.isPuppet = true;
                 farthestEnemy.isFriendly = true;
@@ -175,10 +159,11 @@ export function applyCoreTickEffects(gameHelpers) {
     }
     
     if (playerHasCore('helix_weaver')) {
-        if (now > (state.player.talent_states.core_states.helix_weaver?.lastBolt || 0) + 5000) {
-            if (!state.player.talent_states.core_states.helix_weaver) state.player.talent_states.core_states.helix_weaver = {};
-            state.player.talent_states.core_states.helix_weaver.lastBolt = now;
+        const helixState = state.player.talent_states.core_states.helix_weaver;
+        if (now > (helixState.lastBolt || 0) + 5000) {
+            helixState.lastBolt = now;
             state.effects.push({ type: 'helix_bolt', x: state.player.x, y: state.player.y, r: 8, speed: 2, angle: Math.random() * 2 * Math.PI, lifeEnd: now + 10000, caster: state.player });
+            play('weaverCast');
         }
     }
 }
@@ -190,12 +175,13 @@ export function handleCoreOnEnemyDeath(enemy, gameHelpers) {
     if (enemy.isFriendly) return;
 
     if (playerHasCore('splitter')) {
-        if (!enemy.boss && now > (state.player.talent_states.core_states.splitter.cooldownUntil || 0)) {
-            state.player.talent_states.core_states.splitter.cooldownUntil = now + 500;
+        const splitterState = state.player.talent_states.core_states.splitter;
+        if (!enemy.boss && now > (splitterState.cooldownUntil || 0)) {
+            splitterState.cooldownUntil = now + 500;
             for (let i = 0; i < 3; i++) {
                 const angle = Math.random() * Math.PI * 2;
                 state.effects.push({
-                    type: 'player_fragment', // Changed from seeking_shrapnel
+                    type: 'player_fragment',
                     x: enemy.x,
                     y: enemy.y,
                     dx: Math.cos(angle) * 4,
@@ -203,28 +189,31 @@ export function handleCoreOnEnemyDeath(enemy, gameHelpers) {
                     r: 10,
                     speed: 5,
                     damage: 8 * state.player.talent_modifiers.damage_multiplier,
-                    life: 3000,
+                    life: 4000,
                     startTime: now,
                     targetIndex: i
                 });
             }
+            gameHelpers.play('splitterOnDeath');
         }
     }
     
     if (playerHasCore('swarm_link')) {
-        state.player.talent_states.core_states.swarm_link.enemiesForNextSegment++;
-        if (state.player.talent_states.core_states.swarm_link.enemiesForNextSegment >= 2 && state.player.talent_states.core_states.swarm_link.tail.length < 50) {
-            state.player.talent_states.core_states.swarm_link.enemiesForNextSegment = 0;
-            const lastSegment = state.player.talent_states.core_states.swarm_link.tail.length > 0 ? state.player.talent_states.core_states.swarm_link.tail[state.player.talent_states.core_states.swarm_link.tail.length - 1] : state.player;
-            state.player.talent_states.core_states.swarm_link.tail.push({ x: lastSegment.x, y: lastSegment.y });
+        const swarmState = state.player.talent_states.core_states.swarm_link;
+        swarmState.enemiesForNextSegment++;
+        if (swarmState.enemiesForNextSegment >= 2 && swarmState.tail.length < 50) {
+            swarmState.enemiesForNextSegment = 0;
+            const lastSegment = swarmState.tail.length > 0 ? swarmState.tail[swarmState.tail.length - 1] : state.player;
+            swarmState.tail.push({ x: lastSegment.x, y: lastSegment.y });
         }
     }
     
     if (playerHasCore('fractal_horror')) {
-        if (!state.player.talent_states.core_states.fractal_horror) state.player.talent_states.core_states.fractal_horror = { killCount: 0 };
-        state.player.talent_states.core_states.fractal_horror.killCount++;
-        if (state.player.talent_states.core_states.fractal_horror.killCount >= 10) {
-            state.player.talent_states.core_states.fractal_horror.killCount = 0;
+        const fractalState = state.player.talent_states.core_states.fractal_horror;
+        fractalState.killCount = (fractalState.killCount || 0) + 1;
+        if (fractalState.killCount >= 10) {
+            fractalState.killCount = 0;
+            gameHelpers.play('fractalSplit');
             for (let k = 0; k < 3; k++) {
                 const bit = spawnEnemy(false, null, { x: enemy.x, y: enemy.y });
                 if (bit) {
@@ -255,12 +244,10 @@ export function handleCoreOnPlayerDamage(damage, enemy, gameHelpers) {
     if (playerHasCore('obelisk')) {
         const conduitCharge = state.player.statusEffects.find(e => e.name === 'Conduit Charge');
         if (conduitCharge && conduitCharge.count > 0) {
-            damageTaken = 0; // Negate damage
+            damageTaken = 0;
             conduitCharge.count--;
             if (conduitCharge.count <= 0) {
                 state.player.statusEffects = state.player.statusEffects.filter(e => e.name !== 'Conduit Charge');
-            } else {
-                conduitCharge.emoji = '⚡'.repeat(conduitCharge.count);
             }
             gameHelpers.play('conduitShatter');
             state.effects.push({ type: 'shockwave', caster: state.player, x: state.player.x, y: state.player.y, radius: 0, maxRadius: 200, speed: 1000, startTime: now, hitEnemies: new Set(), damage: 0, color: 'rgba(44, 62, 80, 0.7)' });
@@ -269,17 +256,16 @@ export function handleCoreOnPlayerDamage(damage, enemy, gameHelpers) {
 
     if (damageTaken > 0) {
         if (playerHasCore('mirror_mirage')) {
-            if (state.decoys.length < 3 && now > (state.player.talent_states.core_states.mirror_mirage.lastDecoyTime || 0)) {
-                state.player.talent_states.core_states.mirror_mirage.lastDecoyTime = now + 250; 
-                const newDecoy = { 
+            const mirrorState = state.player.talent_states.core_states.mirror_mirage;
+            if (now > (mirrorState.lastDecoyTime || 0)) {
+                mirrorState.lastDecoyTime = now + 12000;
+                state.decoys.push({ 
                     x: state.player.x, y: state.player.y, r: 20, 
-                    hp: 25, 
-                    isTaunting: true, 
-                    isMobile: false // Mirror Mirage decoys are stationary
-                };
-                state.decoys.push(newDecoy);
+                    expires: now + 3000,
+                    isTaunting: true, isMobile: false
+                });
                 gameHelpers.play('mirrorSwap');
-                state.effects.push({ type: 'shockwave', caster: newDecoy, x: newDecoy.x, y: newDecoy.y, radius: 0, maxRadius: 150, speed: 800, startTime: now, damage: 0, color: 'rgba(155, 89, 182, 0.5)' });
+                utils.spawnParticles(state.particles, state.player.x, state.player.y, '#ff00ff', 40, 4);
             }
         }
         
@@ -291,6 +277,7 @@ export function handleCoreOnPlayerDamage(damage, enemy, gameHelpers) {
                         e.glitchedUntil = now + 3000;
                     }
                 });
+                gameHelpers.play('glitchSound');
             }
         }
     }
@@ -300,31 +287,50 @@ export function handleCoreOnPlayerDamage(damage, enemy, gameHelpers) {
 
 export function handleCoreOnCollision(enemy, gameHelpers) {
     const now = Date.now();
-
     if (enemy.isFriendly) return;
 
     if (playerHasCore('parasite')) {
-         if (state.player.talent_states.phaseMomentum.active && !enemy.boss) {
+         if (state.player.talent_states.phaseMomentum.active && !enemy.boss && !enemy.isInfected) {
             enemy.isInfected = true;
             enemy.infectionEnd = now + 10000;
          }
     }
-    
-    if (playerHasCore('juggernaut')) {
-        const juggernautState = state.player.talent_states.core_states.juggernaut;
-        if (juggernautState.isCharging && !enemy.boss) {
-            enemy.hp = 0;
-            state.effects.push({ type: 'shockwave', caster: state.player, x: enemy.x, y: enemy.y, radius: 0, maxRadius: 120, speed: 600, startTime: now, hitEnemies: new Set(), damage: 10 * state.player.talent_modifiers.damage_multiplier, color: 'rgba(99, 110, 114, 0.7)' });
-            juggernautState.isCharging = false;
-            juggernautState.lastMoveTime = 0;
+}
+
+export function handleCoreOnDamageDealt(target) {
+    if (playerHasCore('vampire') && Math.random() < 0.10) {
+        state.pickups.push({
+            x: target.x, y: target.y, r: 10, type: 'custom', emoji: '🩸',
+            lifeEnd: Date.now() + 8000, vx: 0, vy: 0,
+            isSeeking: true,
+            customApply: () => {
+                state.player.health = Math.min(state.player.maxHealth, state.player.health + (state.player.maxHealth * 0.02));
+                utils.spawnParticles(state.particles, state.player.x, state.player.y, "#800020", 20, 3, 30);
+                window.gameHelpers.play('vampireHeal');
+            }
+        });
+    }
+
+    if(playerHasCore('parasite') && !target.boss) {
+        target.isInfected = true;
+        target.infectionEnd = Date.now() + 10000;
+    }
+
+    if(playerHasCore('basilisk')) {
+        if(target.wasFrozen || target.petrifiedUntil > Date.now()){
+             // Damage is amplified in gameLoop, this is just a hook
         }
     }
 }
 
 export function handleCoreOnShieldBreak() {
     if (playerHasCore('emp')) {
-        state.effects = state.effects.filter(ef => ef.type !== 'nova_bullet' && ef.type !== 'ricochet_projectile' && ef.type !== 'seeking_shrapnel');
+        state.effects = state.effects.filter(ef => 
+            ef.type !== 'nova_bullet' && 
+            ef.type !== 'helix_bolt'
+        );
         utils.spawnParticles(state.particles, state.player.x, state.player.y, '#3498db', 50, 4, 30);
+        window.gameHelpers.play('empDischarge');
     }
 }
 
@@ -340,6 +346,7 @@ export function handleCoreOnFatalDamage(enemy, gameHelpers) {
             state.player.health = rewindState.health;
             state.player.talent_states.core_states.epoch_ender.cooldownUntil = now + 120000;
             gameHelpers.play('timeRewind');
+            utils.spawnParticles(state.particles, state.player.x, state.player.y, '#bdc3c7', 80, 6, 40);
             return true;
         }
     }
@@ -352,56 +359,76 @@ export function handleCoreOnPickup(gameHelpers) {
     if (playerHasCore('obelisk')) {
         const existing = state.player.statusEffects.find(e => e.name === 'Conduit Charge');
         if (!existing || existing.count < 3) {
-            addStatusEffect('Conduit Charge', '⚡', 999999); // Duration is effectively infinite
+            addStatusEffect('Conduit Charge', '⚡', 999999); 
         }
     }
 }
 
 export function handleCoreOnEmptySlot(mx, my, gameHelpers) {
+    const now = Date.now();
+
+    if (playerHasCore('juggernaut')) {
+        const juggernautState = state.player.talent_states.core_states.juggernaut;
+        if (now > (juggernautState.cooldownUntil || 0)) {
+            juggernautState.cooldownUntil = now + 8000;
+            const angle = Math.atan2(my - state.player.y, mx - state.player.x);
+            state.effects.push({
+                type: 'juggernaut_player_charge',
+                startTime: now,
+                duration: 700,
+                angle: angle,
+                hitEnemies: new Set()
+            });
+            gameHelpers.play('chargeDashSound');
+            return true;
+        }
+    }
+
     if (playerHasCore('syphon')) {
-        gameHelpers.play('gravitySound');
-        state.pickups.forEach(p => {
-             const pullStrength = 5;
-             const angle = Math.atan2(state.player.y - p.y, state.player.x - p.x);
-             p.vx += Math.cos(angle) * pullStrength; p.vy += Math.sin(angle) * pullStrength;
-        });
-        return true;
+        const syphonState = state.player.talent_states.core_states.syphon;
+        if (now > (syphonState.cooldownUntil || 0)) {
+            syphonState.cooldownUntil = now + 5000;
+            gameHelpers.play('syphonFire');
+            const angle = Math.atan2(my - state.player.y, mx - state.player.x);
+            state.effects.push({
+                type: 'syphon_cone',
+                startTime: now,
+                duration: 1500,
+                angle: angle,
+                source: state.player
+            });
+            return true;
+        }
     }
     return false;
 }
 
 export function handleCoreOnDefensivePower(powerKey, mx, my, gameHelpers) {
-    const { play } = gameHelpers;
+    const { play, addStatusEffect } = gameHelpers;
 
     if (playerHasCore('reflector')) {
-        gameHelpers.addStatusEffect('Reflective Ward', '💎', 2000);
+        addStatusEffect('Reflective Ward', '🛡️', 2000);
     }
 
     if (playerHasCore('quantum_shadow')) {
-        gameHelpers.addStatusEffect('Phased', '👻', 2000);
+        addStatusEffect('Phased', '👻', 2000);
         play('phaseShiftSound');
     }
-
+    
     if (playerHasCore('looper')) {
         const looperState = state.player.talent_states.core_states.looper;
-        looperState.lastDefensivePower = powerKey;
-
-        gameHelpers.addStatusEffect('Echo Primed', '🔁', 3000);
-
-        setTimeout(() => {
-            if (looperState.lastDefensivePower) {
-                const powerToEcho = looperState.lastDefensivePower;
-                looperState.lastDefensivePower = null; 
-                
-                if(state.gameOver) return;
-
-                const power = powers[powerToEcho];
-                if (power) {
-                    play('mirrorSwap'); 
-                    state.effects.push({ type: 'shockwave', caster: state.player, x: state.player.x, y: state.player.y, radius: 0, maxRadius: 100, speed: 500, startTime: Date.now(), damage: 0, color: 'rgba(26, 188, 156, 0.5)' });
-                    usePower(powerToEcho, true);
-                }
-            }
-        }, 3000);
+        if (!looperState.isShifting) {
+            looperState.isShifting = true;
+            addStatusEffect('Shifting', '🌀', 1000);
+            play('chargeUpSound');
+            setTimeout(() => {
+                if(state.gameOver || !looperState.isShifting) return;
+                state.player.x = mx;
+                state.player.y = my;
+                play('mirrorSwap');
+                utils.spawnParticles(state.particles, mx, my, '#ecf0f1', 40, 4);
+                looperState.isShifting = false;
+            }, 1000);
+        }
     }
 }
