@@ -497,9 +497,9 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     display: flex;
 }
 #aberration-core-socket.active {
-    border-color: var(--nexus-glow); /* DYNAMIC GLOW */
+    border-color: var(--nexus-glow);
     animation: core-active-glow 2.5s infinite;
-    box-shadow: 0 0 15px var(--nexus-glow); /* DYNAMIC GLOW */
+    box-shadow: 0 0 15px var(--nexus-glow);
 }
 #aberration-core-socket:hover {
     transform: scale(1.1);
@@ -517,16 +517,16 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     position: relative;
     overflow: hidden;
 }
-/* NEW: Style for the cooldown overlay */
+
 #aberration-core-cooldown {
     position: absolute;
-    bottom: 0; 
+    bottom: 0;
     left: 0;
     width: 100%;
     height: 100%;
     background-color: rgba(0, 0, 0, 0.7);
-    transform: scaleY(0); /* Cooldown starts empty */
-    transform-origin: bottom; /* Fills from bottom to top */
+    transform: scaleY(1); /* Start full (on cooldown) */
+    transform-origin: bottom;
     transition: transform 0.1s linear;
 }
 
