@@ -74,11 +74,10 @@ function preloadAssets() {
                 img.onload = () => updateProgress(url);
                 img.onerror = () => {
                     console.error(`Failed to load image: ${url}`);
-                    updateProgress(url); // Still count it as "loaded" to not hang the loader
+                    updateProgress(url);
                 };
             } else if (isVideo) {
                 const video = document.getElementById('home-video-bg');
-                // Use a timeout as a fallback in case canplaythrough never fires
                 const fallbackTimeout = setTimeout(() => {
                     console.warn(`Video fallback timeout for ${url}`);
                     updateProgress(url);
@@ -94,7 +93,7 @@ function preloadAssets() {
                 }, { once: true });
                 if(video.src !== url) video.src = url;
                 video.load();
-            } else { // Assume audio
+            } else { 
                 const audioEl = Array.from(document.querySelectorAll('audio')).find(el => el.src.includes(url.split('/').pop()));
                 if (audioEl) {
                      const fallbackTimeout = setTimeout(() => {
@@ -112,7 +111,7 @@ function preloadAssets() {
                     }, { once: true });
                     audioEl.load();
                 } else {
-                     updateProgress(url); // If no matching audio element, just move on
+                     updateProgress(url);
                 }
             }
         });
@@ -291,7 +290,7 @@ window.addEventListener('load', () => {
                 AudioManager.playSfx('uiModalClose');
                 if (state.gameOver) {
                     document.getElementById('gameOverMenu').style.display = 'flex';
-                } else if (gameLoopId) { // only unpause if game is actually running
+                } else if (gameLoopId) {
                     state.isPaused = false;
                 }
             });
@@ -479,7 +478,21 @@ window.addEventListener('load', () => {
             });
         }
         
-        // This is the key change to fix the "stuck on loading" bug
+        function initialize() {
+            canvas.style.cursor = "url('./assets/cursors/crosshair.cur'), crosshair";
+            
+            loadPlayerState();
+            applyAllTalentEffects();
+            mx = canvas.width / 2;
+            my = canvas.height / 2;
+            function resize() { canvas.width = innerWidth; canvas.height = innerHeight; }
+            window.addEventListener("resize", resize);
+            resize();
+            AudioManager.setup(allAudioElements, soundBtn);
+            setupEventListeners();
+            setupHomeScreen();
+        }
+        
         setTimeout(() => {
             loadingScreen.style.opacity = '0';
             loadingScreen.addEventListener('transitionend', () => {
@@ -491,6 +504,6 @@ window.addEventListener('load', () => {
                 // Initialize the game's logic AFTER the screen has faded out
                 initialize();
             }, { once: true });
-        }, 500); // Initial delay to ensure loading text is seen
+        }, 500);
     });
 });
