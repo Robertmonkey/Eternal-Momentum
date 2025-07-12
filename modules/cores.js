@@ -23,37 +23,60 @@ export function activateCorePower(mx, my, gameHelpers) {
         return; // On cooldown
     }
 
+    let abilityTriggered = false;
+
     // This acts as a router for all core active abilities
     switch (coreId) {
         case 'juggernaut':
             coreState.cooldownUntil = now + 8000;
             const angle = Math.atan2(my - state.player.y, mx - state.player.x);
-            state.effects.push({
-                type: 'juggernaut_player_charge',
-                startTime: now,
-                duration: 700,
-                angle: angle,
-                hitEnemies: new Set()
-            });
+            state.effects.push({ type: 'juggernaut_player_charge', startTime: now, duration: 700, angle: angle, hitEnemies: new Set() });
             gameHelpers.play('chargeDashSound');
+            abilityTriggered = true;
             break;
         
         case 'syphon':
             coreState.cooldownUntil = now + 5000;
             gameHelpers.play('syphonFire');
             const syphonAngle = Math.atan2(my - state.player.y, mx - state.player.x);
-            state.effects.push({
-                type: 'syphon_cone',
-                startTime: now,
-                duration: 1500,
-                angle: syphonAngle,
-                source: state.player
-            });
+            state.effects.push({ type: 'syphon_cone', startTime: now, duration: 1500, angle: syphonAngle, source: state.player });
+            abilityTriggered = true;
+            break;
+
+        case 'gravity':
+            coreState.cooldownUntil = now + 6000;
+            state.effects.push({ type: 'player_pull_pulse', x: state.player.x, y: state.player.y, maxRadius: 600, startTime: now, duration: 500 });
+            gameHelpers.play('gravitySound');
+            abilityTriggered = true;
+            break;
+            
+        case 'architect':
+            coreState.cooldownUntil = now + 15000;
+            gameHelpers.play('architectBuild');
+            const ringRadius = 150;
+            const pillarCount = 4;
+            for (let i = 0; i < pillarCount; i++) {
+                const pAngle = (i / pillarCount) * 2 * Math.PI;
+                state.effects.push({ type: 'architect_pillar', x: state.player.x + ringRadius * Math.cos(pAngle), y: state.player.y + ringRadius * Math.sin(pAngle), r: 20, endTime: now + 10000 });
+            }
+            abilityTriggered = true;
+            break;
+
+        case 'annihilator':
+            coreState.cooldownUntil = now + 25000;
+            state.effects.push({ type: 'player_annihilation_beam', startTime: now, endTime: now + 4000 });
+            gameHelpers.play('powerSirenSound');
+            abilityTriggered = true;
             break;
 
         default:
             // Core has no active ability on this trigger
             break;
+    }
+
+    if (abilityTriggered) {
+        // This makes sure the cooldown UI updates instantly
+        updateUI();
     }
 }
 
@@ -63,7 +86,7 @@ export function activateCorePower(mx, my, gameHelpers) {
  */
 export function applyCoreTickEffects(gameHelpers) {
     const now = Date.now();
-    const { play, addStatusEffect } = gameHelpers;
+    const { play } = gameHelpers;
     const ctx = document.getElementById("gameCanvas").getContext("2d");
 
     // --- PANTHEON CORE LOGIC ---
@@ -102,19 +125,6 @@ export function applyCoreTickEffects(gameHelpers) {
             }
         }
     }
-    
-    if (playerHasCore('gravity')) {
-        const gravityState = state.player.talent_states.core_states.gravity;
-        if (now > (gravityState.lastPulseTime || 0) + 6000) {
-            gravityState.lastPulseTime = now;
-            state.effects.push({ 
-                type: 'player_pull_pulse', 
-                x: state.player.x, y: state.player.y, 
-                maxRadius: 600, startTime: now, duration: 500
-            });
-            play('gravitySound');
-        }
-    }
 
     if (playerHasCore('swarm_link')) {
         const swarmState = state.player.talent_states.core_states.swarm_link;
@@ -134,32 +144,6 @@ export function applyCoreTickEffects(gameHelpers) {
         });
     }
     
-    if (playerHasCore('architect')) {
-        const architectState = state.player.talent_states.core_states.architect;
-        if (now > (architectState.lastPillarTime || 0) + 15000) {
-            architectState.lastPillarTime = now;
-            play('architectBuild');
-            
-            const ringRadius = 150;
-            const pillarCount = 4;
-            for (let i = 0; i < pillarCount; i++) {
-                const angle = (i / pillarCount) * 2 * Math.PI;
-                const pillarX = state.player.x + ringRadius * Math.cos(angle);
-                const pillarY = state.player.y + ringRadius * Math.sin(angle);
-                state.effects.push({ type: 'architect_pillar', x: pillarX, y: pillarY, r: 20, endTime: now + 10000 });
-            }
-        }
-    }
-
-    if (playerHasCore('annihilator')) {
-        const annihilatorState = state.player.talent_states.core_states.annihilator;
-        if (now > (annihilatorState.cooldownUntil || 0)) {
-            annihilatorState.cooldownUntil = now + 25000;
-            state.effects.push({ type: 'player_annihilation_beam', startTime: now, endTime: now + 4000 });
-            play('powerSirenSound');
-        }
-    }
-
     if (playerHasCore('miasma')) {
         const miasmaState = state.player.talent_states.core_states.miasma;
         const moveDist = Math.hypot(window.mousePosition.x - state.player.x, window.mousePosition.y - state.player.y);
@@ -370,12 +354,6 @@ export function handleCoreOnDamageDealt(target) {
         target.isInfected = true;
         target.infectionEnd = Date.now() + 10000;
     }
-
-    if(playerHasCore('basilisk')) {
-        if(target.wasFrozen || target.petrifiedUntil > Date.now()){
-             // Damage amplification is handled in gameLoop
-        }
-    }
 }
 
 export function handleCoreOnShieldBreak() {
@@ -420,7 +398,7 @@ export function handleCoreOnPickup(gameHelpers) {
 }
 
 export function handleCoreOnEmptySlot(mx, my, gameHelpers) {
-    // This function is now deprecated in favor of activateCorePower, but is kept for potential future use.
+    // This function is now deprecated in favor of activateCorePower.
     return false;
 }
 
