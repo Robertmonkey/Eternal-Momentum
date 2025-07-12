@@ -185,6 +185,7 @@ window.addEventListener('load', () => {
             state.currentStage = levelNum; 
             gameOverMenu.style.display = 'none';
             levelSelectModal.style.display = 'none';
+            aberrationCoreModal.style.display = 'none';
             state.isPaused = false;
             updateUI();
             loop();
@@ -255,20 +256,43 @@ window.addEventListener('load', () => {
             canvas.addEventListener("touchmove", e => { e.preventDefault(); setPlayerTarget(e); }, { passive: false });
             canvas.addEventListener("touchstart", e => { e.preventDefault(); setPlayerTarget(e); }, { passive: false });
             
+            let coreActivationTimeout = null;
+
             const useOffensivePowerWrapper = () => {
-                if (state.gameOver || state.isPaused) return;
+                if (state.gameOver || state.isPaused || coreActivationTimeout) return;
                 const powerKey = state.offensiveInventory[0];
                 if (powerKey) usePower(powerKey);
-                else Cores.handleCoreOnEmptySlot(mx, my, window.gameHelpers);
             };
             const useDefensivePowerWrapper = () => {
-                if (state.gameOver || state.isPaused) return;
+                if (state.gameOver || state.isPaused || coreActivationTimeout) return;
                 const powerKey = state.defensiveInventory[0];
                 if (powerKey) usePower(powerKey);
             };
 
+            canvas.addEventListener('mousedown', e => {
+                if(e.target !== canvas) return;
+                if (e.button === 0) state.LMB_down = true;
+                if (e.button === 2) state.RMB_down = true;
+
+                if (state.LMB_down && state.RMB_down) {
+                    Cores.activateCorePower(mx, my, window.gameHelpers);
+                    coreActivationTimeout = setTimeout(() => {
+                        coreActivationTimeout = null;
+                    }, 100);
+                }
+            });
+
+            canvas.addEventListener('mouseup', e => {
+                if(e.target !== canvas) return;
+                if (e.button === 0) state.LMB_down = false;
+                if (e.button === 2) state.RMB_down = false;
+            });
+
             canvas.addEventListener("click", e => { if (e.target.id === 'gameCanvas') useOffensivePowerWrapper(); });
-            canvas.addEventListener("contextmenu", e => { e.preventDefault(); useDefensivePowerWrapper(); });
+            canvas.addEventListener("contextmenu", e => { 
+                e.preventDefault(); 
+                useDefensivePowerWrapper(); 
+            });
             document.getElementById('slot-off-0').addEventListener('click', useOffensivePowerWrapper);
             document.getElementById('slot-def-0').addEventListener('click', useDefensivePowerWrapper);
             document.addEventListener('visibilitychange', () => AudioManager.handleVisibilityChange());
@@ -333,22 +357,7 @@ window.addEventListener('load', () => {
                 else if (gameLoopId) state.isPaused = false;
             });
             
-            unequipCoreBtn.addEventListener('click', () => {
-                const isEquipped = state.player.equippedAberrationCore !== null;
-                 if (!state.gameOver && gameLoopId && isEquipped) {
-                    showCustomConfirm(
-                        "|| DESTABILIZE TIMELINE? ||",
-                        "Attuning to nothing requires a full system recalibration. The current timeline will collapse, forcing a restart of the stage. Do you wish to proceed?",
-                        () => {
-                            equipCore(null);
-                            aberrationCoreModal.style.display = 'none';
-                            startSpecificLevel(state.currentStage);
-                        }
-                    );
-                } else {
-                    equipCore(null);
-                }
-            });
+            unequipCoreBtn.addEventListener('click', () => onCoreEquip(null));
 
             storyBtn.addEventListener("click", () => {
                 const storyTitle = "ETERNAL MOMENTUM";
