@@ -32,7 +32,7 @@ const progressFill = document.getElementById('loading-progress-fill');
 const statusText = document.getElementById('loading-status-text');
 
 function preloadAssets() {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         const assetManifest = [
             './assets/home.mp4', './assets/load.png', './assets/bg.png',
             ...Array.from(document.querySelectorAll('audio')).map(el => el.src)
@@ -55,8 +55,17 @@ function preloadAssets() {
             }
         };
 
+        if (totalAssets === 0) {
+            resolve();
+            return;
+        }
+
         assetManifest.forEach(url => {
-            const isImage = url.endsWith('.png');
+            if (!url) {
+                updateProgress('empty url');
+                return;
+            };
+            const isImage = /\.(png|jpg|jpeg|gif)$/.test(url);
             const isVideo = url.endsWith('.mp4');
 
             if (isImage) {
@@ -65,25 +74,45 @@ function preloadAssets() {
                 img.onload = () => updateProgress(url);
                 img.onerror = () => {
                     console.error(`Failed to load image: ${url}`);
-                    updateProgress(url);
+                    updateProgress(url); // Still count it as "loaded" to not hang the loader
                 };
             } else if (isVideo) {
                 const video = document.getElementById('home-video-bg');
-                video.addEventListener('canplaythrough', () => updateProgress(url), { once: true });
-                video.addEventListener('error', () => {
-                     console.error(`Failed to load video: ${url}`);
+                // Use a timeout as a fallback in case canplaythrough never fires
+                const fallbackTimeout = setTimeout(() => {
+                    console.warn(`Video fallback timeout for ${url}`);
+                    updateProgress(url);
+                }, 5000);
+                video.addEventListener('canplaythrough', () => {
+                    clearTimeout(fallbackTimeout);
                     updateProgress(url);
                 }, { once: true });
+                video.addEventListener('error', (e) => {
+                     console.error(`Failed to load video: ${url}`, e);
+                    clearTimeout(fallbackTimeout);
+                    updateProgress(url);
+                }, { once: true });
+                if(video.src !== url) video.src = url;
                 video.load();
-            } else { 
+            } else { // Assume audio
                 const audioEl = Array.from(document.querySelectorAll('audio')).find(el => el.src.includes(url.split('/').pop()));
                 if (audioEl) {
-                    audioEl.addEventListener('canplaythrough', () => updateProgress(url), { once: true });
-                    audioEl.addEventListener('error', () => {
-                        console.error(`Failed to load audio: ${url}`);
+                     const fallbackTimeout = setTimeout(() => {
+                        console.warn(`Audio fallback timeout for ${url}`);
+                        updateProgress(url);
+                    }, 5000);
+                    audioEl.addEventListener('canplaythrough', () => {
+                        clearTimeout(fallbackTimeout);
+                        updateProgress(url);
+                    }, { once: true });
+                    audioEl.addEventListener('error', (e) => {
+                        console.error(`Failed to load audio: ${url}`, e);
+                        clearTimeout(fallbackTimeout);
                         updateProgress(url);
                     }, { once: true });
                     audioEl.load();
+                } else {
+                     updateProgress(url); // If no matching audio element, just move on
                 }
             }
         });
@@ -139,34 +168,6 @@ window.addEventListener('load', () => {
         const allAudioElements = Array.from(document.querySelectorAll('audio'));
         let gameLoopId = null;
 
-        function initialize() {
-            canvas.style.cursor = "url('./assets/cursors/crosshair.cur'), crosshair";
-            
-            loadPlayerState();
-            applyAllTalentEffects();
-            mx = canvas.width / 2;
-            my = canvas.height / 2;
-            function resize() { canvas.width = innerWidth; canvas.height = innerHeight; }
-            window.addEventListener("resize", resize);
-            resize();
-            AudioManager.setup(allAudioElements, soundBtn);
-            setupEventListeners();
-            setupHomeScreen();
-        }
-
-        function setupHomeScreen() {
-            const hasSaveData = localStorage.getItem('eternalMomentumSave') !== null;
-            if (hasSaveData) {
-                continueGameBtn.style.display = 'block';
-                eraseGameBtn.style.display = 'block';
-                newGameBtn.style.display = 'none';
-            } else {
-                continueGameBtn.style.display = 'none';
-                eraseGameBtn.style.display = 'none';
-                newGameBtn.style.display = 'block';
-            }
-        }
-
         function loop() {
             if (!gameTick(mx, my)) {
                 if (gameLoopId) {
@@ -206,7 +207,7 @@ window.addEventListener('load', () => {
         function equipCore(coreId) {
             state.player.equippedAberrationCore = coreId;
             savePlayerState();
-            populateAberrationCoreMenu(onCoreEquip); // Repopulate to update equipped status
+            populateAberrationCoreMenu(onCoreEquip);
             updateUI();
         }
 
@@ -290,7 +291,7 @@ window.addEventListener('load', () => {
                 AudioManager.playSfx('uiModalClose');
                 if (state.gameOver) {
                     document.getElementById('gameOverMenu').style.display = 'flex';
-                } else {
+                } else if (gameLoopId) { // only unpause if game is actually running
                     state.isPaused = false;
                 }
             });
@@ -308,7 +309,7 @@ window.addEventListener('load', () => {
                 AudioManager.playSfx('uiModalClose');
                 if (state.gameOver) {
                     gameOverMenu.style.display = 'flex';
-                } else {
+                } else if (gameLoopId) {
                     state.isPaused = false;
                 }
             });
@@ -335,7 +336,7 @@ window.addEventListener('load', () => {
                 AudioManager.playSfx('uiModalClose');
                 if (state.gameOver) {
                     gameOverMenu.style.display = 'flex';
-                } else {
+                } else if (gameLoopId) {
                     state.isPaused = false;
                 }
             });
@@ -478,6 +479,18 @@ window.addEventListener('load', () => {
             });
         }
         
-        initialize();
+        // This is the key change to fix the "stuck on loading" bug
+        setTimeout(() => {
+            loadingScreen.style.opacity = '0';
+            loadingScreen.addEventListener('transitionend', () => {
+                loadingScreen.style.display = 'none';
+                homeScreen.style.display = 'flex';
+                requestAnimationFrame(() => {
+                     homeScreen.classList.add('visible');
+                });
+                // Initialize the game's logic AFTER the screen has faded out
+                initialize();
+            }, { once: true });
+        }, 500); // Initial delay to ensure loading text is seen
     });
 });
