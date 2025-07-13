@@ -59,7 +59,7 @@ export const bossData = [{
                 b.cycles++;
                 if (b.cycles % 3 === 0) {
                     b.reflecting = true;
-                    utils.spawnParticles(state.particles, b.x, b.y, "#fff", 50, 4, 30);
+                    utils.spawnParticles(state.particles, b.x, b.y, "#fff", 50, 4, 30,5);
                     setTimeout(() => b.reflecting = false, 2000);
                 }
             }
@@ -109,7 +109,7 @@ export const bossData = [{
             b.hp = Math.min(b.maxHP, b.hp + 5);
             b.lastHeal = now;
             gameHelpers.play('vampireHeal');
-            utils.spawnParticles(state.particles, b.x, b.y, "#800020", 20, 1, 40);
+            utils.spawnParticles(state.particles, b.x, b.y, "#800020", 20, 1, 40,5);
         }
     },
     onDamage: (b, dmg, source, state, spawnParticles) => {
@@ -126,7 +126,7 @@ export const bossData = [{
                 vy: 0,
                 customApply: () => {
                     source.health = Math.min(source.maxHealth || Infinity, source.health + 10);
-                    spawnParticles(state.particles, source.x, source.y, "#800020", 20, 3, 30);
+                    spawnParticles(state.particles, source.x, source.y, "#800020", 20, 3, 30,5);
                 }
             });
         }
@@ -193,7 +193,7 @@ export const bossData = [{
             utils.drawCircle(ctx, c.x, c.y, 8, "orange");
             prev = c;
             
-            const pDist = Math.hypot(state.player.x - c.x, state.player.y - c.y);
+           const pDist = Math.hypot(state.player.x - c.x, state.player.y - c.y);
             if (pDist < state.player.r + 8) { 
                 state.player.talent_states.phaseMomentum.lastDamageTime = Date.now();
                 state.player.talent_states.phaseMomentum.active = false;
@@ -236,7 +236,7 @@ export const bossData = [{
         }
     },
     onDamage: (b, dmg, source, state, spawnParticles) => {
-        spawnParticles(state.particles, b.x, b.y, "#f00", 10, 3, 20);
+        spawnParticles(state.particles, b.x, b.y, "#f00", 10, 3, 20,5);
     }
 }, {
     id: "emp",
@@ -463,7 +463,7 @@ export const bossData = [{
                 endTime: b.teleportingAt
             });
             gameHelpers.play('chargeUpSound');
-            utils.spawnParticles(state.particles, b.x, b.y, "#fff", 30, 4, 20);
+            utils.spawnParticles(state.particles, b.x, b.y, "#fff", 30, 4, 20,5);
         }
 
         if (b.teleportingAt && Date.now() > b.teleportingAt) {
@@ -477,7 +477,7 @@ export const bossData = [{
             b.teleportTarget = null;
             
             gameHelpers.play('mirrorSwap');
-            utils.spawnParticles(state.particles, b.x, b.y, "#fff", 30, 4, 20);
+            utils.spawnParticles(state.particles, b.x, b.y, "#fff", 30, 4, 20,5);
         }
     }
 }, {
@@ -628,7 +628,7 @@ export const bossData = [{
             else b[timer] = Date.now();
 
             gameHelpers.play('glitchSound');
-            utils.spawnParticles(state.particles, b.x, b.y, b.color, 40, 4, 30);
+            utils.spawnParticles(state.particles, b.x, b.y, b.color, 40, 4, 30,5);
             const oldX = b.x;
             const oldY = b.y;
             b.x = utils.randomInRange(b.r, canvas.width - b.r);
@@ -998,216 +998,138 @@ export const bossData = [{
                         }
                     }
                 }
-                placedEchoes.push(bestCandidate);
-                b.echoes.push(bestCandidate);
+                
+                if (bestCandidate) {
+                    b.echoes.push(bestCandidate);
+                    placedEchoes.push(bestCandidate);
+                }
             }
-        } else if (b.phase === 'superposition') {
-            ctx.globalAlpha = 0.5;
-            utils.drawCircle(ctx, b.x, b.y, b.r, b.color);
-            ctx.globalAlpha = 1;
-            b.echoes.forEach(e => {
-                ctx.globalAlpha = 0.3 + Math.sin(Date.now() / 200) * 0.2;
-                utils.drawCircle(ctx, e.x, e.y, e.r, b.color);
-                ctx.globalAlpha = 1;
+            b.collapseTime = Date.now() + 5000;
+        }
+        
+        if (b.phase === 'superposition') {
+            b.echoes.forEach(echo => {
+                utils.drawCircle(ctx, echo.x, echo.y, echo.r, 'rgba(129, 236, 236, 0.4)');
             });
-            if (Date.now() - b.lastPhaseChange > 3000) {
+            
+            if (Date.now() > b.collapseTime) {
+                const chosenEcho = b.echoes[Math.floor(Math.random() * b.echoes.length)];
+                b.x = chosenEcho.x;
+                b.y = chosenEcho.y;
                 b.phase = 'seeking';
                 b.lastPhaseChange = Date.now();
                 b.invulnerable = false;
-                const targetEcho = b.echoes.splice(Math.floor(Math.random() * b.echoes.length), 1)[0];
-                b.x = targetEcho.x;
-                b.y = targetEcho.y;
-                b.echoes.forEach(e => {
-                    utils.spawnParticles(state.particles, e.x, e.y, '#ff4757', 50, 6, 40);
-                    state.effects.push({
-                        type: 'shockwave',
-                        caster: b,
-                        x: e.x,
-                        y: e.y,
-                        radius: 0,
-                        maxRadius: 250,
-                        speed: 600,
-                        startTime: Date.now(),
-                        hitEnemies: new Set(),
-                        damage: 60
-                    });
+                
+                b.echoes.forEach(echo => {
+                    if (echo !== chosenEcho) {
+                        state.effects.push({
+                            type: 'shockwave',
+                            caster: b,
+                            x: echo.x,
+                            y: echo.y,
+                            radius: 0,
+                            maxRadius: 150,
+                            speed: 600,
+                            startTime: Date.now(),
+                            damage: 30,
+                            hitEnemies: new Set(),
+                            color: 'rgba(129, 236, 236, 0.6)'
+                        });
+                    }
                 });
+                
                 b.echoes = [];
             }
         }
-        if (!b.invulnerable) {
-            utils.drawCircle(ctx, b.x, b.y, b.r, b.color);
-        }
     },
     onDamage: (b, dmg) => {
-        if (b.invulnerable) b.hp += dmg;
+        if (b.invulnerable || b.phase === 'superposition') {
+            b.hp += dmg;
+        }
     }
 }, {
     id: "time_eater",
     name: "Time Eater",
-    color: "#dfe6e9",
-    maxHP: 440,
+    color: "#bdc3c7",
+    maxHP: 400,
     difficulty_tier: 2,
     archetype: 'field_control',
     unlock_level: 100,
-    core_desc: "When you use the Black Hole power-up, it leaves behind a 'Dilation Field' for 30 seconds that slows enemy projectiles by 90%.",
-    description: "Devours time, creating zones of temporal distortion that drastically slow all matter and consume any powers or entities within.",
-    lore: "In a timeline where time itself was a consumable resource, this creature was a predator that fed on moments to sustain its existence. Now that its native temporal stream has been devoured by the Unraveling, it is ravenous, creating pockets of distorted time to 'tenderize' reality before consuming it and anything caught within.",
-    mechanics_desc: "Creates multiple zones of temporal distortion that drift around the arena. These zones will drastically slow you, your projectiles, and any enemies inside them. Power-ups that drift into these zones will be consumed, healing the boss.",
+    core_desc: "You project a 'Dilation Field' behind you that slows non-boss enemies. Defeating enemies expands the field by 5 units (max 300).",
+    description: "Devours time itself, creating expanding fields of slowed spacetime that consume anything they touch.",
+    lore: "A predator from a timeline where time was a finite resource. It fed on the 'excess' moments of lesser beings. The Unraveling is a feast for it—an infinite supply of decaying time. Its dilation field is a mouth that 'chews' spacetime, slowing and eventually consuming all within. When it 'eats' an enemy, its field grows, a horrifying reminder that it is getting stronger with every kill.",
+    mechanics_desc: "Projects an expanding Dilation Field behind it that slows you and your projectiles. Defeating enemies causes them to be pulled into the field and consumed, expanding it further. Stay out of the field and prevent kills to keep it manageable.",
     init: b => {
-        b.lastAbility = Date.now();
-        b.effects = []; // This boss manages its own effects
+        b.effects = [{
+            type: 'dilation_field',
+            x: b.x,
+            y: b.y,
+            r: 100,
+            endTime: Infinity
+        }];
     },
-    logic: (b, ctx, state, utils) => {
-        const canvas = ctx.canvas;
-        if (Date.now() - b.lastAbility > 5000) {
-            b.lastAbility = Date.now();
-            for (let i = 0; i < 4; i++) {
-                b.effects.push({
-                    type: 'slow_zone',
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height,
-                    r: 150,
-                    endTime: Date.now() + 6000
-                });
-            }
-        }
+    logic: (b, ctx, state, utils, gameHelpers) => {
+        const angleToPlayer = Math.atan2(state.player.y - b.y, state.player.x - b.x);
+        const field = b.effects[0];
+        field.angle = angleToPlayer + Math.PI;
+        field.x = b.x;
+        field.y = b.y;
+    },
+    onDeath: (b, state) => {
+        b.effects = [];
     }
 }, {
     id: "singularity",
     name: "The Singularity",
     color: "#000000",
-    maxHP: 600,
-    difficulty_tier: 2,
-    archetype: 'specialist',
+    maxHP: 1000,
+    difficulty_tier: 3,
+    archetype: 'field_control',
     unlock_level: 105,
-    core_desc: "Your core destabilizes reality, giving you a 5% chance to duplicate power-up effects and a 15% chance that using a power-up will not consume it.",
-    description: "The convergence of multiple timelines. Its combat patterns are an unpredictable amalgamation of other powerful entities.",
-    lore: "The focal point where a dozen timelines collapsed simultaneously. It is not a single entity but a chaotic amalgamation—the gravitational pull of the Gravity Tyrant, the teleporting agony of the Looping Eye, the infectious despair of the Parasite. It is a legion of lost worlds condensed into a single point of failure.",
-    mechanics_desc: "A multi-phase encounter that mimics other bosses. Its abilities will change as its health is depleted, incorporating mechanics from the Gravity Tyrant, The Glitch, and The Sentinel Pair in increasingly dangerous combinations.",
-    init: (b, state, spawnEnemy) => {
-        b.phase = 1;
-        b.lastAction = 0;
-        b.wells = [];
-        b.beamTarget = null;
-        b.teleportingAt = null;
-        b.teleportTarget = null;
+    core_desc: "Using a power-up has a 15% chance that it is not consumed. There's a 5% chance the power is duplicated instead.",
+    description: "The ultimate manifestation of the Unraveling—a point of infinite density where realities collapse. It pulls everything toward its event horizon, erasing existence.",
+    lore: "The Singularity is not an entity; it is the wound left by the Unraveling's first cut. A point where infinite timelines converged and imploded. It hungers not for matter, but for possibility. Anything that falls into its grasp is not destroyed—it is retroactively erased, as if it never existed. To fight it is to risk unmaking your own history.",
+    mechanics_desc: "Generates an inescapable pull toward its center. The only way to survive is to use its own gravity against it—orbit at the right distance while chipping away at its core. Get too close, and you're erased.",
+    init: b => {
+        b.pullStrength = 0.02;
     },
-    logic: (b, ctx, state, utils, gameHelpers) => {
-        const canvas = ctx.canvas;
-        const hpPercent = b.hp / b.maxHP;
+    logic: (b, ctx, state, utils) => {
+        const eventHorizon = 50;
+        utils.drawCircle(ctx, b.x, b.y, eventHorizon, 'black');
+        ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, eventHorizon + 20, 0, 2 * Math.PI);
+        ctx.stroke();
 
-        if (b.beamTarget && Date.now() > b.lastAction + 1000) {
-            b.beamTarget = null;
-        }
-
-        if (hpPercent <= 0.33 && b.phase < 3) {
-            b.phase = 3;
-            gameHelpers.play('finalBossPhaseSound');
-            utils.triggerScreenShake(500, 15);
-            utils.spawnParticles(state.particles, b.x, b.y, "#d63031", 150, 8, 50);
-            b.lastAction = Date.now();
-            b.wells = [];
-        } else if (hpPercent <= 0.66 && b.phase < 2) {
-            b.phase = 2;
-            gameHelpers.play('finalBossPhaseSound');
-            utils.triggerScreenShake(500, 10);
-            utils.spawnParticles(state.particles, b.x, b.y, "#6c5ce7", 150, 8, 50);
-            b.lastAction = Date.now();
-            b.wells = [];
-        }
-        
-        switch (b.phase) {
-            case 1:
-                if (Date.now() - b.lastAction > 5000) {
-                    b.lastAction = Date.now();
-                    b.wells = [];
-                    for (let i = 0; i < 4; i++) {
-                        b.wells.push({
-                            x: Math.random() * canvas.width,
-                            y: Math.random() * canvas.height,
-                            r: 40,
-                            endTime: Date.now() + 4000
-                        });
-                    }
+        // Pull everything
+        [state.player, ...state.enemies, ...state.pickups].forEach(obj => {
+            const dx = b.x - obj.x;
+            const dy = b.y - obj.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist < eventHorizon) {
+                if (obj === state.player) {
+                    state.gameOver = true;
+                } else if (obj.hp) {
+                    obj.hp = 0;
+                } else if (obj.type) {
+                    state.pickups = state.pickups.filter(p => p !== obj);
                 }
-                b.wells.forEach(w => {
-                    if (Date.now() < w.endTime) {
-                        utils.drawCircle(ctx, w.x, w.y, w.r, "rgba(155, 89, 182, 0.3)");
-                        const dx = state.player.x - w.x,
-                            dy = state.player.y - w.y;
-                        if (Math.hypot(dx, dy) < w.r + state.player.r) {
-                            state.player.x -= dx * 0.08;
-                            state.player.y -= dy * 0.08;
-                        }
-                    }
-                });
-                break;
-            case 2:
-                if (Date.now() - b.lastAction > 4000) {
-                    b.lastAction = Date.now();
-                    state.effects.push({
-                        type: 'glitch_zone',
-                        x: Math.random() * canvas.width,
-                        y: Math.random() * canvas.height,
-                        r: 100,
-                        endTime: Date.now() + 3000
-                    });
-                    b.beamTarget = { x: Math.random() * canvas.width, y: Math.random() * canvas.height };
-                }
-                break;
-            case 3:
-                if (!b.teleportingAt && Date.now() - b.lastAction > 2000) {
-                    b.teleportingAt = Date.now() + 1000;
-                    const targetX = Math.random() * canvas.width;
-                    const targetY = Math.random() * canvas.height;
-                    b.teleportTarget = { x: targetX, y: targetY };
-                    state.effects.push({ type: 'teleport_indicator', x: targetX, y: targetY, r: b.r, endTime: b.teleportingAt });
-                }
-                if (b.teleportingAt && Date.now() > b.teleportingAt) {
-                    utils.spawnParticles(state.particles, b.x, b.y, "#fff", 30, 4, 20);
-                    b.x = b.teleportTarget.x;
-                    b.y = b.teleportTarget.y;
-                    utils.spawnParticles(state.particles, b.x, b.y, "#fff", 30, 4, 20);
-                    b.teleportingAt = null;
-                    b.lastAction = Date.now();
-                    for (let i = 0; i < 3; i++) {
-                        const spore = gameHelpers.spawnEnemy(false, null, {
-                            x: b.x,
-                            y: b.y
-                        });
-                        if (spore) {
-                            spore.r = 10;
-                            spore.hp = 1;
-                            spore.dx = (Math.random() - 0.5) * 8;
-                            spore.dy = (Math.random() - 0.5) * 8;
-                            spore.ignoresPlayer = true;
-                        }
-                    }
-                }
-                break;
-        }
-
-        if (b.beamTarget) {
-            utils.drawLightning(ctx, b.x, b.y, b.beamTarget.x, b.beamTarget.y, '#fd79a8', 8);
-            const p1 = b, p2 = b.beamTarget, p3 = state.player;
-            const L2 = Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2);
-            if (L2 !== 0) {
-                let t = ((p3.x - p1.x) * (p2.x - p1.x) + (p3.y - p1.y) * (p2.y - p1.y)) / L2;
-                t = Math.max(0, Math.min(1, t));
-                const closestX = p1.x + t * (p2.x - p1.x);
-                const closestY = p1.y + t * (p2.y - p1.y);
-                if (Math.hypot(p3.x - closestX, p3.y - closestY) < p3.r + 5) {
-                    if (state.player.shield) {
-                        state.player.shield = false;
-                        gameHelpers.play('shieldBreak');
-                    } else {
-                        state.player.health -= 2;
-                        if (state.player.health <= 0) state.gameOver = true;
-                    }
-                }
+            } else if (dist < 400) {
+                const pull = b.pullStrength * (1 / (dist / 100));
+                obj.x += (dx / dist) * pull;
+                obj.y += (dy / dist) * pull;
             }
-        }
+        });
+    },
+    onDeath: (b, state) => {
+        state.effects.push({
+            type: 'implosion',
+            x: b.x,
+            y: b.y,
+            startTime: Date.now(),
+            duration: 2000
+        });
     }
 }, {
     id: "miasma",
@@ -1270,7 +1192,7 @@ export const bossData = [{
                 if (!state.enemies.includes(b)) return;
                 if (b.hp <= 0) return;
                 gameHelpers.play('miasmaSlam');
-                utils.spawnParticles(state.particles, b.x, b.y, '#6ab04c', 50, 4, 30);
+                utils.spawnParticles(state.particles, b.x, b.y, '#6ab04c', 50, 4, 30,5);
                 b.vents.forEach(v => {
                     if (Date.now() > v.cooldownUntil && Math.hypot(b.x - v.x, b.y - v.y) < 120) {
                         v.cooldownUntil = Date.now() + 10000;
@@ -1440,7 +1362,7 @@ export const bossData = [{
             if (!biggestFractal) break;
 
             gameHelpers.play('fractalSplit');
-            utils.spawnParticles(state.particles, biggestFractal.x, biggestFractal.y, biggestFractal.color, 25, 3, 20);
+            utils.spawnParticles(state.particles, biggestFractal.x, biggestFractal.y, biggestFractal.color, 25, 3, 20,5);
 
             const newRadius = biggestFractal.r / Math.SQRT2;
             for (let i = 0; i < 2; i++) {
@@ -1841,16 +1763,35 @@ export const bossData = [{
             b.dilationFieldEffect.angle = fieldAngle;
         }
 
+        // Add animation: Pulsing glow and particles
+        const pulse = Math.sin(Date.now() / 500) * 0.2 + 0.3;
+        ctx.fillStyle = `rgba(189, 195, 199, ${pulse})`;
+        ctx.beginPath();
+        ctx.moveTo(b.x, b.y);
+        ctx.arc(b.x, b.y, b.dilationFieldEffect.r, fieldAngle - Math.PI / 2, fieldAngle + Math.PI / 2);
+        ctx.closePath();
+        ctx.fill();
+
+        // Particles along the field edge
+        for (let i = 0; i < 5; i++) {
+            const edgeAngle = fieldAngle + (Math.random() - 0.5) * Math.PI;
+            const px = b.x + Math.cos(edgeAngle) * b.dilationFieldEffect.r * Math.random();
+            const py = b.y + Math.sin(edgeAngle) * b.dilationFieldEffect.r * Math.random();
+            utils.spawnParticles(state.particles, px, py, '#bdc3c7', 1, 1, 10, 2); // Small slow particles
+        }
+
+        // Slow effect on player (already there, but add visual cue)
         const playerDist = Math.hypot(state.player.x - b.x, state.player.y - b.y);
         if (playerDist < 300) {
             let playerAngle = Math.atan2(state.player.y - b.y, state.player.x - b.x);
             let targetAngle = b.dilationFieldEffect.angle;
             let diff = Math.atan2(Math.sin(playerAngle - targetAngle), Math.cos(playerAngle - targetAngle));
-            
             if (Math.abs(diff) > (Math.PI / 4)) {
-                 if (!state.player.statusEffects.some(e => e.name === 'Epoch-Slow')) {
-                     gameHelpers.addStatusEffect('Epoch-Slow', '🐌', 500);
-                 }
+                if (!state.player.statusEffects.some(e => e.name === 'Epoch-Slow')) {
+                    gameHelpers.addStatusEffect('Epoch-Slow', '🐌', 500);
+                }
+                // Visual: Slow particles on player
+                utils.spawnParticles(state.particles, state.player.x, state.player.y, '#bdc3c7', 5, 0.5, 20, 1);
             }
         }
     },
@@ -1860,6 +1801,9 @@ export const bossData = [{
             b.damageWindow += dmg;
             if (b.damageWindow > 100) {
                 play('timeRewind');
+                // Add rewind animation: Reverse particles and flash
+                sP(state.particles, b.x, b.y, '#fff', 50, -2, 30,5); // Negative speed for "rewind" feel
+                state.effects.push({ type: 'flash', x: b.x, y: b.y, r: 200, endTime: now + 500 }); // White flash effect
                 b.hp = b.lastKnownState.hp;
                 b.x = b.lastKnownState.x;
                 b.y = b.lastKnownState.y;
@@ -1965,13 +1909,13 @@ export const bossData = [{
                     break;
                 case 'heal':
                     b.hp = Math.min(b.maxHP, b.hp + b.maxHP * 0.1);
-                    utils.spawnParticles(state.particles, b.x, b.y, '#2ecc71', 50, 4, 30);
+                    utils.spawnParticles(state.particles, b.x, b.y, '#2ecc71', 50, 4, 30,5);
                     break;
                 case 'speed_buff':
                     b.dx *= 2;
                     b.dy *= 2;
                     setTimeout(() => { b.dx /= 2; b.dy /= 2; }, 5000);
-                    utils.spawnParticles(state.particles, b.x, b.y, '#3498db', 50, 4, 30);
+                    utils.spawnParticles(state.particles, b.x, b.y, '#3498db', 50, 4, 30,5);
                     break;
             }
             gameHelpers.play('shaperAttune');
@@ -2185,7 +2129,7 @@ export const bossData = [{
             b.phase = nextPhase;
             b.actionCooldown *= 0.85;
             b.invulnerable = true;
-            utils.spawnParticles(state.particles, b.x, b.y, '#fff', 150, 8, 50);
+            utils.spawnParticles(state.particles, b.x, b.y, '#fff', 150, 8, 50,5);
             state.effects.push({ type: 'shockwave', caster: b, x: b.x, y: b.y, radius: 0, maxRadius: 1200, speed: 1000, startTime: Date.now(), hitEnemies: new Set(), damage: 50, color: 'rgba(255, 255, 255, 0.7)' });
             setTimeout(() => b.invulnerable = false, 2000);
         }
@@ -2200,6 +2144,5 @@ export const bossData = [{
         delete b.pillars;
         delete b.chain;
         delete b.clones;
-        delete b.petrifyZones;
     }
 }];
