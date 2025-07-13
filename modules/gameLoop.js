@@ -509,170 +509,6 @@ export function gameTick(mx, my) {
         }
     }
 
-    if (state.player.infected) {
-        if (now > state.player.infectionEnd) {
-            state.player.infected = false;
-        } else if (now - state.player.lastSpore > 2000) {
-            state.player.lastSpore = now;
-            const spore = spawnEnemy(false, null, {x: state.player.x, y: state.player.y});
-            if(spore){
-                spore.r = 8; spore.hp = 2; spore.dx = (Math.random() - 0.5) * 8;
-                spore.dy = (Math.random() - 0.5) * 8; spore.ignoresPlayer = true;
-            }
-        }
-    }
-    
-    if (state.player.talent_states.phaseMomentum.active) {
-        ctx.globalAlpha = 0.3;
-        utils.drawCircle(ctx, state.player.x, state.player.y, state.player.r + 5, 'rgba(0, 255, 255, 0.5)');
-        utils.spawnParticles(state.particles, state.player.x, state.player.y, 'rgba(0, 255, 255, 0.5)', 1, 0.5, 10, state.player.r * 0.5);
-        ctx.globalAlpha = 1.0;
-    }
-
-    if (state.player.shield) {
-        ctx.strokeStyle = "rgba(241,196,15,0.7)";
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.arc(state.player.x, state.player.y, Math.max(0, state.player.r + 8), 0, 2 * Math.PI);
-        ctx.stroke();
-    }
-    
-    let playerColor = state.player.shield ? "#f1c40f" : ((state.player.berserkUntil > now) ? '#e74c3c' : (state.player.infected ? '#55efc4' : "#3498db"));
-    let playerAlpha = 1.0;
-    const isPhased = playerHasCore('quantum_shadow') && state.player.statusEffects.some(e => e.name === 'Phased');
-    if (isPhased) {
-        playerColor = '#00ecec';
-        playerAlpha = 0.5;
-    }
-    ctx.globalAlpha = playerAlpha;
-    utils.drawCircle(ctx, state.player.x, state.player.y, state.player.r, playerColor);
-    ctx.globalAlpha = 1.0;
-
-    const juggernautCharge = state.effects.find(e => e.type === 'juggernaut_player_charge');
-    if (juggernautCharge) {
-        const progress = (now - juggernautCharge.startTime) / juggernautCharge.duration;
-        utils.spawnParticles(state.particles, state.player.x, state.player.y, '#636e72', 3, 2, 20, 5);
-        const afterImageX = state.player.x - Math.cos(juggernautCharge.angle) * 20 * progress;
-        const afterImageY = state.player.y - Math.sin(juggernautCharge.angle) * 20 * progress;
-        ctx.globalAlpha = 0.5 * (1 - progress);
-        utils.drawCircle(ctx, afterImageX, afterImageY, state.player.r, '#636e72');
-        ctx.globalAlpha = 1.0;
-    }
-    
-    const equippedCoreId = state.player.equippedAberrationCore;
-    const coreState = equippedCoreId ? state.player.talent_states.core_states[equippedCoreId] : null;
-    const isCoreOnCooldown = coreState && coreState.cooldownUntil && now < coreState.cooldownUntil;
-
-    if (equippedCoreId && !isPhased && !juggernautCharge && !isCoreOnCooldown) {
-        const coreData = bossData.find(b => b.id === equippedCoreId);
-        if (coreData) {
-            const pulse = 0.4 + (Math.sin(now / 400) * 0.2);
-            ctx.globalAlpha = pulse;
-            const glowColor = equippedCoreId === 'pantheon' ? `hsl(${(now / 20) % 360}, 100%, 70%)` : coreData.color;
-            ctx.fillStyle = glowColor;
-            ctx.beginPath();
-            ctx.arc(state.player.x, state.player.y, state.player.r + 10, 0, 2 * Math.PI);
-            ctx.fill();
-            ctx.globalAlpha = 1.0;
-        }
-    }
-    
-    state.decoys.forEach(decoy => {
-        utils.drawCircle(ctx, decoy.x, decoy.y, decoy.r, "#9b59b6");
-    });
-    if(playerHasCore('sentinel_pair') && state.decoys.length > 0){
-        const decoy = state.decoys[0];
-        for(const enemy of state.enemies){
-            if(!enemy.isFriendly && utils.lineCircleCollision(state.player.x, state.player.y, decoy.x, decoy.y, enemy.x, enemy.y, enemy.r)){
-                enemy.hp -= 0.5 * state.player.talent_modifiers.damage_multiplier;
-                Cores.handleCoreOnDamageDealt(enemy);
-            }
-        }
-        utils.drawLightning(ctx, state.player.x, state.player.y, decoy.x, decoy.y, '#f1c40f');
-    }
-
-    if (state.gravityActive && now > state.gravityEnd) {
-        state.gravityActive = false;
-        if (state.player.purchasedTalents.has('temporal-collapse')) {
-            state.effects.push({ type: 'slow_zone', x: canvas.width / 2, y: canvas.height / 2, r: 250, endTime: Date.now() + 4000 });
-        }
-    }
-
-    if (state.player.infected) {
-        if (now > state.player.infectionEnd) {
-            state.player.infected = false;
-        } else if (now - state.player.lastSpore > 2000) {
-            state.player.lastSpore = now;
-            const spore = spawnEnemy(false, null, {x: state.player.x, y: state.player.y});
-            if(spore){
-                spore.r = 8; spore.hp = 2; spore.dx = (Math.random() - 0.5) * 8;
-                spore.dy = (Math.random() - 0.5) * 8; spore.ignoresPlayer = true;
-            }
-        }
-    }
-    
-    if (state.player.talent_states.phaseMomentum.active) {
-        ctx.globalAlpha = 0.3;
-        utils.drawCircle(ctx, state.player.x, state.player.y, state.player.r + 5, 'rgba(0, 255, 255, 0.5)');
-        utils.spawnParticles(state.particles, state.player.x, state.player.y, 'rgba(0, 255, 255, 0.5)', 1, 0.5, 10, state.player.r * 0.5);
-        ctx.globalAlpha = 1.0;
-    }
-
-    if (state.player.shield) {
-        ctx.strokeStyle = "rgba(241,196,15,0.7)";
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.arc(state.player.x, state.player.y, Math.max(0, state.player.r + 8), 0, 2 * Math.PI);
-        ctx.stroke();
-    }
-    
-    let playerColor = state.player.shield ? "#f1c40f" : ((state.player.berserkUntil > now) ? '#e74c3c' : (state.player.infected ? '#55efc4' : "#3498db"));
-    let playerAlpha = 1.0;
-    const isPhased = playerHasCore('quantum_shadow') && state.player.statusEffects.some(e => e.name === 'Phased');
-    if (isPhased) {
-        playerColor = '#00ecec';
-        playerAlpha = 0.5;
-    }
-    ctx.globalAlpha = playerAlpha;
-    utils.drawCircle(ctx, state.player.x, state.player.y, state.player.r, playerColor);
-    ctx.globalAlpha = 1.0;
-
-    const juggernautCharge = state.effects.find(e => e.type === 'juggernaut_player_charge');
-    if (juggernautCharge) {
-        const progress = (now - juggernautCharge.startTime) / juggernautCharge.duration;
-        utils.spawnParticles(state.particles, state.player.x, state.player.y, '#636e72', 3, 2, 20, 5);
-        const afterImageX = state.player.x - Math.cos(juggernautCharge.angle) * 20 * progress;
-        const afterImageY = state.player.y - Math.sin(juggernautCharge.angle) * 20 * progress;
-        ctx.globalAlpha = 0.5 * (1 - progress);
-        utils.drawCircle(ctx, afterImageX, afterImageY, state.player.r, '#636e72');
-        ctx.globalAlpha = 1.0;
-    }
-    
-    const equippedCoreId = state.player.equippedAberrationCore;
-    const coreState = equippedCoreId ? state.player.talent_states.core_states[equippedCoreId] : null;
-    const isCoreOnCooldown = coreState && coreState.cooldownUntil && now < coreState.cooldownUntil;
-
-    if (equippedCoreId && !isPhased && !juggernautCharge && !isCoreOnCooldown) {
-        const coreData = bossData.find(b => b.id === equippedCoreId);
-        if (coreData) {
-            const pulse = 0.4 + (Math.sin(now / 400) * 0.2);
-            ctx.globalAlpha = pulse;
-            const glowColor = equippedCoreId === 'pantheon' ? `hsl(${(now / 20) % 360}, 100%, 70%)` : coreData.color;
-            ctx.fillStyle = glowColor;
-            ctx.beginPath();
-            ctx.arc(state.player.x, state.player.y, state.player.r + 10, 0, 2 * Math.PI);
-            ctx.fill();
-            ctx.globalAlpha = 1.0;
-        }
-    }
-    
-    state.decoys.forEach(decoy => {
-        utils.drawCircle(ctx, decoy.x, decoy.y, decoy.r, "#9b59b6");
-    });
-    if(playerHasCore('sentinel_pair') && state.decoys.length > 0){
-        utils.drawLightning(ctx, state.player.x, state.player.y, state.decoys[0].x, state.decoys[0].y, '#f1c40f');
-    }
-
     let totalPlayerPushX = 0;
     let totalPlayerPushY = 0;
     let playerCollisions = 0;
@@ -828,7 +664,7 @@ export function gameTick(mx, my) {
                             let pullStrength = e.boss ? 0.03 : 0.1;
                             e.x += (effect.x - e.x) * pullStrength; e.y += (effect.y - e.y) * pullStrength;
                             if (state.player.purchasedTalents.has('unstable-singularity') && dist < effect.radius + e.r && now - (effect.lastDamage.get(e) || 0) > effect.damageRate) {
-                                let finalDmg = (e.boss ? effect.damage : 15) * state.player.talent_modifiers.damage_multiplier * dynamicDamageMultiplier;
+                                let finalDmg = (e.boss ? effect.damage : 15) * state.player.talent_modifiers.damage_multiplier;
                                 e.hp -= finalDmg;
                                 Cores.handleCoreOnDamageDealt(e);
                                 effect.lastDamage.set(e, now);
@@ -1472,7 +1308,7 @@ export function gameTick(mx, my) {
                      if (!state.player.shield) {
                          play('magicDispelSound');
                          state.player.health = 0;
-                         if(state.player.health <= 0) state.gameOver = true;
+                         if (state.player.health <= 0) state.gameOver = true;
                      }
                 }
             });
