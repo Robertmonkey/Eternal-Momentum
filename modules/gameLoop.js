@@ -391,38 +391,204 @@ export function gameTick(mx, my) {
     for (let i = state.decoys.length - 1; i >= 0; i--) {
         const decoy = state.decoys[i];
         if (decoy.hp <= 0 || (decoy.expires && now > decoy.expires)) {
-            utils.spawnParticles(state.particles, decoy.x, decoy.y, '#a55eea', 30, 2);
+            utils.spawnParticles(state.particles, decoy.x, decoy.y, '#a55eea', 30, 2, 20, 5);
             state.decoys.splice(i, 1);
             continue;
         }
         if (decoy.isMobile) {
-            let closestEnemy = null;
-            let minDist = Infinity;
-            for (const enemy of state.enemies) {
-                if (!enemy.isFriendly) {
-                    const dist = Math.hypot(decoy.x - enemy.x, decoy.y - enemy.y);
-                    if (dist < minDist) {
-                        minDist = dist;
-                        closestEnemy = enemy;
-                    }
-                }
+            // Move away from player
+            const dx = decoy.x - state.player.x;
+            const dy = decoy.y - state.player.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist > 0) {
+                const speed = 2; // Adjust as needed
+                decoy.x += (dx / dist) * speed;
+                decoy.y += (dy / dist) * speed;
             }
-            if (closestEnemy) {
-                const angle = Math.atan2(closestEnemy.y - decoy.y, closestEnemy.x - decoy.x);
-                decoy.x += Math.cos(angle) * 2;
-                decoy.y += Math.sin(angle) * 2;
+        }
+        utils.drawCircle(ctx, decoy.x, decoy.y, decoy.r, "#9b59b6");
+    }
+    
+    if(playerHasCore('sentinel_pair') && state.decoys.length > 0) {
+        utils.drawLightning(ctx, state.player.x, state.player.y, state.decoys[0].x, state.decoys[0].y, '#f1c40f');
+    }
+
+    if (state.gravityActive && now > state.gravityEnd) {
+        state.gravityActive = false;
+        if (state.player.purchasedTalents.has('temporal-collapse')) {
+            state.effects.push({ type: 'slow_zone', x: canvas.width / 2, y: canvas.height / 2, r: 250, endTime: Date.now() + 4000 });
+        }
+    }
+
+    if (state.player.infected) {
+        if (now > state.player.infectionEnd) {
+            state.player.infected = false;
+        } else if (now - state.player.lastSpore > 2000) {
+            state.player.lastSpore = now;
+            const spore = spawnEnemy(false, null, {x: state.player.x, y: state.player.y});
+            if(spore){
+                spore.r = 8; spore.hp = 2; spore.dx = (Math.random() - 0.5) * 8;
+                spore.dy = (Math.random() - 0.5) * 8; spore.ignoresPlayer = true;
             }
         }
     }
     
-    if(playerHasCore('sentinel_pair') && state.decoys.length > 0) {
+    if (state.player.talent_states.phaseMomentum.active) {
+        ctx.globalAlpha = 0.3;
+        utils.drawCircle(ctx, state.player.x, state.player.y, state.player.r + 5, 'rgba(0, 255, 255, 0.5)');
+        utils.spawnParticles(state.particles, state.player.x, state.player.y, 'rgba(0, 255, 255, 0.5)', 1, 0.5, 10, state.player.r * 0.5);
+        ctx.globalAlpha = 1.0;
+    }
+
+    if (state.player.shield) {
+        ctx.strokeStyle = "rgba(241,196,15,0.7)";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(state.player.x, state.player.y, Math.max(0, state.player.r + 8), 0, 2 * Math.PI);
+        ctx.stroke();
+    }
+    
+    let playerColor = state.player.shield ? "#f1c40f" : ((state.player.berserkUntil > now) ? '#e74c3c' : (state.player.infected ? '#55efc4' : "#3498db"));
+    let playerAlpha = 1.0;
+    const isPhased = playerHasCore('quantum_shadow') && state.player.statusEffects.some(e => e.name === 'Phased');
+    if (isPhased) {
+        playerColor = '#00ecec';
+        playerAlpha = 0.5;
+    }
+    ctx.globalAlpha = playerAlpha;
+    utils.drawCircle(ctx, state.player.x, state.player.y, state.player.r, playerColor);
+    ctx.globalAlpha = 1.0;
+
+    const juggernautCharge = state.effects.find(e => e.type === 'juggernaut_player_charge');
+    if (juggernautCharge) {
+        const progress = (now - juggernautCharge.startTime) / juggernautCharge.duration;
+        utils.spawnParticles(state.particles, state.player.x, state.player.y, '#636e72', 3, 2, 20, 5);
+        const afterImageX = state.player.x - Math.cos(juggernautCharge.angle) * 20 * progress;
+        const afterImageY = state.player.y - Math.sin(juggernautCharge.angle) * 20 * progress;
+        ctx.globalAlpha = 0.5 * (1 - progress);
+        utils.drawCircle(ctx, afterImageX, afterImageY, state.player.r, '#636e72');
+        ctx.globalAlpha = 1.0;
+    }
+    
+    const equippedCoreId = state.player.equippedAberrationCore;
+    const coreState = equippedCoreId ? state.player.talent_states.core_states[equippedCoreId] : null;
+    const isCoreOnCooldown = coreState && coreState.cooldownUntil && now < coreState.cooldownUntil;
+
+    if (equippedCoreId && !isPhased && !juggernautCharge && !isCoreOnCooldown) {
+        const coreData = bossData.find(b => b.id === equippedCoreId);
+        if (coreData) {
+            const pulse = 0.4 + (Math.sin(now / 400) * 0.2);
+            ctx.globalAlpha = pulse;
+            const glowColor = equippedCoreId === 'pantheon' ? `hsl(${(now / 20) % 360}, 100%, 70%)` : coreData.color;
+            ctx.fillStyle = glowColor;
+            ctx.beginPath();
+            ctx.arc(state.player.x, state.player.y, state.player.r + 10, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+        }
+    }
+    
+    state.decoys.forEach(decoy => {
+        // Taunt logic: Enemies target closest decoy if available
+        state.enemies.forEach(e => {
+            if (!e.boss && Math.random() < 0.3) { // 30% chance per tick to retarget
+                const decoyDist = Math.hypot(e.x - decoy.x, e.y - decoy.y);
+                const playerDist = Math.hypot(e.x - state.player.x, e.y - state.player.y);
+                if (decoyDist < playerDist) {
+                    e.targetX = decoy.x;
+                    e.targetY = decoy.y;
+                }
+            }
+        });
+    });
+    
+    if (state.gravityActive && now > state.gravityEnd) {
+        state.gravityActive = false;
+        if (state.player.purchasedTalents.has('temporal-collapse')) {
+            state.effects.push({ type: 'slow_zone', x: canvas.width / 2, y: canvas.height / 2, r: 250, endTime: Date.now() + 4000 });
+        }
+    }
+
+    if (state.player.infected) {
+        if (now > state.player.infectionEnd) {
+            state.player.infected = false;
+        } else if (now - state.player.lastSpore > 2000) {
+            state.player.lastSpore = now;
+            const spore = spawnEnemy(false, null, {x: state.player.x, y: state.player.y});
+            if(spore){
+                spore.r = 8; spore.hp = 2; spore.dx = (Math.random() - 0.5) * 8;
+                spore.dy = (Math.random() - 0.5) * 8; spore.ignoresPlayer = true;
+            }
+        }
+    }
+    
+    if (state.player.talent_states.phaseMomentum.active) {
+        ctx.globalAlpha = 0.3;
+        utils.drawCircle(ctx, state.player.x, state.player.y, state.player.r + 5, 'rgba(0, 255, 255, 0.5)');
+        utils.spawnParticles(state.particles, state.player.x, state.player.y, 'rgba(0, 255, 255, 0.5)', 1, 0.5, 10, state.player.r * 0.5);
+        ctx.globalAlpha = 1.0;
+    }
+
+    if (state.player.shield) {
+        ctx.strokeStyle = "rgba(241,196,15,0.7)";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(state.player.x, state.player.y, Math.max(0, state.player.r + 8), 0, 2 * Math.PI);
+        ctx.stroke();
+    }
+    
+    let playerColor = state.player.shield ? "#f1c40f" : ((state.player.berserkUntil > now) ? '#e74c3c' : (state.player.infected ? '#55efc4' : "#3498db"));
+    let playerAlpha = 1.0;
+    const isPhased = playerHasCore('quantum_shadow') && state.player.statusEffects.some(e => e.name === 'Phased');
+    if (isPhased) {
+        playerColor = '#00ecec';
+        playerAlpha = 0.5;
+    }
+    ctx.globalAlpha = playerAlpha;
+    utils.drawCircle(ctx, state.player.x, state.player.y, state.player.r, playerColor);
+    ctx.globalAlpha = 1.0;
+
+    const juggernautCharge = state.effects.find(e => e.type === 'juggernaut_player_charge');
+    if (juggernautCharge) {
+        const progress = (now - juggernautCharge.startTime) / juggernautCharge.duration;
+        utils.spawnParticles(state.particles, state.player.x, state.player.y, '#636e72', 3, 2, 20, 5);
+        const afterImageX = state.player.x - Math.cos(juggernautCharge.angle) * 20 * progress;
+        const afterImageY = state.player.y - Math.sin(juggernautCharge.angle) * 20 * progress;
+        ctx.globalAlpha = 0.5 * (1 - progress);
+        utils.drawCircle(ctx, afterImageX, afterImageY, state.player.r, '#636e72');
+        ctx.globalAlpha = 1.0;
+    }
+    
+    const equippedCoreId = state.player.equippedAberrationCore;
+    const coreState = equippedCoreId ? state.player.talent_states.core_states[equippedCoreId] : null;
+    const isCoreOnCooldown = coreState && coreState.cooldownUntil && now < coreState.cooldownUntil;
+
+    if (equippedCoreId && !isPhased && !juggernautCharge && !isCoreOnCooldown) {
+        const coreData = bossData.find(b => b.id === equippedCoreId);
+        if (coreData) {
+            const pulse = 0.4 + (Math.sin(now / 400) * 0.2);
+            ctx.globalAlpha = pulse;
+            const glowColor = equippedCoreId === 'pantheon' ? `hsl(${(now / 20) % 360}, 100%, 70%)` : coreData.color;
+            ctx.fillStyle = glowColor;
+            ctx.beginPath();
+            ctx.arc(state.player.x, state.player.y, state.player.r + 10, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+        }
+    }
+    
+    state.decoys.forEach(decoy => {
+        utils.drawCircle(ctx, decoy.x, decoy.y, decoy.r, "#9b59b6");
+    });
+    if(playerHasCore('sentinel_pair') && state.decoys.length > 0){
         const decoy = state.decoys[0];
-        for(const enemy of state.enemies) {
-            if(!enemy.isFriendly && utils.lineCircleCollision(state.player.x, state.player.y, decoy.x, decoy.y, enemy.x, enemy.y, enemy.r)) {
+        for(const enemy of state.enemies){
+            if(!enemy.isFriendly && utils.lineCircleCollision(state.player.x, state.player.y, decoy.x, decoy.y, enemy.x, enemy.y, enemy.r)){
                 enemy.hp -= 0.5 * state.player.talent_modifiers.damage_multiplier;
                 Cores.handleCoreOnDamageDealt(enemy);
             }
         }
+        utils.drawLightning(ctx, state.player.x, state.player.y, decoy.x, decoy.y, '#f1c40f');
     }
 
     if (state.gravityActive && now > state.gravityEnd) {
@@ -503,7 +669,7 @@ export function gameTick(mx, my) {
     state.decoys.forEach(decoy => {
         utils.drawCircle(ctx, decoy.x, decoy.y, decoy.r, "#9b59b6");
     });
-    if(playerHasCore('sentinel_pair') && state.decoys.length > 0) {
+    if(playerHasCore('sentinel_pair') && state.decoys.length > 0){
         utils.drawLightning(ctx, state.player.x, state.player.y, state.decoys[0].x, state.decoys[0].y, '#f1c40f');
     }
 
@@ -550,7 +716,7 @@ export function gameTick(mx, my) {
                 }
                 const cryoRank = state.player.purchasedTalents.get('cryo-shatter');
                 if (cryoRank && e.wasFrozen && Math.random() < [0.25, 0.5][cryoRank-1]) {
-                    utils.spawnParticles(state.particles, e.x, e.y, '#ADD8E6', 40, 4, 30, 2);
+                    utils.spawnParticles(state.particles, e.x, e.y, '#ADD8E6', 40, 4, 30, 5);
                     state.effects.push({ type: 'shockwave', caster: state.player, x: e.x, y: e.y, radius: 0, maxRadius: 100, speed: 500, startTime: now, hitEnemies: new Set(), damage: 5 * state.player.talent_modifiers.damage_multiplier, color: 'rgba(0, 200, 255, 0.5)' });
                     if (state.player.purchasedTalents.has('glacial-propagation')) {
                         state.effects.push({ type: 'small_freeze', x: e.x, y: e.y, radius: 100, endTime: now + 200 });
@@ -593,13 +759,6 @@ export function gameTick(mx, my) {
             });
         }
         
-        if (e.id === 'time_eater' && e.effects) {
-            for (let j = e.effects.length - 1; j >= 0; j--) {
-                const zone = e.effects[j];
-                if (now > zone.endTime) e.effects.splice(j, 1);
-            }
-        }
-
         if (e.eatenBy) {
             const pullX = e.eatenBy.x - e.x, pullY = e.eatenBy.y - e.y;
             const pullDist = Math.hypot(pullX, pullY) || 1;
@@ -607,7 +766,7 @@ export function gameTick(mx, my) {
             e.r *= 0.95;
             if (e.r < 2) {
                 if (timeEater) timeEater.hp -= 10;
-                utils.spawnParticles(state.particles, e.x, e.y, "#d63031", 10, 2, 15);
+                utils.spawnParticles(state.particles, e.x, e.y, "#d63031", 10, 2, 15,5);
                 state.enemies.splice(i, 1);
                 continue;
             }
@@ -778,7 +937,7 @@ export function gameTick(mx, my) {
             p.r *= 0.95;
             if (p.r < 2) {
                 if (timeEater) timeEater.hp = Math.min(timeEater.maxHP, timeEater.hp + 10);
-                utils.spawnParticles(state.particles, p.x, p.y, "#fff", 10, 2, 15);
+                utils.spawnParticles(state.particles, p.x, p.y, "#fff", 10, 2, 15,5);
                 state.pickups.splice(i, 1);
                 continue;
             }
@@ -829,7 +988,7 @@ export function gameTick(mx, my) {
                     usePower(p.type, true);
                     state.pickups.splice(i, 1);
                 } else {
-                    utils.spawnParticles(state.particles, p.x, p.y, "#f00", 15, 2, 20); 
+                    utils.spawnParticles(state.particles, p.x, p.y, "#f00", 15, 2, 20,5); 
                     state.pickups.splice(i,1);
                 }
             }
@@ -925,7 +1084,7 @@ export function gameTick(mx, my) {
                 if (!from || typeof from.x !== 'number' || !to || typeof to.x !== 'number') continue;
                 utils.drawLightning(ctx, from.x, from.y, to.x, to.y, effect.color || '#00ffff', 4);
                 if (!effect.links.includes(to)) {
-                    utils.spawnParticles(state.particles, to.x, to.y, '#ffffff', 30, 5, 20);
+                    utils.spawnParticles(state.particles, to.x, to.y, '#ffffff', 30, 5, 20,5);
                     let dmg = (to.boss ? effect.damage : 50) * state.player.talent_modifiers.damage_multiplier;
                     if (effect.caster !== state.player) dmg = effect.damage;
                     else {
@@ -970,7 +1129,7 @@ export function gameTick(mx, my) {
             utils.drawCircle(ctx, effect.x, effect.y, effect.r, effect.color || '#fff'); 
             if(effect.x < 0 || effect.x > canvas.width || effect.y < 0 || effect.y > canvas.height) { state.effects.splice(i, 1); continue; }
             if (effect.caster === state.player || effect.caster === 'reflected') {
-                state.enemies.forEach(e => { if (e !== effect.caster && !e.isFriendly && Math.hypot(e.x-effect.x, e.y-effect.y) < e.r + effect.r) { let damage = ((state.player.berserkUntil > now) ? 6 : 3) * state.player.talent_modifiers.damage_multiplier * dynamicDamageMultiplier; e.hp -= damage; Cores.handleCoreOnDamageDealt(e); state.effects.splice(i, 1); } }); 
+                state.enemies.forEach(e => { if (e !== effect.caster && !e.isFriendly && Math.hypot(e.x - effect.x, e.y - effect.y) < e.r + effect.r) { let damage = ((state.player.berserkUntil > now) ? 6 : 3) * state.player.talent_modifiers.damage_multiplier * dynamicDamageMultiplier; e.hp -= damage; Cores.handleCoreOnDamageDealt(e); state.effects.splice(i, 1); } }); 
             } else {
                 const hasPhased = playerHasCore('quantum_shadow') && state.player.statusEffects.some(e => e.name === 'Phased');
                 const pDist = Math.hypot(state.player.x - effect.x, state.player.y - effect.y);
@@ -996,7 +1155,7 @@ export function gameTick(mx, my) {
             if(hasTracking && effect.target && effect.target.hp > 0) { effect.x = effect.target.x; effect.y = effect.target.y; }
             const duration = 1500; const progress = (now - effect.startTime) / duration; 
             if (progress >= 1) { 
-                spawnParticlesCallback(effect.x, effect.y, '#e67e22', 100, 8, 40); 
+                spawnParticlesCallback(effect.x, effect.y, '#e67e22', 100, 8, 40,5); 
                 const explosionRadius = effect.radius || 150; 
                 const targets = (effect.caster === state.player) ? state.enemies : [state.player];
                 targets.forEach(e => { 
@@ -1288,11 +1447,11 @@ export function gameTick(mx, my) {
             }
         }
         else if (effect.type === 'paradox_echo') {
-            const elapsed = Date.now() - effect.startTime;
+            const elapsed = now - effect.startTime;
             const progress = elapsed / 5000;
             if (progress >= 1) {
                 stopLoopingSfx('paradoxTrailHum');
-                effect.endTime = Date.now();
+                effect.endTime = now;
                 continue;
             }
             const currentIndex = Math.floor(effect.history.length * progress);
