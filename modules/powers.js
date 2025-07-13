@@ -24,7 +24,7 @@ export const powers={
       state.player.shield = true;
       state.player.shield_end_time = shieldEndTime;
       game.addStatusEffect('Shield', '🛡️', duration);
-      utils.spawnParticles(state.particles, state.player.x,state.player.y,"#f1c40f",30,4,30);
+      utils.spawnParticles(state.particles, state.player.x,state.player.y,"#f1c40f",30,4,30,5);
 
       setTimeout(()=> {
           if(state.player.shield_end_time <= shieldEndTime){
@@ -137,7 +137,7 @@ export const powers={
         game.play('gravitySound'); 
         state.gravityActive=true; 
         state.gravityEnd=Date.now()+1000; 
-        utils.spawnParticles(state.particles, innerWidth/2, innerHeight/2,"#9b59b6",100,4,40); 
+        utils.spawnParticles(state.particles, innerWidth/2, innerHeight/2,"#9b59b6",100,4,40,5); 
         
         if (state.player.purchasedTalents.has('temporal-collapse')) {
             setTimeout(() => {
@@ -153,7 +153,7 @@ export const powers={
         }
     }
   },
-  speed:{emoji:"🚀",desc:"Speed Boost for 5s",apply:(utils, game)=>{ state.player.speed*=1.5; game.addStatusEffect('Speed Boost', '🚀', 5000); utils.spawnParticles(state.particles, state.player.x,state.player.y,"#00f5ff",40,3,30); setTimeout(()=>state.player.speed/=1.5,5000); }},
+  speed:{emoji:"🚀",desc:"Speed Boost for 5s",apply:(utils, game)=>{ state.player.speed*=1.5; game.addStatusEffect('Speed Boost', '🚀', 5000); utils.spawnParticles(state.particles, state.player.x,state.player.y,"#00f5ff",40,3,30,5); setTimeout(()=>state.player.speed/=1.5,5000); }},
   freeze:{emoji:"🧊",desc:"Freeze enemies for 4s",apply:(utils, game)=>{
       state.enemies.forEach(e=>{
           if (e.id === 'fractal_horror' || e.isFriendly) return;
@@ -169,7 +169,7 @@ export const powers={
             e.petrifiedUntil = Date.now() + 3000;
           }
       });
-      utils.spawnParticles(state.particles, state.player.x,state.player.y,"#0ff",60,3,30);
+      utils.spawnParticles(state.particles, state.player.x,state.player.y,"#0ff",60,3,30,5);
       setTimeout(()=>{
           state.enemies.forEach(e=>{
               if (!e.frozen) return;
@@ -192,10 +192,10 @@ export const powers={
           isTaunting: true,
           isMobile: isMobile
       };
-      utils.spawnParticles(state.particles, state.player.x,state.player.y,"#8e44ad",50,3,30);
+      utils.spawnParticles(state.particles, state.player.x,state.player.y,"#8e44ad",50,3,30,5);
   }},
-  stack:{emoji:"🧠",desc:"Double next power-up",apply:(utils, game)=>{ state.stacked=true; game.addStatusEffect('Stacked', '🧠', 60000); utils.spawnParticles(state.particles, state.player.x,state.player.y,"#aaa",40,4,30); }},
-  score: {emoji: "💎", desc: "Gain a large amount of Essence.", apply: (utils, game) => { game.addEssence(200 + state.player.level * 10); utils.spawnParticles(state.particles, state.player.x, state.player.y, "#f1c40f", 40, 4, 30); }},
+  stack:{emoji:"🧠",desc:"Double next power-up",apply:(utils, game)=>{ state.stacked=true; game.addStatusEffect('Stacked', '🧠', 60000); utils.spawnParticles(state.particles, state.player.x,state.player.y,"#aaa",40,4,30,5); }},
+  score: {emoji: "💎", desc: "Gain a large amount of Essence.", apply: (utils, game) => { game.addEssence(200 + state.player.level * 10); utils.spawnParticles(state.particles, state.player.x, state.player.y, "#f1c40f", 40, 4, 30,5); }},
   repulsion: {emoji: "🖐️", desc: "Creates a 5s push-away field.", apply: (utils, game) => {
       const hasKineticOverload = state.player.purchasedTalents.has('kinetic-overload');
       state.effects.push({
@@ -257,7 +257,7 @@ export const powers={
           }, 4000);
       }
   }},
-  berserk: {emoji: "💢", desc: "8s: Deal 2x damage, take 2x damage", apply:(utils, game)=>{ state.player.berserkUntil = Date.now() + 8000; game.addStatusEffect('Berserk', '💢', 8000); utils.spawnParticles(state.particles, state.player.x, state.player.y, "#e74c3c", 40, 3, 30); }},
+  berserk: {emoji: "💢", desc: "8s: Deal 2x damage, take 2x damage", apply:(utils, game)=>{ state.player.berserkUntil = Date.now() + 8000; game.addStatusEffect('Berserk', '💢', 8000); utils.spawnParticles(state.particles, state.player.x, state.player.y, "#e74c3c", 40, 3, 30,5); }},
   ricochetShot: {emoji: "🔄", desc: "Fires a shot that bounces 6 times", apply:(utils, game, mx, my, options = {}) => {
       const { damageModifier = 1.0, origin = state.player } = options;
       let bounceCount = 6;
@@ -306,7 +306,7 @@ export function usePower(powerKey, isFreeCast = false, options = {}){
       }
       if (recycled) {
           addStatusEffect('Recycled', '♻️', 2000);
-          utils.spawnParticles(state.particles, state.player.x, state.player.y, "#2ecc71", 40, 5, 40);
+          utils.spawnParticles(state.particles, state.player.x, state.player.y, "#2ecc71", 40, 5, 40,5);
           consumed = false;
       }
   }
@@ -366,7 +366,7 @@ export function usePower(powerKey, isFreeCast = false, options = {}){
            power.apply(...applyArgs);
            addStatusEffect('Duplicated', '✨', 2000);
            play('shaperAttune');
-           utils.spawnParticles(state.particles, state.player.x, state.player.y, '#9b59b6', 40, 3);
+           utils.spawnParticles(state.particles, state.player.x, state.player.y, '#9b59b6', 40, 3, 30,5);
       }, 150);
   }
 }
