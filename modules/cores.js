@@ -69,6 +69,22 @@ export function activateCorePower(mx, my, gameHelpers) {
             abilityTriggered = true;
             break;
 
+        case 'looper':
+            coreState.cooldownUntil = now + 10000; // Adjust cooldown as needed
+            coreState.isShifting = true;
+            gameHelpers.addStatusEffect('Shifting', '🌀', 1000);
+            gameHelpers.play('chargeUpSound');
+            setTimeout(() => {
+                if(state.gameOver || !coreState.isShifting) return;
+                state.player.x = mx;
+                state.player.y = my;
+                gameHelpers.play('mirrorSwap');
+                utils.spawnParticles(state.particles, mx, my, '#ecf0f1', 40, 4, 30, 5); // Added life param
+                coreState.isShifting = false;
+            }, 1000);
+            abilityTriggered = true;
+            break;
+
         default:
             // Core has no active ability on this trigger
             break;
@@ -79,7 +95,6 @@ export function activateCorePower(mx, my, gameHelpers) {
         updateUI();
     }
 }
-
 
 /**
  * Applies passive, per-tick effects for equipped Aberration Cores.
@@ -304,7 +319,7 @@ export function handleCoreOnPlayerDamage(damage, enemy, gameHelpers) {
                     isTaunting: true, isMobile: false, hp: 1
                 });
                 gameHelpers.play('mirrorSwap');
-                utils.spawnParticles(state.particles, state.player.x, state.player.y, '#ff00ff', 40, 4);
+                utils.spawnParticles(state.particles, state.player.x, state.player.y, '#ff00ff', 40, 4, 30, 5); // Added life param
             }
         }
         
@@ -344,7 +359,7 @@ export function handleCoreOnDamageDealt(target) {
             isSeeking: true,
             customApply: () => {
                 state.player.health = Math.min(state.player.maxHealth, state.player.health + (state.player.maxHealth * 0.02));
-                utils.spawnParticles(state.particles, state.player.x, state.player.y, "#800020", 20, 3, 30);
+                utils.spawnParticles(state.particles, state.player.x, state.player.y, "#800020", 20, 3, 30, 5);
                 window.gameHelpers.play('vampireHeal');
             }
         });
@@ -362,7 +377,7 @@ export function handleCoreOnShieldBreak() {
             ef.type !== 'nova_bullet' && 
             ef.type !== 'helix_bolt'
         );
-        utils.spawnParticles(state.particles, state.player.x, state.player.y, '#3498db', 50, 4, 30);
+        utils.spawnParticles(state.particles, state.player.x, state.player.y, '#3498db', 50, 4, 30, 5);
         window.gameHelpers.play('empDischarge');
     }
 }
@@ -379,7 +394,7 @@ export function handleCoreOnFatalDamage(enemy, gameHelpers) {
             state.player.health = rewindState.health;
             state.player.talent_states.core_states.epoch_ender.cooldownUntil = now + 120000;
             gameHelpers.play('timeRewind');
-            utils.spawnParticles(state.particles, state.player.x, state.player.y, '#bdc3c7', 80, 6, 40);
+            utils.spawnParticles(state.particles, state.player.x, state.player.y, '#bdc3c7', 80, 6, 40, 5);
             return true;
         }
     }
@@ -425,7 +440,7 @@ export function handleCoreOnDefensivePower(powerKey, mx, my, gameHelpers) {
                 state.player.x = mx;
                 state.player.y = my;
                 play('mirrorSwap');
-                utils.spawnParticles(state.particles, mx, my, '#ecf0f1', 40, 4);
+                utils.spawnParticles(state.particles, mx, my, '#ecf0f1', 40, 4, 30, 5);
                 looperState.isShifting = false;
             }, 1000);
         }
