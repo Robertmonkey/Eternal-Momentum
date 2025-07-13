@@ -182,16 +182,16 @@ export const powers={
       },4000);
   }},
   decoy:{emoji:"🔮",desc:"Decoy lasts 5s",apply:(utils, game)=>{
-      // THIS IS THE ORIGINAL DECOY LOGIC
       const isMobile = state.player.purchasedTalents.has('quantum-duplicate');
-      state.decoy={
+      state.decoys.push({
           x:state.player.x,
           y:state.player.y,
           r:20,
           expires:Date.now()+5000,
           isTaunting: true,
-          isMobile: isMobile
-      };
+          isMobile: isMobile,
+          hp: 1
+      });
       utils.spawnParticles(state.particles, state.player.x,state.player.y,"#8e44ad",50,3,30,5);
   }},
   stack:{emoji:"🧠",desc:"Double next power-up",apply:(utils, game)=>{ state.stacked=true; game.addStatusEffect('Stacked', '🧠', 60000); utils.spawnParticles(state.particles, state.player.x,state.player.y,"#aaa",40,4,30,5); }},
