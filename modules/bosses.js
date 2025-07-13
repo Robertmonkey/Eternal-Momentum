@@ -59,7 +59,7 @@ export const bossData = [{
                 b.cycles++;
                 if (b.cycles % 3 === 0) {
                     b.reflecting = true;
-                    utils.spawnParticles(state.particles, b.x, b.y, "#fff", 50, 4, 30,5);
+                    utils.spawnParticles(state.particles, b.x, b.y, "#fff", 50, 4, 30, 5);
                     setTimeout(() => b.reflecting = false, 2000);
                 }
             }
@@ -109,7 +109,7 @@ export const bossData = [{
             b.hp = Math.min(b.maxHP, b.hp + 5);
             b.lastHeal = now;
             gameHelpers.play('vampireHeal');
-            utils.spawnParticles(state.particles, b.x, b.y, "#800020", 20, 1, 40,5);
+            utils.spawnParticles(state.particles, b.x, b.y, "#800020", 20, 1, 40, 5);
         }
     },
     onDamage: (b, dmg, source, state, spawnParticles) => {
@@ -126,7 +126,7 @@ export const bossData = [{
                 vy: 0,
                 customApply: () => {
                     source.health = Math.min(source.maxHealth || Infinity, source.health + 10);
-                    spawnParticles(state.particles, source.x, source.y, "#800020", 20, 3, 30,5);
+                    spawnParticles(state.particles, source.x, source.y, "#800020", 20, 3, 30, 5);
                 }
             });
         }
@@ -167,7 +167,7 @@ export const bossData = [{
         });
     }
 }, {
-    id: "swarm",
+    id: "swarm_link",
     name: "Swarm Link",
     color: "#c0392b",
     maxHP: 200,
@@ -193,7 +193,7 @@ export const bossData = [{
             utils.drawCircle(ctx, c.x, c.y, 8, "orange");
             prev = c;
             
-           const pDist = Math.hypot(state.player.x - c.x, state.player.y - c.y);
+            const pDist = Math.hypot(state.player.x - c.x, state.player.y - c.y);
             if (pDist < state.player.r + 8) { 
                 state.player.talent_states.phaseMomentum.lastDamageTime = Date.now();
                 state.player.talent_states.phaseMomentum.active = false;
@@ -205,7 +205,7 @@ export const bossData = [{
         });
     }
 }, {
-    id: "mirror",
+    id: "mirror_mirage",
     name: "Mirror Mirage",
     color: "#ff00ff",
     maxHP: 240,
@@ -236,10 +236,10 @@ export const bossData = [{
         }
     },
     onDamage: (b, dmg, source, state, spawnParticles) => {
-        spawnParticles(state.particles, b.x, b.y, "#f00", 10, 3, 20,5);
+        spawnParticles(state.particles, b.x, b.y, "#f00", 10, 3, 20, 5);
     }
 }, {
-    id: "emp",
+    id: "emp_overload",
     name: "EMP Overload",
     color: "#3498db",
     maxHP: 260,
@@ -463,7 +463,7 @@ export const bossData = [{
                 endTime: b.teleportingAt
             });
             gameHelpers.play('chargeUpSound');
-            utils.spawnParticles(state.particles, b.x, b.y, "#fff", 30, 4, 20,5);
+            utils.spawnParticles(state.particles, b.x, b.y, "#fff", 30, 4, 20, 5);
         }
 
         if (b.teleportingAt && Date.now() > b.teleportingAt) {
@@ -477,7 +477,7 @@ export const bossData = [{
             b.teleportTarget = null;
             
             gameHelpers.play('mirrorSwap');
-            utils.spawnParticles(state.particles, b.x, b.y, "#fff", 30, 4, 20,5);
+            utils.spawnParticles(state.particles, b.x, b.y, "#fff", 30, 4, 20, 5);
         }
     }
 }, {
@@ -628,7 +628,7 @@ export const bossData = [{
             else b[timer] = Date.now();
 
             gameHelpers.play('glitchSound');
-            utils.spawnParticles(state.particles, b.x, b.y, b.color, 40, 4, 30,5);
+            utils.spawnParticles(state.particles, b.x, b.y, b.color, 40, 4, 30, 5);
             const oldX = b.x;
             const oldY = b.y;
             b.x = utils.randomInRange(b.r, canvas.width - b.r);
@@ -779,14 +779,13 @@ export const bossData = [{
         });
     },
     logic: (b, ctx, state, utils, gameHelpers) => {
-        const canvas = ctx.canvas;
         const hpPercent = Math.max(0, b.hp / b.maxHP);
         const growthRange = 1.0 - 0.3; 
         const currentGrowthProgress = 1.0 - hpPercent;
         const scaledGrowth = Math.min(1.0, currentGrowthProgress / growthRange);
 
-        const w = canvas.width;
-        const h = canvas.height;
+        const w = ctx.canvas.width;
+        const h = ctx.canvas.height;
         const maxSizeW = w / 2;
         const maxSizeH = h / 2;
         
@@ -1079,251 +1078,13 @@ export const bossData = [{
         b.effects = [];
     }
 }, {
-    id: "singularity",
-    name: "The Singularity",
-    color: "#000000",
-    maxHP: 1000,
-    difficulty_tier: 3,
-    archetype: 'field_control',
-    unlock_level: 105,
-    core_desc: "Using a power-up has a 15% chance that it is not consumed. There's a 5% chance the power is duplicated instead.",
-    description: "The ultimate manifestation of the Unraveling—a point of infinite density where realities collapse. It pulls everything toward its event horizon, erasing existence.",
-    lore: "The Singularity is not an entity; it is the wound left by the Unraveling's first cut. A point where infinite timelines converged and imploded. It hungers not for matter, but for possibility. Anything that falls into its grasp is not destroyed—it is retroactively erased, as if it never existed. To fight it is to risk unmaking your own history.",
-    mechanics_desc: "Generates an inescapable pull toward its center. The only way to survive is to use its own gravity against it—orbit at the right distance while chipping away at its core. Get too close, and you're erased.",
-    init: b => {
-        b.pullStrength = 0.02;
-    },
-    logic: (b, ctx, state, utils) => {
-        const eventHorizon = 50;
-        utils.drawCircle(ctx, b.x, b.y, eventHorizon, 'black');
-        ctx.strokeStyle = 'rgba(0,0,0,0.8)';
-        ctx.lineWidth = 5;
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, eventHorizon + 20, 0, 2 * Math.PI);
-        ctx.stroke();
-
-        // Pull everything
-        [state.player, ...state.enemies, ...state.pickups].forEach(obj => {
-            const dx = b.x - obj.x;
-            const dy = b.y - obj.y;
-            const dist = Math.hypot(dx, dy);
-            if (dist < eventHorizon) {
-                if (obj === state.player) {
-                    state.gameOver = true;
-                } else if (obj.hp) {
-                    obj.hp = 0;
-                } else if (obj.type) {
-                    state.pickups = state.pickups.filter(p => p !== obj);
-                }
-            } else if (dist < 400) {
-                const pull = b.pullStrength * (1 / (dist / 100));
-                obj.x += (dx / dist) * pull;
-                obj.y += (dy / dist) * pull;
-            }
-        });
-    },
-    onDeath: (b, state) => {
-        state.effects.push({
-            type: 'implosion',
-            x: b.x,
-            y: b.y,
-            startTime: Date.now(),
-            duration: 2000
-        });
-    }
-}, {
-    id: "miasma",
-    name: "The Miasma",
-    color: "#6ab04c",
-    maxHP: 400,
-    difficulty_tier: 3,
-    archetype: 'field_control',
-    unlock_level: 110,
-    core_desc: "You are immune to all environmental damage-over-time. Standing still for 3 seconds creates a small zone around you that heals you slowly.",
-    description: "Fills the arena with a toxic Miasma, dealing constant damage unless its purifying vents are overloaded.",
-    lore: "The collective consciousness of a vibrant forest-world that, in its final moments, attempted to merge with its own toxic flora to survive the Unraveling. The attempt failed, leaving only a cycle of poison and purification. It suffocates the arena with its toxic grief, and only by overloading the last remnants of its purifying vents can you make it vulnerable.",
-    mechanics_desc: "Periodically fills the entire arena with a toxic gas that deals constant damage to you. To stop the gas, you must lure the Miasma near one of the four purifying vents and damage the vent while the boss is on top of it. While the gas is active, the Miasma is immune to damage.",
-    init: (b, state, spawnEnemy, canvas) => {
-        b.vents = [{x: canvas.width * 0.2, y: canvas.height * 0.2}, {x: canvas.width * 0.8, y: canvas.height * 0.2}, {x: canvas.width * 0.2, y: canvas.height * 0.8}, {x: canvas.width * 0.8, y: canvas.height * 0.8}].map(v => ({...v, cooldownUntil: 0}));
-        b.isGasActive = false;
-        b.lastGasAttack = Date.now();
-        b.isChargingSlam = false;
-    },
-    hasCustomDraw: true,
-    hasCustomMovement: true,
-    logic: (b, ctx, state, utils, gameHelpers) => {
-        if (!b.frozen) {
-            const target = state.player;
-            const vx = (target.x - b.x) * 0.005;
-            const vy = (target.y - b.y) * 0.005;
-            b.x += vx;
-            b.y += vy;
-        }
-        
-        const pulsatingSize = b.r + Math.sin(Date.now() / 300) * 5;
-        utils.drawCircle(ctx, b.x, b.y, pulsatingSize, b.isGasActive ? '#6ab04c' : '#a4b0be');
-        
-        b.vents.forEach(v => {
-            const isOnCooldown = Date.now() < v.cooldownUntil;
-            const color = isOnCooldown ? 'rgba(127, 140, 141, 0.4)' : '#7f8c8d';
-            
-            if (b.isGasActive && !isOnCooldown) {
-                const pulse = Math.abs(Math.sin(Date.now() / 200));
-                ctx.fillStyle = `rgba(255, 255, 255, ${pulse * 0.3})`;
-                ctx.beginPath();
-                ctx.arc(v.x, v.y, 30 + pulse * 10, 0, 2 * Math.PI);
-                ctx.fill();
-            }
-            
-            utils.drawCrystal(ctx, v.x, v.y, 30, color);
-        });
-        
-        ctx.globalAlpha = 1.0;
-        if (!b.isGasActive && Date.now() - b.lastGasAttack > 10000) {
-            b.isGasActive = true;
-            state.effects.push({ type: 'miasma_gas', endTime: Date.now() + 99999, id: b.id });
-            gameHelpers.play('miasmaGasRelease');
-        }
-        if (b.isGasActive && !b.isChargingSlam) {
-            b.isChargingSlam = true;
-            state.effects.push({ type: 'charge_indicator', source: b, duration: 2000, radius: 120, color: 'rgba(106, 176, 76, 0.5)' });
-            gameHelpers.play('chargeUpSound');
-            setTimeout(() => {
-                if (!state.enemies.includes(b)) return;
-                if (b.hp <= 0) return;
-                gameHelpers.play('miasmaSlam');
-                utils.spawnParticles(state.particles, b.x, b.y, '#6ab04c', 50, 4, 30,5);
-                b.vents.forEach(v => {
-                    if (Date.now() > v.cooldownUntil && Math.hypot(b.x - v.x, b.y - v.y) < 120) {
-                        v.cooldownUntil = Date.now() + 10000;
-                        b.isGasActive = false;
-                        state.effects = state.effects.filter(e => e.type !== 'miasma_gas' || e.id !== b.id);
-                        b.lastGasAttack = Date.now();
-                        gameHelpers.play('ventPurify');
-                        utils.spawnParticles(state.particles, v.x, v.y, '#ffffff', 100, 6, 50, 5);
-                        state.effects.push({ type: 'shockwave', caster:b, x: v.x, y: v.y, radius: 0, maxRadius: 400, speed: 1200, startTime: Date.now(), damage: 0, hitEnemies: new Set() });
-                    }
-                });
-                b.isChargingSlam = false;
-            }, 2000);
-        }
-    },
-    onDamage: (b, dmg) => { if (b.isGasActive) b.hp += dmg; },
-    onDeath: (b, state) => { state.effects = state.effects.filter(e => e.type !== 'miasma_gas' || e.id !== b.id); }
-}, {
-    id: "temporal_paradox",
-    name: "The Temporal Paradox",
-    color: "#81ecec",
-    maxHP: 420,
-    difficulty_tier: 3,
-    archetype: 'specialist',
-    unlock_level: 115,
-    core_desc: "When you use an offensive power, a 'Paradox Echo' of you appears and repeats the action 1 second later for 50% of the damage.",
-    description: "This Aberration weaponizes causality by pulling your own movements from parallel timelines. These after-images are not ghosts; they are tangible matter from another reality. Occupying the same space as one of these echoes will create a fatal paradox.",
-    lore: "Once a 'historian' entity that could perceive and walk through its own past, it tried to flee the Unraveling by hiding in a previous point in its own timeline. The Unraveling followed, corrupting its ability. Now, it doesn't leave an echo of its own past, but rips a lethal 'snapshot' of YOURS from a parallel reality and forces it into the present.",
-    mechanics_desc: "The Paradox periodically creates a 'Paradox Echo,' a recording of your recent movements. The echo will then replay your path, leaving a deadly, damaging trail behind it. You must avoid your own ghost and its trail at all costs.",
-    hasCustomDraw: true,
-    init: (b) => {
-        b.playerHistory = [];
-        b.lastEcho = Date.now();
-    },
-    logic: (b, ctx, state, utils, gameHelpers) => {
-        if (state.player) {
-            b.playerHistory.push({x: state.player.x, y: state.player.y, time: Date.now()});
-            b.playerHistory = b.playerHistory.filter(p => Date.now() - p.time < 5000);
-        }
-        if (Date.now() - b.lastEcho > 8000) {
-            b.lastEcho = Date.now();
-            gameHelpers.play('phaseShiftSound');
-            const historyToReplay = [...b.playerHistory];
-            state.effects.push({ type: 'paradox_echo', history: historyToReplay, startTime: Date.now(), trail: [], playerR: state.player.r });
-            gameHelpers.playLooping('paradoxTrailHum');
-        }
-        ctx.globalAlpha = 0.7 + Math.sin(Date.now() / 200) * 0.2;
-        utils.drawCircle(ctx, b.x, b.y, b.r, b.color);
-        for(let i = 0; i < 3; i++) {
-            const offset = (i - 1) * 5;
-            ctx.globalAlpha = 0.3;
-            utils.drawCircle(ctx, b.x + offset, b.y, b.r, ['#ff4757', '#3498db', '#ffffff'][i]);
-        }
-        ctx.globalAlpha = 1;
-    },
-    onDeath: (b, state, sE, sP, play, stopLoopingSfx) => {
-        stopLoopingSfx('paradoxTrailHum');
-        play('paradoxShatter');
-        state.effects = state.effects.filter(e => e.type !== 'paradox_echo');
-    }
-}, {
-    id: "syphon",
-    name: "The Syphon",
-    color: "#9b59b6",
-    maxHP: 450,
-    difficulty_tier: 3,
-    archetype: 'specialist',
-    unlock_level: 120,
-    core_desc: "Attempting to use an empty inventory slot unleashes a 'Syphon Cone' that pulls all power-ups within its range to you.",
-    description: "Targets and drains power directly, stealing your most powerful offensive ability and unleashing a corrupted version of it.",
-    lore: "In its universe, abstract concepts like knowledge and power were tangible energies that could be 'siphoned.' This Aberration was a librarian-priest, a guardian of sacred powers. Corrupted by the Unraveling, its instinct to 'archive' has become a hungry desire to steal and corrupt the powers of others, unleashing twisted versions of their own strengths.",
-    mechanics_desc: "Targets you with a telegraphed cone attack. If you are hit, it will steal your primary offensive power-up and unleash a powerful, corrupted version of it. Evade the cone to protect your abilities.",
-    init: (b) => { b.lastSyphon = Date.now(); b.isCharging = false; },
-    logic: (b, ctx, state, utils, gameHelpers) => {
-        if (!b.isCharging && Date.now() - b.lastSyphon > 7500) {
-            b.isCharging = true;
-            b.lastSyphon = Date.now();
-            gameHelpers.play('chargeUpSound');
-            const targetAngle = Math.atan2(state.player.y - b.y, state.player.x - b.x);
-            state.effects.push({ type: 'syphon_cone', source: b, angle: targetAngle, endTime: Date.now() + 2500 });
-            setTimeout(() => {
-                if (b.hp <= 0) return;
-                b.isCharging = false;
-            }, 2500);
-        }
-    }
-}, {
-    id: "centurion",
-    name: "The Centurion",
-    color: "#d35400",
-    maxHP: 480,
-    difficulty_tier: 3,
-    archetype: 'field_control',
-    unlock_level: 125,
-    core_desc: "When a boss appears, four 'Containment Pylons' are summoned at the corners of the arena. Enemies near a pylon are briefly slowed and tethered.",
-    description: "Constructs a shrinking prison of energy walls, forcing a desperate battle in an ever-constricting space.",
-    lore: "The warden of a prison reality designed to contain conceptual threats. Its walls were made of absolute law. When the Unraveling broke the prison from the outside, the Centurion's logic shattered. It now identifies everything, including you and itself, as a threat to be contained, relentlessly shrinking its prison of light in an attempt to enforce an order that no longer exists.",
-    mechanics_desc: "Periodically summons a massive, shrinking energy box that traps you inside. The box has a single, randomly placed gap for you to escape through before it fully constricts.",
-    init: (b) => {
-        b.lastWallSummon = 0;
-    },
-    logic: (b, ctx, state, utils, gameHelpers) => {
-        if (Date.now() - b.lastWallSummon > 12000) {
-            b.lastWallSummon = Date.now();
-            gameHelpers.play('wallSummon');
-            const boxSize = Math.min(ctx.canvas.width, ctx.canvas.height) * 0.8;
-            state.effects.push({
-                type: 'shrinking_box',
-                startTime: Date.now(),
-                duration: 6000,
-                endTime: Date.now() + 6000,
-                x: state.player.x,
-                y: state.player.y,
-                initialSize: boxSize,
-                gapSide: Math.floor(Math.random() * 4),
-                gapPosition: Math.random()
-            });
-        }
-    },
-    onDeath: (b, state, sE, sP, play, stopLoopingSfx) => {
-        stopLoopingSfx('wallShrink');
-        state.effects = state.effects.filter(e => e.type !== 'shrinking_box');
-    }
-}, {
     id: "fractal_horror",
     name: "The Fractal Horror",
     color: "#be2edd",
     maxHP: 10000,
     difficulty_tier: 3,
     archetype: 'swarm',
-    unlock_level: 130,
+    unlock_level: 105,
     core_desc: "Every 10th enemy you defeat shatters into 3 smaller, friendly 'Fractal Bits' that aggressively seek out and damage enemies for a short time.",
     description: "A being of infinite complexity that splits into smaller, autonomous fragments as it takes damage, overwhelming its foe with sheer numbers.",
     lore: "This being was once a 'Mathematician,' an entity that perceived all of existence as a single, elegant equation. In a desperate attempt to comprehend the Unraveling—a variable it could not solve—it began to recursively analyze its own consciousness. The process never stopped. It is now an equation devouring itself, an infinite fractal of self-doubt given monstrous form. The whole is the sum of its broken parts.",
@@ -1362,7 +1123,7 @@ export const bossData = [{
             if (!biggestFractal) break;
 
             gameHelpers.play('fractalSplit');
-            utils.spawnParticles(state.particles, biggestFractal.x, biggestFractal.y, biggestFractal.color, 25, 3, 20,5);
+            utils.spawnParticles(state.particles, biggestFractal.x, biggestFractal.y, biggestFractal.color, 25, 3, 20, 5);
 
             const newRadius = biggestFractal.r / Math.SQRT2;
             for (let i = 0; i < 2; i++) {
@@ -1491,7 +1252,7 @@ export const bossData = [{
     maxHP: 800,
     difficulty_tier: 3,
     archetype: 'field_control',
-    unlock_level: 135,
+    unlock_level: 110,
     core_desc: "Gain a 'Conduit Charge' for every power-up you collect (max 3). When you take damage, one charge is consumed to negate it and release a shockwave.",
     description: "An invulnerable monument powered by three remote Conduits. It cannot be damaged until its power sources are severed.",
     lore: "An automated planetary defense system from a hyper-advanced civilization. The central Obelisk was invulnerable, powered by three remote Conduits that drew energy from different dimensions. The Unraveling severed the Obelisk's connection to its masters, leaving it to run its final, frantic defense protocol on an endless loop against a threat it cannot comprehend.",
@@ -1679,7 +1440,7 @@ export const bossData = [{
     maxHP: 500,
     difficulty_tier: 3,
     archetype: 'swarm',
-    unlock_level: 140,
+    unlock_level: 115,
     core_desc: "Every 5 seconds, you release a single, slow-moving 'Helix Bolt' that spirals outwards from you, damaging any enemy it touches.",
     description: "Unleashes relentless, spiraling waves of projectiles. The number of active helices increases as its integrity fails.",
     lore: "This machine was designed to weave the very fabric of spacetime, repairing minor tears in its home reality. Overwhelmed by the Unraveling, its repair protocols overloaded and inverted. It now mindlessly *unweaves* reality, firing off the spiraling threads of spacetime it pulls apart as relentless projectiles.",
@@ -1729,12 +1490,12 @@ export const bossData = [{
     maxHP: 550,
     difficulty_tier: 3,
     archetype: 'aggressor',
-    unlock_level: 145,
+    unlock_level: 120,
     core_desc: "If you would be killed by direct collision with a boss, you instead 'Rewind,' restoring your health and position from 2 seconds prior. 2-minute cooldown.",
     description: "Warps causality, generating a Dilation Field behind it where time moves slower. It can rewind its own timeline to negate recent damage.",
     lore: "A Chronomancer who foresaw the Unraveling and attempted to escape it by creating a personal time-loop. The paradox of its own existence now acts as a shield, allowing it to rewind its own state to negate injury. The field it projects is a wake of distorted causality, a field of 'slow time' left behind by its constant temporal manipulation.",
     mechanics_desc: "Projects a Dilation Field behind it where you and your projectiles are slowed. After taking a significant amount of damage, the boss will rewind time, restoring its health and position to a previous state. This rewind has a long cooldown.",
-    init: (b) => {
+    init: b => {
         b.lastDilation = Date.now();
         b.damageWindow = 0;
         b.lastKnownState = { x: b.x, y: b.y, hp: b.hp };
@@ -1827,7 +1588,7 @@ export const bossData = [{
     maxHP: 600,
     difficulty_tier: 3,
     archetype: 'specialist',
-    unlock_level: 150,
+    unlock_level: 125,
     core_desc: "At the start of each stage, three 'Runes of Fate' (Damage, Defense, Utility) appear. Collecting one grants you a powerful, stage-long buff.",
     description: "Foretells its attacks by manifesting reality-altering Runes. The player's position relative to the Runes determines the Shaper's next devastating assault.",
     lore: "This being did not experience time but rather saw all potential futures as tangible 'Runes' of possibility. The Unraveling shattered its omniscience, leaving it with only fragmented glimpses of what might be. It projects these shattered prophecies onto the battlefield, and your interaction with them forces one of a thousand devastating futures into reality.",
@@ -1909,13 +1670,13 @@ export const bossData = [{
                     break;
                 case 'heal':
                     b.hp = Math.min(b.maxHP, b.hp + b.maxHP * 0.1);
-                    utils.spawnParticles(state.particles, b.x, b.y, '#2ecc71', 50, 4, 30,5);
+                    utils.spawnParticles(state.particles, b.x, b.y, '#2ecc71', 50, 4, 30, 5);
                     break;
                 case 'speed_buff':
                     b.dx *= 2;
                     b.dy *= 2;
                     setTimeout(() => { b.dx /= 2; b.dy /= 2; }, 5000);
-                    utils.spawnParticles(state.particles, b.x, b.y, '#3498db', 50, 4, 30,5);
+                    utils.spawnParticles(state.particles, b.x, b.y, '#3498db', 50, 4, 30, 5);
                     break;
             }
             gameHelpers.play('shaperAttune');
@@ -1936,7 +1697,7 @@ export const bossData = [{
     maxHP: 3000,
     difficulty_tier: 3,
     archetype: 'aggressor',
-    unlock_level: 155,
+    unlock_level: 130,
     core_desc: "Your core attunes to a new, random Aberration Core every 10 seconds. Each attunement lasts for 30 seconds, allowing up to three powers to be active at once.",
     description: "An ultimate being that channels the Aspects of other powerful entities, cycling through their abilities to create an unpredictable, multi-faceted threat.",
     lore: "At the precipice of total non-existence, the final consciousnesses of a thousand collapsing timelines merged into a single, gestalt being to survive. The Pantheon is not one entity, but a chorus of dying gods, heroes, and monsters screaming in unison. It wields the memories and powers of the worlds it has lost, making it an unpredictable and tragic echo of a thousand apocalypses.",
@@ -1955,8 +1716,8 @@ export const bossData = [{
 
         b.aspectPools = {
             primary: ['juggernaut', 'annihilator', 'syphon', 'centurion'],
-            ambient: ['swarm', 'basilisk', 'architect', 'glitch'],
-            projectile: ['helix_weaver', 'emp', 'puppeteer', 'vampire', 'looper', 'mirror'],
+            ambient: ['swarm_link', 'basilisk', 'architect', 'glitch'],
+            projectile: ['helix_weaver', 'emp_overload', 'puppeteer', 'vampire', 'looper', 'mirror_mirage'],
         };
         
         b.getAspectData = (aspectId) => bossData.find(boss => boss.id === aspectId);
@@ -2016,7 +1777,7 @@ export const bossData = [{
 
             const aspectData = b.getAspectData(aspectId);
             if (aspectData) {
-                const isTeleportAspect = new Set(['mirror', 'glitch', 'looper']).has(aspectId);
+                const isTeleportAspect = new Set(['mirror_mirage', 'glitch', 'looper']).has(aspectId);
                 if (isTeleportAspect && b.isChargingAnnihilatorBeam) {
                     return;
                 }
@@ -2129,7 +1890,7 @@ export const bossData = [{
             b.phase = nextPhase;
             b.actionCooldown *= 0.85;
             b.invulnerable = true;
-            utils.spawnParticles(state.particles, b.x, b.y, '#fff', 150, 8, 50,5);
+            utils.spawnParticles(state.particles, b.x, b.y, '#fff', 150, 8, 50, 5);
             state.effects.push({ type: 'shockwave', caster: b, x: b.x, y: b.y, radius: 0, maxRadius: 1200, speed: 1000, startTime: Date.now(), hitEnemies: new Set(), damage: 50, color: 'rgba(255, 255, 255, 0.7)' });
             setTimeout(() => b.invulnerable = false, 2000);
         }
