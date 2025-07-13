@@ -482,8 +482,11 @@ export function gameTick(mx, my) {
         ctx.globalAlpha = 1.0;
     }
     
-    const equippedCoreId = state.player.equippedAberrationCore; // THIS LINE WAS MISSING
-    if (equippedCoreId && !isPhased && !juggernautCharge) {
+    const equippedCoreId = state.player.equippedAberrationCore;
+    const coreState = equippedCoreId ? state.player.talent_states.core_states[equippedCoreId] : null;
+    const isCoreOnCooldown = coreState && coreState.cooldownUntil && now < coreState.cooldownUntil;
+
+    if (equippedCoreId && !isPhased && !juggernautCharge && !isCoreOnCooldown) {
         const coreData = bossData.find(b => b.id === equippedCoreId);
         if (coreData) {
             const pulse = 0.4 + (Math.sin(now / 400) * 0.2);
