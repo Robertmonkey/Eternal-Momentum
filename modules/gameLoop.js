@@ -1100,7 +1100,9 @@ export function gameTick(mx, my) {
             const pulse = 0.2 + Math.sin(now/500) * 0.1;
             ctx.fillStyle = `rgba(0, 204, 255, ${pulse})`;
             ctx.beginPath();
-            ctx.arc(effect.x, effect.y, effect.radius, 0, 2 * Math.PI);
+            ctx.moveTo(effect.x, effect.y);
+            ctx.arc(effect.x, effect.y, effect.r, effect.angle - Math.PI / 2, effect.angle + Math.PI / 2);
+            ctx.lineTo(effect.x, effect.y);
             ctx.fill();
         }
         else if (effect.type === 'annihilator_beam') {
