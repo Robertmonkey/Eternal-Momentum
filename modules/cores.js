@@ -29,9 +29,30 @@ export function activateCorePower(mx, my, gameHelpers) {
     switch (coreId) {
         case 'juggernaut':
             coreState.cooldownUntil = now + 8000;
-            const angle = Math.atan2(my - state.player.y, mx - state.player.x);
-            state.effects.push({ type: 'juggernaut_player_charge', startTime: now, duration: 700, angle: angle, hitEnemies: new Set() });
-            gameHelpers.play('chargeDashSound');
+            
+            // Stun player and apply immunity for charge-up
+            gameHelpers.addStatusEffect('Charging', '🔋', 1000);
+            gameHelpers.addStatusEffect('Stunned', '🛑', 1000);
+
+            // Add the visual charge-up ring effect
+            state.effects.push({
+                type: 'charge_indicator',
+                source: state.player,
+                startTime: now,
+                duration: 1000,
+                radius: 80,
+                color: 'rgba(99, 110, 114, 0.5)'
+            });
+            gameHelpers.play('chargeUpSound');
+
+            // Delay the actual charge
+            setTimeout(() => {
+                if (state.gameOver) return;
+                const angle = Math.atan2(my - state.player.y, mx - state.player.x);
+                state.effects.push({ type: 'juggernaut_player_charge', startTime: now, duration: 700, angle: angle, hitEnemies: new Set() });
+                gameHelpers.play('chargeDashSound');
+            }, 1000); // 1-second charge-up time
+
             abilityTriggered = true;
             break;
         
@@ -70,18 +91,30 @@ export function activateCorePower(mx, my, gameHelpers) {
             break;
 
         case 'looper':
-            coreState.cooldownUntil = now + 10000; // Adjust cooldown as needed
-            coreState.isShifting = true;
-            gameHelpers.addStatusEffect('Shifting', '🌀', 1000);
+            coreState.cooldownUntil = now + 10000;
+            
+            // Stun player and create indicator
+            gameHelpers.addStatusEffect('Stunned', '🌀', 500);
+            state.effects.push({
+                type: 'teleport_indicator',
+                x: mx,
+                y: my,
+                r: state.player.r * 1.5,
+                endTime: now + 500
+            });
             gameHelpers.play('chargeUpSound');
+
             setTimeout(() => {
-                if(state.gameOver || !coreState.isShifting) return;
+                // Check if player is still stunned by this effect to avoid conflicts
+                const isStunnedByThis = state.player.statusEffects.some(e => e.name === 'Stunned');
+                if (state.gameOver || !isStunnedByThis) return;
+                
                 state.player.x = mx;
                 state.player.y = my;
                 gameHelpers.play('mirrorSwap');
-                utils.spawnParticles(state.particles, mx, my, '#ecf0f1', 40, 4, 30, 5); // Added life param
-                coreState.isShifting = false;
-            }, 1000);
+                utils.spawnParticles(state.particles, mx, my, '#ecf0f1', 40, 4, 30, 5);
+            }, 500); // 0.5 second delay
+            
             abilityTriggered = true;
             break;
 
@@ -141,8 +174,8 @@ export function applyCoreTickEffects(gameHelpers) {
         }
     }
 
-    if (playerHasCore('swarm_link')) {
-        const swarmState = state.player.talent_states.core_states.swarm_link;
+    if (playerHasCore('swarm')) {
+        const swarmState = state.player.talent_states.core_states.swarm;
         let prev = state.player;
         swarmState.tail.forEach(c => {
             c.x += (prev.x - c.x) * 0.2;
@@ -252,8 +285,8 @@ export function handleCoreOnEnemyDeath(enemy, gameHelpers) {
         }
     }
     
-    if (playerHasCore('swarm_link')) {
-        const swarmState = state.player.talent_states.core_states.swarm_link;
+    if (playerHasCore('swarm')) {
+        const swarmState = state.player.talent_states.core_states.swarm;
         swarmState.enemiesForNextSegment = (swarmState.enemiesForNextSegment || 0) + 1;
         if (swarmState.enemiesForNextSegment >= 2 && swarmState.tail.length < 50) {
             swarmState.enemiesForNextSegment = 0;
@@ -311,16 +344,27 @@ export function handleCoreOnPlayerDamage(damage, enemy, gameHelpers) {
     if (damageTaken > 0) {
         if (playerHasCore('mirror_mirage')) {
             const mirrorState = state.player.talent_states.core_states.mirror_mirage;
-            if (now > (mirrorState.lastDecoyTime || 0)) {
-                mirrorState.lastDecoyTime = now + 12000;
-                state.decoys.push({ 
-                    x: state.player.x, y: state.player.y, r: 20, 
-                    expires: now + 3000,
-                    isTaunting: true, isMobile: false, hp: 1
-                });
-                gameHelpers.play('mirrorSwap');
-                utils.spawnParticles(state.particles, state.player.x, state.player.y, '#ff00ff', 40, 4, 30, 5); // Added life param
+            
+            // Remove the oldest core decoy if we are at the max of 3
+            const coreDecoys = state.decoys.filter(d => d.fromCore);
+            if (coreDecoys.length >= 3) {
+                const oldestCoreDecoyIndex = state.decoys.findIndex(d => d.fromCore);
+                if (oldestCoreDecoyIndex !== -1) {
+                    state.decoys.splice(oldestCoreDecoyIndex, 1);
+                }
             }
+            
+            // Add a new decoy
+            state.decoys.push({ 
+                x: state.player.x, y: state.player.y, r: 20, 
+                hp: 1, // Decoys can be destroyed
+                fromCore: true, // Mark this decoy as from the core
+                isMobile: false, // Core decoys are always stationary
+                isTaunting: true,
+                expires: null // Does not expire automatically
+            });
+            gameHelpers.play('mirrorSwap');
+            utils.spawnParticles(state.particles, state.player.x, state.player.y, '#ff00ff', 40, 4, 30, 5);
         }
         
         if (playerHasCore('glitch')) {
