@@ -1108,28 +1108,26 @@ export function gameTick(mx, my) {
         }
         else if (effect.type === 'glitch_zone') {
             if (Date.now() > effect.endTime) {
-                if (effect.caster === 'player') {
-                    // No need to do anything, enemy glitch state will time out on its own
-                } else {
+                if (effect.caster !== 'player') {
                     state.player.controlsInverted = false;
                 }
                 state.effects.splice(i, 1);
                 continue;
             }
 
-            const alpha = (effect.endTime - Date.now()) / (effect.caster === 'player' ? 4000 : 5000) * 0.3;
+            const alpha = (effect.endTime - Date.now()) / 5000 * 0.3;
             ctx.fillStyle = `rgba(253, 121, 168, ${alpha})`;
             utils.drawCircle(ctx, effect.x, effect.y, effect.r, ctx.fillStyle);
 
             if (effect.caster === 'player') {
-                // Affect enemies
+                // Affect enemies if the player's core created the zone
                 state.enemies.forEach(e => {
                     if (!e.isFriendly && Math.hypot(e.x - effect.x, e.y - effect.y) < e.r + effect.r) {
                         e.glitchedUntil = now + 3000;
                     }
                 });
             } else {
-                // Affect player
+                // Affect player if the boss created the zone
                 if (Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < effect.r + state.player.r) {
                     if (!state.player.controlsInverted) {
                         play('systemErrorSound');
@@ -1143,20 +1141,20 @@ export function gameTick(mx, my) {
         else if (effect.type === 'dilation_field') {
             if (now > effect.endTime) { stopLoopingSfx('dilationField'); state.effects.splice(i, 1); continue; }
             playLooping('dilationField');
+            ctx.globalAlpha = 0.2;
             if (effect.shape === 'horseshoe') {
-                const pulse = 0.4 + Math.sin(now / 300) * 0.2;
-                ctx.strokeStyle = `rgba(0, 204, 255, ${pulse})`;
-                ctx.lineWidth = 15;
+                ctx.fillStyle = '#bdc3c7';
                 ctx.beginPath();
-                ctx.arc(effect.x, effect.y, effect.r, effect.angle - Math.PI / 1.8, effect.angle + Math.PI / 1.8);
-                ctx.stroke();
-            } else {
-                const pulse = 0.2 + Math.sin(now/500) * 0.1;
-                ctx.fillStyle = `rgba(0, 204, 255, ${pulse})`;
-                ctx.beginPath();
-                ctx.arc(effect.x, effect.y, effect.r, 0, 2 * Math.PI);
+                const openingAngle = Math.PI / 2;
+                ctx.arc(effect.x, effect.y, effect.r, effect.angle + openingAngle/2, effect.angle - openingAngle/2 + 2*Math.PI);
+                ctx.arc(effect.x, effect.y, effect.r * 0.8, effect.angle - openingAngle/2 + 2*Math.PI, effect.angle + openingAngle/2, true);
+                ctx.closePath();
                 ctx.fill();
+            } else {
+                 ctx.fillStyle = '#bdc3c7';
+                 utils.drawCircle(ctx, effect.x, effect.y, effect.r, ctx.fillStyle);
             }
+            ctx.globalAlpha = 1.0;
         }
         else if (effect.type === 'annihilator_beam') {
             if (Date.now() > effect.endTime) { state.effects.splice(i, 1); continue; }
@@ -1297,7 +1295,7 @@ export function gameTick(mx, my) {
         else if (effect.type === 'juggernaut_player_charge') {
             const progress = (now - effect.startTime) / effect.duration;
             if (progress >= 1) { state.effects.splice(i, 1); continue; }
-            const chargeSpeed = 25;
+            const chargeSpeed = 35; // Increased speed
             state.player.x += Math.cos(effect.angle) * chargeSpeed;
             state.player.y += Math.sin(effect.angle) * chargeSpeed;
             state.enemies.forEach(e => {
@@ -1319,7 +1317,7 @@ export function gameTick(mx, my) {
         }
         else if (effect.type === 'teleport_indicator') {
             if (now > effect.endTime) { state.effects.splice(i, 1); continue; }
-            const progress = 1 - ((effect.endTime - now) / 500); // Changed duration to 500ms
+            const progress = 1 - ((effect.endTime - now) / 500); // Duration is 500ms
             ctx.strokeStyle = `rgba(255, 0, 0, ${1 - progress})`;
             ctx.lineWidth = 5 + (10 * progress);
             ctx.beginPath();
@@ -1371,16 +1369,13 @@ export function gameTick(mx, my) {
         else if (effect.type === 'syphon_cone') {
             const { source, endTime } = effect;
             const remainingTime = endTime - Date.now();
-            
-            // This is the new logic block based on your old code
             if (remainingTime > 0) {
-                 if (remainingTime > 250) { // Lock angle in the last 0.25s
+                if (remainingTime > 250) { // Lock angle in the last 0.25s
                     effect.angle = Math.atan2(state.player.y - source.y, state.player.x - source.x);
                 }
                 const coneAngle = Math.PI / 4;
                 const coneLength = canvas.height * 1.5; // Make sure it covers screen
                 const progress = (2500 - remainingTime) / 2500;
-                
                 ctx.save();
                 ctx.globalAlpha = 0.4 * progress;
                 ctx.fillStyle = '#9b59b6';
@@ -1393,19 +1388,16 @@ export function gameTick(mx, my) {
             } else if (!effect.hasFired) {
                 effect.hasFired = true; // Prevents firing multiple times
                 play('syphonFire');
-                
                 const playerAngle = Math.atan2(state.player.y - source.y, state.player.x - source.x);
                 let angleDiff = Math.abs(effect.angle - playerAngle);
                 if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
-                
                 // Check if player is inside the final cone angle
-                if (angleDiff < (Math.PI / 4) / 2) {
+                if (angleDiff < coneAngle / 2) {
                     const stolenPower = state.offensiveInventory[0];
                     if (stolenPower) {
                         play('powerAbsorb');
                         state.offensiveInventory.shift();
                         state.offensiveInventory.push(null);
-                        
                         // Unleash corrupted power
                         switch (stolenPower) {
                             case 'missile':
@@ -1527,7 +1519,7 @@ export function gameTick(mx, my) {
             if (progress >= 1) { state.effects.splice(i, 1); continue; }
             const ringRadius = effect.radius * (1 - progress); // Ring shrinks
             ctx.strokeStyle = effect.color || 'rgba(255, 255, 255, 0.8)';
-            ctx.lineWidth = 5 * progress; // Line gets thinner
+            ctx.lineWidth = 10 * progress; // Line gets thicker as it shrinks
             ctx.beginPath();
             ctx.arc(effect.source.x, effect.source.y, ringRadius, 0, 2 * Math.PI);
             ctx.stroke();
