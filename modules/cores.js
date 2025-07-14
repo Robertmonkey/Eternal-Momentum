@@ -34,14 +34,14 @@ export function activateCorePower(mx, my, gameHelpers) {
             gameHelpers.addStatusEffect('Charging', '🔋', 1000);
             gameHelpers.addStatusEffect('Stunned', '🛑', 1000);
 
-            // Add the visual charge-up ring effect
+            // Add the polished charge-up ring effect
             state.effects.push({
-                type: 'charge_indicator',
+                type: 'player_charge_indicator',
                 source: state.player,
                 startTime: now,
                 duration: 1000,
                 radius: 80,
-                color: 'rgba(99, 110, 114, 0.5)'
+                color: 'rgba(255, 255, 255, 0.8)'
             });
             gameHelpers.play('chargeUpSound');
 
@@ -368,12 +368,14 @@ export function handleCoreOnPlayerDamage(damage, enemy, gameHelpers) {
         }
         
         if (playerHasCore('glitch')) {
-            if (Math.random() < 0.25) {
-                state.effects.push({ type: 'glitch_zone', x: enemy.x, y: enemy.y, r: 100, endTime: now + 4000 });
-                state.enemies.forEach(e => {
-                    if(Math.hypot(e.x - enemy.x, e.y - enemy.y) < 100 && !e.boss) {
-                        e.glitchedUntil = now + 3000;
-                    }
+            if (Math.random() < 0.25 && enemy) { // Ensure enemy exists
+                state.effects.push({ 
+                    type: 'glitch_zone', 
+                    caster: 'player', // Mark the caster
+                    x: enemy.x, 
+                    y: enemy.y, 
+                    r: 100, 
+                    endTime: now + 4000 
                 });
                 gameHelpers.play('glitchSound');
             }
