@@ -270,6 +270,7 @@ window.addEventListener('load', () => {
             };
 
             canvas.addEventListener('mousedown', e => {
+                if (state.isPaused || state.gameOver) return;
                 if(e.target !== canvas) return;
                 if (e.button === 0) state.LMB_down = true;
                 if (e.button === 2) state.RMB_down = true;
