@@ -280,9 +280,8 @@ export function gameTick(mx, my) {
         dynamicDamageMultiplier = 1.10;
     }
     const timeEater = state.enemies.find(e => e.id === 'time_eater');
-    const timeEaterZones = timeEater && timeEater.effects ? timeEater.effects : [];
-    const otherSlowZones = state.effects.filter(e => e.type === 'slow_zone' || e.type === 'dilation_field');
-    const allSlowZones = [...timeEaterZones, ...otherSlowZones];
+    const slowZonesFromEffects = state.effects.filter(e => e.type === 'slow_zone' || e.type === 'dilation_field');
+    const allSlowZones = slowZonesFromEffects;
 
     if (!state.gameOver) {
         if (state.arenaMode) {
@@ -512,6 +511,8 @@ export function gameTick(mx, my) {
     let totalPlayerPushX = 0;
     let totalPlayerPushY = 0;
     let playerCollisions = 0;
+    
+    const allFractals = state.enemies.filter(e => e.id === 'fractal_horror');
 
     for (let i = state.enemies.length - 1; i >= 0; i--) {
         const e = state.enemies[i];
@@ -629,12 +630,20 @@ export function gameTick(mx, my) {
             }
             
             let enemySpeedMultiplier = 1;
+            let isInSlowZone = false;
             if (state.gravityActive && now < state.gravityEnd && !e.boss) {
                 e.x += ((canvas.width / 2) - e.x) * 0.05; e.y += ((canvas.height / 2) - e.y) * 0.05;
             }
             allSlowZones.forEach(zone => {
-                if(Math.hypot(e.x - zone.x, e.y - zone.y) < zone.r) enemySpeedMultiplier = 0.5;
+                if(Math.hypot(e.x - zone.x, e.y - zone.y) < zone.r) {
+                    enemySpeedMultiplier = 0.5;
+                    if (!e.boss) { // Bosses cannot be eaten
+                        e.eatenBy = zone;
+                        isInSlowZone = true;
+                    }
+                }
             });
+            if (!isInSlowZone) e.eatenBy = null;
             
             if (e.glitchedUntil > now) {
                 if (!e.glitchMoveTarget || now > e.glitchMoveTarget.until) {
@@ -682,7 +691,7 @@ export function gameTick(mx, my) {
             }
         }
         
-        if (e.boss && e.logic) e.logic(e, ctx, state, utils, gameHelpers);
+        if (e.boss && e.logic) e.logic(e, ctx, state, utils, gameHelpers, null, allFractals);
         
         let color = e.customColor || (e.boss ? e.color : "#c0392b"); 
         if(e.isInfected) color = '#55efc4'; 
@@ -702,7 +711,10 @@ export function gameTick(mx, my) {
             const hasPhased = playerHasCore('quantum_shadow') && state.player.statusEffects.some(eff => eff.name === 'Phased');
             const pDist = Math.hypot(state.player.x-e.x,state.player.y-e.y);
             const juggernautCharging = state.effects.some(eff => eff.type === 'juggernaut_player_charge');
-            if(pDist < e.r+state.player.r && !hasPhased && !juggernautCharging){
+            const isChargingUp = state.player.statusEffects.some(eff => eff.name === 'Charging');
+            const isImmune = isChargingUp || juggernautCharging;
+            
+            if(pDist < e.r+state.player.r && !hasPhased && !isImmune){
                 if (state.player.talent_states.phaseMomentum.active && !e.boss) {
                     // No collision damage
                 } else {
@@ -842,6 +854,7 @@ export function gameTick(mx, my) {
             continue;
         }
 
+        const isCharging = state.player.statusEffects.some(e => e.name === 'Charging') || state.effects.some(eff => eff.type === 'juggernaut_player_charge');
         const hasReflectiveWard = playerHasCore('reflector') && state.player.statusEffects.some(eff => eff.name === 'Reflective Ward');
         if (effect.type === 'nova_bullet' || effect.type === 'ricochet_projectile' || effect.type === 'seeking_shrapnel' || effect.type === 'helix_bolt' || effect.type === 'player_fragment') {
             let speedMultiplier = 1.0;
@@ -891,7 +904,7 @@ export function gameTick(mx, my) {
                     if (effect.damage > 0) {
                         let dmg = (target.isPuppet && (effect.caster === state.player || effect.caster === 'reflected')) ? target.maxHP / 2 : (target.boss || target === state.player) ? effect.damage : 1000;
                         if (target === state.player) {
-                            if (!target.shield) {
+                            if (!target.shield && !isCharging) {
                                 target.health -= dmg;
                                 if (target.health <= 0) state.gameOver = true;
                             } else target.shield = false;
@@ -969,7 +982,7 @@ export function gameTick(mx, my) {
             } else {
                 const hasPhased = playerHasCore('quantum_shadow') && state.player.statusEffects.some(e => e.name === 'Phased');
                 const pDist = Math.hypot(state.player.x - effect.x, state.player.y - effect.y);
-                if (pDist < state.player.r + effect.r && !hasPhased) {
+                if (pDist < state.player.r + effect.r && !hasPhased && !isCharging) {
                     if (!state.player.shield) {
                         state.player.health -= (effect.damage || 40);
                         if(state.player.health <= 0) state.gameOver = true;
@@ -999,7 +1012,7 @@ export function gameTick(mx, my) {
                         let damage = ((state.player.berserkUntil > now && effect.caster === state.player) ? 50 : 25)  * state.player.talent_modifiers.damage_multiplier; 
                         if(effect.caster !== state.player) damage = effect.damage; else damage *= dynamicDamageMultiplier;
                         if(e.health) {
-                            if (!e.shield) { e.health -= damage; if(e.health <= 0) state.gameOver = true; }
+                            if (!e.shield && !isCharging) { e.health -= damage; if(e.health <= 0) state.gameOver = true; }
                             else { e.shield = false; }
                         } else { e.hp -= damage; if (effect.caster === state.player) Cores.handleCoreOnDamageDealt(e); }
                         if(e.onDamage) e.onDamage(e, damage, effect.caster, state, spawnParticlesCallback, play, stopLoopingSfx, gameHelpers); 
@@ -1097,13 +1110,20 @@ export function gameTick(mx, my) {
         else if (effect.type === 'dilation_field') {
             if (now > effect.endTime) { stopLoopingSfx('dilationField'); state.effects.splice(i, 1); continue; }
             playLooping('dilationField');
-            const pulse = 0.2 + Math.sin(now/500) * 0.1;
-            ctx.fillStyle = `rgba(0, 204, 255, ${pulse})`;
-            ctx.beginPath();
-            ctx.moveTo(effect.x, effect.y);
-            ctx.arc(effect.x, effect.y, effect.r, effect.angle - Math.PI / 2, effect.angle + Math.PI / 2);
-            ctx.lineTo(effect.x, effect.y);
-            ctx.fill();
+            if (effect.shape === 'horseshoe') {
+                const pulse = 0.4 + Math.sin(now / 300) * 0.2;
+                ctx.strokeStyle = `rgba(0, 204, 255, ${pulse})`;
+                ctx.lineWidth = 15;
+                ctx.beginPath();
+                ctx.arc(effect.x, effect.y, effect.r, effect.angle - Math.PI / 1.8, effect.angle + Math.PI / 1.8);
+                ctx.stroke();
+            } else {
+                const pulse = 0.2 + Math.sin(now/500) * 0.1;
+                ctx.fillStyle = `rgba(0, 204, 255, ${pulse})`;
+                ctx.beginPath();
+                ctx.arc(effect.x, effect.y, effect.r, 0, 2 * Math.PI);
+                ctx.fill();
+            }
         }
         else if (effect.type === 'annihilator_beam') {
             if (Date.now() > effect.endTime) { state.effects.splice(i, 1); continue; }
@@ -1163,7 +1183,7 @@ export function gameTick(mx, my) {
                 
                 if (!isSafe && (target.health > 0 || target.hp > 0)) {
                     if (target === state.player) {
-                        if (state.player.shield) return;
+                        if (state.player.shield || isCharging) return;
                         target.health -= 999;
                         if (target.health <= 0) state.gameOver = true;
                     } else {
@@ -1235,7 +1255,7 @@ export function gameTick(mx, my) {
                 ctx.fillStyle = '#6ab04c';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 ctx.globalAlpha = 1.0;
-                if (!state.player.shield) {
+                if (!state.player.shield && !isCharging) {
                     state.player.health -= 0.25; 
                     if (state.player.health <= 0) state.gameOver = true;
                 }
@@ -1266,7 +1286,7 @@ export function gameTick(mx, my) {
         }
         else if (effect.type === 'teleport_indicator') {
             if (now > effect.endTime) { state.effects.splice(i, 1); continue; }
-            const progress = 1 - ((effect.endTime - now) / 1000);
+            const progress = 1 - ((effect.endTime - now) / 500); // Changed duration to 500ms
             ctx.strokeStyle = `rgba(255, 0, 0, ${1 - progress})`;
             ctx.lineWidth = 5 + (10 * progress);
             ctx.beginPath();
@@ -1307,7 +1327,7 @@ export function gameTick(mx, my) {
                 ctx.beginPath(); ctx.arc(p.x, p.y, 10, 0, 2 * Math.PI); ctx.fill();
                 if(Math.random() < 0.2) spawnParticlesCallback(p.x, p.y, 'rgba(231, 76, 60, 0.7)', 1, 1, 15, Math.random() * 3 + 1);
                 if (Math.hypot(state.player.x - p.x, state.player.y - p.y) < state.player.r + 10) {
-                     if (!state.player.shield) {
+                     if (!state.player.shield && !isCharging) {
                          play('magicDispelSound');
                          state.player.health = 0;
                          if (state.player.health <= 0) state.gameOver = true;
@@ -1361,7 +1381,7 @@ export function gameTick(mx, my) {
             ctx.fillStyle = 'rgba(211, 84, 0, 0.5)';
             const gapStart = effect.gapPosition * (currentSize - gapSize);
             const playerIsInsideBounds = state.player.x >= left && state.player.x <= right && state.player.y >= top && state.player.y <= bottom;
-            if (playerIsInsideBounds) {
+            if (playerIsInsideBounds && !isCharging) {
                 if (state.player.y - state.player.r < top && (effect.gapSide !== 0 || state.player.x < left + gapStart || state.player.x > left + gapStart + gapSize)) state.player.y = top + state.player.r;
                 if (state.player.y + state.player.r > bottom && (effect.gapSide !== 2 || state.player.x < left + gapStart || state.player.x > left + gapStart + gapSize)) state.player.y = bottom - state.player.r;
                 if (state.player.x - state.player.r < left && (effect.gapSide !== 3 || state.player.y < top + gapStart || state.player.y > top + gapStart + gapSize)) state.player.x = left + state.player.r;
