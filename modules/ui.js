@@ -97,7 +97,7 @@ function updateCoreCooldownUI() {
     const cooldownOverlay = document.getElementById('aberration-core-cooldown');
 
     if (!coreId || !cooldownOverlay) {
-        if (cooldownOverlay) cooldownOverlay.style.transform = 'scaleY(1)'; // Set to full if no core
+        if (cooldownOverlay) cooldownOverlay.style.transform = 'scaleY(0)'; // Set to empty if no core
         return;
     }
 
@@ -107,30 +107,34 @@ function updateCoreCooldownUI() {
         return;
     }
     
+    // This map must contain the cooldown duration for any core ability that sets 'cooldownUntil'
     const cooldowns = { 
         juggernaut: 8000, 
         syphon: 5000,
         mirror_mirage: 12000,
-        // Passive cores can have cooldowns too
-        annihilator: 25000, 
+        looper: 10000,
         gravity: 6000,
         architect: 15000,
+        annihilator: 25000,
+        // Passive cores can have cooldowns too
+        puppeteer: 8000,
         helix_weaver: 5000,
-        puppeteer: 8000
+        epoch_ender: 120000,
+        splitter: 500
     };
     const duration = cooldowns[coreId];
     if(!duration) {
-         cooldownOverlay.style.transform = 'scaleY(0)';
+         cooldownOverlay.style.transform = 'scaleY(0)'; // No defined cooldown, so it's ready
          return;
     }
     
-    // Determine start time based on which property is used
-    const lastTime = coreState.lastDecoyTime || coreState.lastPillarTime || coreState.lastConversion || coreState.lastPulseTime || coreState.lastBolt || (coreState.cooldownUntil - duration);
-    const elapsed = Date.now() - lastTime;
-    const progress = Math.min(1, elapsed / duration);
+    // Calculate progress based on when the cooldown will end vs. its total duration
+    const remainingTime = coreState.cooldownUntil - Date.now();
+    const progress = Math.max(0, remainingTime) / duration;
     
-    cooldownOverlay.style.transform = `scaleY(${1 - progress})`; // Fills up as it cools down
+    cooldownOverlay.style.transform = `scaleY(${progress})`; // Fills up as it cools down
 }
+
 
 function updateAberrationCoreUI() {
     if (!aberrationCoreSocket) return;
@@ -456,11 +460,18 @@ export function populateAberrationCoreMenu(onEquip) {
         const iconClass = core.id === 'pantheon' ? 'core-item-icon pantheon-icon-bg' : 'core-item-icon';
         const iconStyle = core.id === 'pantheon' ? '' : `background-color: ${core.color};`;
 
+        const coresWithActiveAbility = new Set(['juggernaut', 'syphon', 'gravity', 'architect', 'annihilator', 'looper']);
+        let coreDescHtml = isUnlocked ? core.core_desc : '????????????????';
+
+        if (isUnlocked && coresWithActiveAbility.has(core.id)) {
+            coreDescHtml += `<div class="core-active-ability-indicator">Core Power: [LMB+RMB]</div>`;
+        }
+
         item.innerHTML = `
             <div class="${iconClass}" style="${iconStyle}"></div>
             <div class="core-item-details">
                 <div class="core-item-name">${isUnlocked ? core.name : 'LOCKED // LEVEL ' + core.unlock_level}</div>
-                <div class="core-item-desc">${isUnlocked ? core.core_desc : '????????????????'}</div>
+                <div class="core-item-desc">${coreDescHtml}</div>
             </div>
         `;
         
