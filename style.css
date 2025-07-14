@@ -1442,3 +1442,12 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
 .locked .core-item-name {
     color: #aaa;
 }
+
+.core-active-ability-indicator {
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(0, 255, 0, 0.3);
+    color: var(--nexus-glow);
+    font-weight: bold;
+    font-size: 0.85rem;
+}
