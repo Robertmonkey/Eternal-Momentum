@@ -39,6 +39,10 @@ window.gameHelpers = gameHelpers;
 
 export function addStatusEffect(name, emoji, duration) {
     const now = Date.now();
+    // Setting stunnedUntil is the key to stopping player movement
+    if (name === 'Stunned' || name === 'Petrified') {
+        state.player.stunnedUntil = Math.max(state.player.stunnedUntil, now + duration);
+    }
     if (name === 'Stunned' || name === 'Petrified' || name === 'Slowed' || name === 'Epoch-Slow') {
         const isBerserk = state.player.berserkUntil > now;
         const hasTalent = state.player.purchasedTalents.has('unstoppable-frenzy');
@@ -1103,9 +1107,38 @@ export function gameTick(mx, my) {
             ctx.beginPath(); ctx.arc(effect.x, effect.y, effect.radius, 0, 2*Math.PI); ctx.stroke();
         }
         else if (effect.type === 'glitch_zone') {
-            if (Date.now() > effect.endTime) { state.player.controlsInverted = false; state.effects.splice(i, 1); continue; }
-            const alpha = (effect.endTime - Date.now()) / 5000 * 0.3; ctx.fillStyle = `rgba(253, 121, 168, ${alpha})`; utils.drawCircle(ctx, effect.x, effect.y, effect.r, ctx.fillStyle);
-            if (Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < effect.r + state.player.r) { if (!state.player.controlsInverted) { play('systemErrorSound'); addStatusEffect('Controls Inverted', '🔀', 3000); } state.player.controlsInverted = true; setTimeout(() => state.player.controlsInverted = false, 3000); }
+            if (Date.now() > effect.endTime) {
+                if (effect.caster === 'player') {
+                    // No need to do anything, enemy glitch state will time out on its own
+                } else {
+                    state.player.controlsInverted = false;
+                }
+                state.effects.splice(i, 1);
+                continue;
+            }
+
+            const alpha = (effect.endTime - Date.now()) / (effect.caster === 'player' ? 4000 : 5000) * 0.3;
+            ctx.fillStyle = `rgba(253, 121, 168, ${alpha})`;
+            utils.drawCircle(ctx, effect.x, effect.y, effect.r, ctx.fillStyle);
+
+            if (effect.caster === 'player') {
+                // Affect enemies
+                state.enemies.forEach(e => {
+                    if (!e.isFriendly && Math.hypot(e.x - effect.x, e.y - effect.y) < e.r + effect.r) {
+                        e.glitchedUntil = now + 3000;
+                    }
+                });
+            } else {
+                // Affect player
+                if (Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < effect.r + state.player.r) {
+                    if (!state.player.controlsInverted) {
+                        play('systemErrorSound');
+                        addStatusEffect('Controls Inverted', '🔀', 3000);
+                    }
+                    state.player.controlsInverted = true;
+                    setTimeout(() => state.player.controlsInverted = false, 3000);
+                }
+            }
         }
         else if (effect.type === 'dilation_field') {
             if (now > effect.endTime) { stopLoopingSfx('dilationField'); state.effects.splice(i, 1); continue; }
@@ -1336,34 +1369,74 @@ export function gameTick(mx, my) {
             });
         }
         else if (effect.type === 'syphon_cone') {
-            const progress = (now - effect.startTime) / effect.duration;
-            if (progress >= 1) { state.effects.splice(i, 1); continue; }
-            const coneLength = 500;
-            const coneWidth = 150;
-            ctx.save();
-            ctx.translate(effect.source.x, effect.source.y);
-            ctx.rotate(effect.angle);
-            ctx.fillStyle = `rgba(155, 89, 182, ${0.5 * (1 - progress)})`;
-            ctx.beginPath();
-            ctx.moveTo(0, 0);
-            ctx.lineTo(coneLength, -coneWidth / 2);
-            ctx.lineTo(coneLength, coneWidth / 2);
-            ctx.closePath();
-            ctx.fill();
-            ctx.restore();
-            state.pickups.forEach(p => {
-                const distToLine = Math.abs(
-                    (Math.cos(effect.angle) * (effect.source.y - p.y)) -
-                    (Math.sin(effect.angle) * (effect.source.x - p.x))
-                );
-                const projectedDist = (p.x - effect.source.x) * Math.cos(effect.angle) + (p.y - effect.source.y) * Math.sin(effect.angle);
-                if (projectedDist > 0 && projectedDist < coneLength && distToLine < coneWidth / 2) {
-                    const pullStrength = 3;
-                    const angleToPlayer = Math.atan2(state.player.y - p.y, state.player.x - p.x);
-                    p.vx += Math.cos(angleToPlayer) * pullStrength;
-                    p.vy += Math.sin(angleToPlayer) * pullStrength;
+            const { source, endTime } = effect;
+            const remainingTime = endTime - Date.now();
+            
+            // This is the new logic block based on your old code
+            if (remainingTime > 0) {
+                 if (remainingTime > 250) { // Lock angle in the last 0.25s
+                    effect.angle = Math.atan2(state.player.y - source.y, state.player.x - source.x);
                 }
-            });
+                const coneAngle = Math.PI / 4;
+                const coneLength = canvas.height * 1.5; // Make sure it covers screen
+                const progress = (2500 - remainingTime) / 2500;
+                
+                ctx.save();
+                ctx.globalAlpha = 0.4 * progress;
+                ctx.fillStyle = '#9b59b6';
+                ctx.beginPath();
+                ctx.moveTo(source.x, source.y);
+                ctx.arc(source.x, source.y, coneLength, effect.angle - coneAngle / 2, effect.angle + coneAngle / 2);
+                ctx.lineTo(source.x, source.y);
+                ctx.fill();
+                ctx.restore();
+            } else if (!effect.hasFired) {
+                effect.hasFired = true; // Prevents firing multiple times
+                play('syphonFire');
+                
+                const playerAngle = Math.atan2(state.player.y - source.y, state.player.x - source.x);
+                let angleDiff = Math.abs(effect.angle - playerAngle);
+                if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
+                
+                // Check if player is inside the final cone angle
+                if (angleDiff < (Math.PI / 4) / 2) {
+                    const stolenPower = state.offensiveInventory[0];
+                    if (stolenPower) {
+                        play('powerAbsorb');
+                        state.offensiveInventory.shift();
+                        state.offensiveInventory.push(null);
+                        
+                        // Unleash corrupted power
+                        switch (stolenPower) {
+                            case 'missile':
+                                state.effects.push({ type: 'shockwave', caster: source, x: state.player.x, y: state.player.y, radius: 0, maxRadius: 400, speed: 1000, startTime: Date.now(), hitEnemies: new Set(), damage: 70, color: 'rgba(155, 89, 182, 0.7)' });
+                                break;
+                            case 'chain':
+                                state.effects.push({ type: 'chain_lightning', targets: [state.player], links: [], startTime: Date.now(), durationPerLink: 80, damage: 75, caster: source, color: '#9b59b6' });
+                                break;
+                            case 'shockwave':
+                                state.effects.push({ type: 'shockwave', caster: source, x: source.x, y: source.y, radius: 0, maxRadius: canvas.width, speed: 1000, startTime: Date.now(), hitEnemies: new Set(), damage: 60, color: 'rgba(155, 89, 182, 0.7)' });
+                                break;
+                            case 'black_hole':
+                                state.effects.push({ type: 'black_hole', x: source.x, y: source.y, radius: 30, maxRadius: 400, damageRate: 200, lastDamage: new Map(), startTime: Date.now(), duration: 5000, endTime: Date.now() + 5000, damage: 65, caster: source, color: '#9b59b6' });
+                                break;
+                             case 'orbitalStrike':
+                                state.effects.push({ type: 'orbital_target', x: state.player.x, y: state.player.y, startTime: Date.now(), caster: source, damage: 80, radius: 200, color: 'rgba(155, 89, 182, 0.8)' });
+                                break;
+                             case 'ricochetShot':
+                                 for(let j = -1; j <= 1; j++) {
+                                     const angle = effect.angle + j * 0.3;
+                                     state.effects.push({ type: 'ricochet_projectile', x: source.x, y: source.y, dx: Math.cos(angle) * 12, dy: Math.sin(angle) * 12, r: 15, damage: 50, bounces: 5, initialBounces: 5, hitEnemies: new Set(), caster: source, color: '#9b59b6' });
+                                 }
+                                 break;
+                             case 'bulletNova':
+                                 state.effects.push({ type: 'nova_controller', startTime: Date.now(), duration: 2500, lastShot: 0, angle: Math.random() * Math.PI * 2, caster: source, color: '#9b59b6', r: 8 });
+                                 break;
+                        }
+                    }
+                }
+                state.effects.splice(i, 1); // Remove effect after it fires
+            }
         }
         else if (effect.type === 'shrinking_box') {
             playLooping('wallShrink');
@@ -1449,8 +1522,19 @@ export function gameTick(mx, my) {
             ctx.beginPath(); ctx.arc(effect.source.x, effect.source.y, currentRadius, 0, 2 * Math.PI); ctx.stroke();
             ctx.globalAlpha = 1.0;
         }
+        else if (effect.type === 'player_charge_indicator') {
+            const progress = (Date.now() - effect.startTime) / effect.duration;
+            if (progress >= 1) { state.effects.splice(i, 1); continue; }
+            const ringRadius = effect.radius * (1 - progress); // Ring shrinks
+            ctx.strokeStyle = effect.color || 'rgba(255, 255, 255, 0.8)';
+            ctx.lineWidth = 5 * progress; // Line gets thinner
+            ctx.beginPath();
+            ctx.arc(effect.source.x, effect.source.y, ringRadius, 0, 2 * Math.PI);
+            ctx.stroke();
+        }
         else if (effect.type === 'charge_indicator') {
             const progress = (Date.now() - effect.startTime) / effect.duration;
+            if (progress >= 1) { state.effects.splice(i, 1); continue; }
             ctx.fillStyle = effect.color || 'rgba(255, 255, 255, 0.2)';
             ctx.beginPath();
             ctx.arc(effect.source.x, effect.source.y, Math.max(0, effect.radius * progress), 0, 2 * Math.PI);
