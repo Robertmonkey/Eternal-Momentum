@@ -60,7 +60,7 @@ export function activateCorePower(mx, my, gameHelpers) {
             coreState.cooldownUntil = now + 5000;
             gameHelpers.play('syphonFire');
             const syphonAngle = Math.atan2(my - state.player.y, mx - state.player.x);
-            state.effects.push({ type: 'syphon_cone', startTime: now, duration: 1500, angle: syphonAngle, source: state.player });
+            state.effects.push({ type: 'syphon_cone', startTime: Date.now(), endTime: Date.now() + 2500, hasFired: false, angle: syphonAngle, source: state.player });
             abilityTriggered = true;
             break;
 
@@ -92,29 +92,11 @@ export function activateCorePower(mx, my, gameHelpers) {
 
         case 'looper':
             coreState.cooldownUntil = now + 10000;
-            
-            // Stun player and create indicator
-            gameHelpers.addStatusEffect('Stunned', '🌀', 500);
-            state.effects.push({
-                type: 'teleport_indicator',
-                x: mx,
-                y: my,
-                r: state.player.r * 1.5,
-                endTime: now + 500
-            });
-            gameHelpers.play('chargeUpSound');
-
-            setTimeout(() => {
-                // Check if player is still stunned by this effect to avoid conflicts
-                const isStunnedByThis = state.player.statusEffects.some(e => e.name === 'Stunned');
-                if (state.gameOver || !isStunnedByThis) return;
-                
-                state.player.x = mx;
-                state.player.y = my;
-                gameHelpers.play('mirrorSwap');
-                utils.spawnParticles(state.particles, mx, my, '#ecf0f1', 40, 4, 30, 5);
-            }, 500); // 0.5 second delay
-            
+            // Instantly teleport player to cursor
+            state.player.x = mx;
+            state.player.y = my;
+            gameHelpers.play('mirrorSwap');
+            utils.spawnParticles(state.particles, mx, my, '#ecf0f1', 40, 4, 30, 5);
             abilityTriggered = true;
             break;
 
