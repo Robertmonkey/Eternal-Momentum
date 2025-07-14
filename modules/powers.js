@@ -182,17 +182,21 @@ export const powers={
       },4000);
   }},
   decoy:{emoji:"🔮",desc:"Decoy lasts 5s",apply:(utils, game)=>{
-      const isMobile = state.player.purchasedTalents.has('quantum-duplicate');
-      state.decoys.push({
-          x:state.player.x,
-          y:state.player.y,
-          r:20,
-          expires:Date.now()+5000,
-          isTaunting: true,
-          isMobile: isMobile,
-          hp: 1
-      });
-      utils.spawnParticles(state.particles, state.player.x,state.player.y,"#8e44ad",50,3,30,5);
+    const isMobile = state.player.purchasedTalents.has('quantum-duplicate');
+    
+    // This creates a decoy specifically from the power-up
+    state.decoys.push({
+        x: state.player.x,
+        y: state.player.y,
+        r: 20,
+        expires: Date.now() + 5000,
+        isTaunting: true,
+        isMobile: isMobile, // Only power-up decoys can be mobile via talent
+        hp: 1,
+        fromCore: false // Mark as not from the core
+    });
+    game.play('magicDispelSound'); // Using a different sound to distinguish
+    utils.spawnParticles(state.particles, state.player.x, state.player.y, "#8e44ad", 50, 3, 30, 5);
   }},
   stack:{emoji:"🧠",desc:"Double next power-up",apply:(utils, game)=>{ state.stacked=true; game.addStatusEffect('Stacked', '🧠', 60000); utils.spawnParticles(state.particles, state.player.x,state.player.y,"#aaa",40,4,30,5); }},
   score: {emoji: "💎", desc: "Gain a large amount of Essence.", apply: (utils, game) => { game.addEssence(200 + state.player.level * 10); utils.spawnParticles(state.particles, state.player.x, state.player.y, "#f1c40f", 40, 4, 30,5); }},
@@ -252,7 +256,7 @@ export const powers={
               if (state.gameOver) return;
               // Ensure effect hasn't been cleared
               if (state.effects.includes(blackHoleEffect)) {
-                  state.effects.push({ type: 'dilation_field', x: mx, y: my, radius: radius, endTime: Date.now() + 5000 });
+                  state.effects.push({ type: 'dilation_field', x: mx, y: my, r: radius, endTime: Date.now() + 5000 });
               }
           }, 4000);
       }
