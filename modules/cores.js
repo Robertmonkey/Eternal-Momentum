@@ -31,8 +31,8 @@ export function activateCorePower(mx, my, gameHelpers) {
             coreState.cooldownUntil = now + 8000;
             
             // Stun player and apply immunity for charge-up
-            gameHelpers.addStatusEffect('Charging', '🔋', 1000);
-            gameHelpers.addStatusEffect('Stunned', '🛑', 1000);
+            gameHelpers.addStatusEffect('Charging', '🔋', 1700); // Immunity for charge-up and dash
+            gameHelpers.addStatusEffect('Stunned', '🛑', 1000); // Stun only for charge-up
 
             // Add the polished charge-up ring effect
             state.effects.push({
@@ -60,7 +60,7 @@ export function activateCorePower(mx, my, gameHelpers) {
             coreState.cooldownUntil = now + 5000;
             gameHelpers.play('syphonFire');
             const syphonAngle = Math.atan2(my - state.player.y, mx - state.player.x);
-            state.effects.push({ type: 'syphon_cone', startTime: Date.now(), endTime: Date.now() + 2500, hasFired: false, angle: syphonAngle, source: state.player });
+            state.effects.push({ type: 'syphon_cone', startTime: now, endTime: now + 2500, hasFired: false, angle: syphonAngle, source: state.player });
             abilityTriggered = true;
             break;
 
@@ -92,11 +92,20 @@ export function activateCorePower(mx, my, gameHelpers) {
 
         case 'looper':
             coreState.cooldownUntil = now + 10000;
-            // Instantly teleport player to cursor
-            state.player.x = mx;
-            state.player.y = my;
-            gameHelpers.play('mirrorSwap');
-            utils.spawnParticles(state.particles, mx, my, '#ecf0f1', 40, 4, 30, 5);
+            
+            // Stun player and make immune while they aim
+            gameHelpers.addStatusEffect('Warping', '🌀', 500); // For immunity
+            gameHelpers.addStatusEffect('Stunned', '🌀', 500); // For immobility
+            
+            // Create a locus that follows the cursor and teleports player on expiry
+            state.effects.push({
+                type: 'teleport_locus',
+                startTime: now,
+                duration: 500,
+                endTime: now + 500
+            });
+            gameHelpers.play('chargeUpSound');
+
             abilityTriggered = true;
             break;
 
@@ -325,8 +334,6 @@ export function handleCoreOnPlayerDamage(damage, enemy, gameHelpers) {
 
     if (damageTaken > 0) {
         if (playerHasCore('mirror_mirage')) {
-            const mirrorState = state.player.talent_states.core_states.mirror_mirage;
-            
             // Remove the oldest core decoy if we are at the max of 3
             const coreDecoys = state.decoys.filter(d => d.fromCore);
             if (coreDecoys.length >= 3) {
@@ -336,14 +343,15 @@ export function handleCoreOnPlayerDamage(damage, enemy, gameHelpers) {
                 }
             }
             
-            // Add a new decoy
+            // Add a new decoy with taunt properties
             state.decoys.push({ 
                 x: state.player.x, y: state.player.y, r: 20, 
-                hp: 1, // Decoys can be destroyed
-                fromCore: true, // Mark this decoy as from the core
-                isMobile: false, // Core decoys are always stationary
-                isTaunting: true,
-                expires: null // Does not expire automatically
+                hp: 1,
+                fromCore: true,
+                isMobile: false,
+                isTaunting: true, // Start taunting immediately
+                lastTauntTime: now,
+                expires: null
             });
             gameHelpers.play('mirrorSwap');
             utils.spawnParticles(state.particles, state.player.x, state.player.y, '#ff00ff', 40, 4, 30, 5);
@@ -353,7 +361,7 @@ export function handleCoreOnPlayerDamage(damage, enemy, gameHelpers) {
             if (Math.random() < 0.25 && enemy) { // Ensure enemy exists
                 state.effects.push({ 
                     type: 'glitch_zone', 
-                    caster: 'player', // Mark the caster
+                    caster: 'player', // Mark the caster so it doesn't harm the player
                     x: enemy.x, 
                     y: enemy.y, 
                     r: 100, 
@@ -455,22 +463,5 @@ export function handleCoreOnDefensivePower(powerKey, mx, my, gameHelpers) {
     if (playerHasCore('quantum_shadow')) {
         addStatusEffect('Phased', '👻', 2000);
         play('phaseShiftSound');
-    }
-    
-    if (playerHasCore('looper')) {
-        const looperState = state.player.talent_states.core_states.looper;
-        if (!looperState.isShifting) {
-            looperState.isShifting = true;
-            addStatusEffect('Shifting', '🌀', 1000);
-            play('chargeUpSound');
-            setTimeout(() => {
-                if(state.gameOver || !looperState.isShifting) return;
-                state.player.x = mx;
-                state.player.y = my;
-                play('mirrorSwap');
-                utils.spawnParticles(state.particles, mx, my, '#ecf0f1', 40, 4, 30, 5);
-                looperState.isShifting = false;
-            }, 1000);
-        }
     }
 }
