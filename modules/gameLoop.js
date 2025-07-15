@@ -393,23 +393,44 @@ export function gameTick(mx, my) {
 
     for (let i = state.decoys.length - 1; i >= 0; i--) {
         const decoy = state.decoys[i];
+        
+        // Decoy Pulsing Taunt AI
+        if (decoy.fromCore) {
+            if (now > decoy.lastTauntTime + 10000) { // 10 second cycle
+                decoy.isTaunting = true;
+                decoy.lastTauntTime = now;
+            }
+            if (decoy.isTaunting && now > decoy.lastTauntTime + 4000) { // 4 second taunt duration
+                decoy.isTaunting = false;
+            }
+        }
+
         if (decoy.hp <= 0 || (decoy.expires && now > decoy.expires)) {
             utils.spawnParticles(state.particles, decoy.x, decoy.y, '#a55eea', 30, 2, 20, 5);
             state.decoys.splice(i, 1);
             continue;
         }
         if (decoy.isMobile) {
-            // Move away from player
             const dx = decoy.x - state.player.x;
             const dy = decoy.y - state.player.y;
             const dist = Math.hypot(dx, dy);
             if (dist > 0) {
-                const speed = 2; // Adjust as needed
+                const speed = 2;
                 decoy.x += (dx / dist) * speed;
                 decoy.y += (dy / dist) * speed;
             }
         }
+        
+        // Render decoy and taunt indicator
         utils.drawCircle(ctx, decoy.x, decoy.y, decoy.r, "#9b59b6");
+        if (decoy.isTaunting) {
+            const pulse = 0.5 + Math.sin(now / 200) * 0.5;
+            ctx.strokeStyle = `rgba(255, 100, 100, ${pulse})`;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(decoy.x, decoy.y, decoy.r + 5 + (pulse * 5), 0, 2 * Math.PI);
+            ctx.stroke();
+        }
     }
     
     if(playerHasCore('sentinel_pair') && state.decoys.length > 0) {
@@ -491,32 +512,12 @@ export function gameTick(mx, my) {
         }
     }
     
-    state.decoys.forEach(decoy => {
-        // Taunt logic: Enemies target closest decoy if available
-        state.enemies.forEach(e => {
-            if (!e.boss && Math.random() < 0.3) { // 30% chance per tick to retarget
-                const decoyDist = Math.hypot(e.x - decoy.x, e.y - decoy.y);
-                const playerDist = Math.hypot(e.x - state.player.x, e.y - state.player.y);
-                if (decoyDist < playerDist) {
-                    e.targetX = decoy.x;
-                    e.targetY = decoy.y;
-                }
-            }
-        });
-    });
-    
-    if (state.gravityActive && now > state.gravityEnd) {
-        state.gravityActive = false;
-        if (state.player.purchasedTalents.has('temporal-collapse')) {
-            state.effects.push({ type: 'slow_zone', x: canvas.width / 2, y: canvas.height / 2, r: 250, endTime: Date.now() + 4000 });
-        }
-    }
-
     let totalPlayerPushX = 0;
     let totalPlayerPushY = 0;
     let playerCollisions = 0;
     
     const allFractals = state.enemies.filter(e => e.id === 'fractal_horror');
+    const tauntingDecoys = state.decoys.filter(d => d.isTaunting);
 
     for (let i = state.enemies.length - 1; i >= 0; i--) {
         const e = state.enemies[i];
@@ -621,8 +622,8 @@ export function gameTick(mx, my) {
                 e.y = Math.max(e.r, Math.min(canvas.height - e.r, e.y)); e.knockbackDy *= -0.8;
             }
         } else if(!e.frozen && !e.hasCustomMovement){ 
-             let tgt = e.isFriendly ? null : (state.decoys.length > 0 ? state.decoys[0] : state.player);
-            if (e.isFriendly) {
+             let tgt = null;
+             if (e.isFriendly) {
                 let closestEnemy = null, minDist = Infinity;
                 state.enemies.forEach(other => {
                     if (!other.isFriendly && !other.boss) {
@@ -631,7 +632,16 @@ export function gameTick(mx, my) {
                     }
                 });
                 tgt = closestEnemy;
-            }
+             } else if (tauntingDecoys.length > 0) {
+                let closestDecoy = null, minDist = Infinity;
+                tauntingDecoys.forEach(decoy => {
+                    const dist = Math.hypot(e.x - decoy.x, e.y - decoy.y);
+                    if (dist < minDist) { minDist = dist; closestDecoy = decoy; }
+                });
+                tgt = closestDecoy;
+             } else {
+                tgt = state.player;
+             }
             
             let enemySpeedMultiplier = 1;
             let isInSlowZone = false;
@@ -714,9 +724,7 @@ export function gameTick(mx, my) {
         if(!e.isFriendly) {
             const hasPhased = playerHasCore('quantum_shadow') && state.player.statusEffects.some(eff => eff.name === 'Phased');
             const pDist = Math.hypot(state.player.x-e.x,state.player.y-e.y);
-            const juggernautCharging = state.effects.some(eff => eff.type === 'juggernaut_player_charge');
-            const isChargingUp = state.player.statusEffects.some(eff => eff.name === 'Charging');
-            const isImmune = isChargingUp || juggernautCharging;
+            const isImmune = state.player.statusEffects.some(eff => eff.name === 'Charging' || eff.name === 'Warping') || state.effects.some(eff => eff.type === 'juggernaut_player_charge');
             
             if(pDist < e.r+state.player.r && !hasPhased && !isImmune){
                 if (state.player.talent_states.phaseMomentum.active && !e.boss) {
@@ -854,11 +862,17 @@ export function gameTick(mx, my) {
             if (effect.type === 'black_hole' && state.player.purchasedTalents.has('unstable-singularity')) {
                 state.effects.push({ type: 'shockwave', caster: state.player, x: effect.x, y: effect.y, radius: 0, maxRadius: 200, speed: 800, startTime: now, hitEnemies: new Set(), damage: 25 * state.player.talent_modifiers.damage_multiplier * dynamicDamageMultiplier, color: 'rgba(155, 89, 182, 0.7)' });
             }
+            if (effect.type === 'teleport_locus') {
+                state.player.x = effect.x;
+                state.player.y = effect.y;
+                play('mirrorSwap');
+                utils.spawnParticles(state.particles, effect.x, effect.y, '#ecf0f1', 40, 4, 30, 5);
+            }
             state.effects.splice(i, 1);
             continue;
         }
 
-        const isCharging = state.player.statusEffects.some(e => e.name === 'Charging') || state.effects.some(eff => eff.type === 'juggernaut_player_charge');
+        const isImmune = state.player.statusEffects.some(e => e.name === 'Charging' || e.name === 'Warping') || state.effects.some(eff => eff.type === 'juggernaut_player_charge');
         const hasReflectiveWard = playerHasCore('reflector') && state.player.statusEffects.some(eff => eff.name === 'Reflective Ward');
         if (effect.type === 'nova_bullet' || effect.type === 'ricochet_projectile' || effect.type === 'seeking_shrapnel' || effect.type === 'helix_bolt' || effect.type === 'player_fragment') {
             let speedMultiplier = 1.0;
@@ -908,7 +922,7 @@ export function gameTick(mx, my) {
                     if (effect.damage > 0) {
                         let dmg = (target.isPuppet && (effect.caster === state.player || effect.caster === 'reflected')) ? target.maxHP / 2 : (target.boss || target === state.player) ? effect.damage : 1000;
                         if (target === state.player) {
-                            if (!target.shield && !isCharging) {
+                            if (!target.shield && !isImmune) {
                                 target.health -= dmg;
                                 if (target.health <= 0) state.gameOver = true;
                             } else target.shield = false;
@@ -986,7 +1000,7 @@ export function gameTick(mx, my) {
             } else {
                 const hasPhased = playerHasCore('quantum_shadow') && state.player.statusEffects.some(e => e.name === 'Phased');
                 const pDist = Math.hypot(state.player.x - effect.x, state.player.y - effect.y);
-                if (pDist < state.player.r + effect.r && !hasPhased && !isCharging) {
+                if (pDist < state.player.r + effect.r && !hasPhased && !isImmune) {
                     if (!state.player.shield) {
                         state.player.health -= (effect.damage || 40);
                         if(state.player.health <= 0) state.gameOver = true;
@@ -1016,7 +1030,7 @@ export function gameTick(mx, my) {
                         let damage = ((state.player.berserkUntil > now && effect.caster === state.player) ? 50 : 25)  * state.player.talent_modifiers.damage_multiplier; 
                         if(effect.caster !== state.player) damage = effect.damage; else damage *= dynamicDamageMultiplier;
                         if(e.health) {
-                            if (!e.shield && !isCharging) { e.health -= damage; if(e.health <= 0) state.gameOver = true; }
+                            if (!e.shield && !isImmune) { e.health -= damage; if(e.health <= 0) state.gameOver = true; }
                             else { e.shield = false; }
                         } else { e.hp -= damage; if (effect.caster === state.player) Cores.handleCoreOnDamageDealt(e); }
                         if(e.onDamage) e.onDamage(e, damage, effect.caster, state, spawnParticlesCallback, play, stopLoopingSfx, gameHelpers); 
@@ -1214,7 +1228,7 @@ export function gameTick(mx, my) {
                 
                 if (!isSafe && (target.health > 0 || target.hp > 0)) {
                     if (target === state.player) {
-                        if (state.player.shield || isCharging) return;
+                        if (state.player.shield || isImmune) return;
                         target.health -= 999;
                         if (target.health <= 0) state.gameOver = true;
                     } else {
@@ -1286,7 +1300,7 @@ export function gameTick(mx, my) {
                 ctx.fillStyle = '#6ab04c';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 ctx.globalAlpha = 1.0;
-                if (!state.player.shield && !isCharging) {
+                if (!state.player.shield && !isImmune) {
                     state.player.health -= 0.25; 
                     if (state.player.health <= 0) state.gameOver = true;
                 }
@@ -1295,19 +1309,19 @@ export function gameTick(mx, my) {
         else if (effect.type === 'juggernaut_player_charge') {
             const progress = (now - effect.startTime) / effect.duration;
             if (progress >= 1) { state.effects.splice(i, 1); continue; }
-            const chargeSpeed = 35; // Increased speed
+            const chargeSpeed = 35; // Increased speed to feel powerful
             state.player.x += Math.cos(effect.angle) * chargeSpeed;
             state.player.y += Math.sin(effect.angle) * chargeSpeed;
             state.enemies.forEach(e => {
                 if (!e.isFriendly && !effect.hitEnemies.has(e) && Math.hypot(state.player.x - e.x, state.player.y - e.y) < state.player.r + e.r) {
                     if (e.boss) {
-                        e.hp -= 200;
-                        const knockbackStrength = 25;
+                        e.hp -= 500;
+                        const knockbackStrength = 40; // Increased knockback
                         e.knockbackDx = Math.cos(effect.angle) * knockbackStrength;
                         e.knockbackDy = Math.sin(effect.angle) * knockbackStrength;
                         e.knockbackUntil = now + 500;
                     } else {
-                        e.hp = 0;
+                        e.hp -= 500; // Deals 500 damage, effectively killing them
                     }
                     effect.hitEnemies.add(e);
                     utils.triggerScreenShake(150, 8);
@@ -1315,9 +1329,20 @@ export function gameTick(mx, my) {
                 }
             });
         }
+        else if (effect.type === 'teleport_locus') {
+             // This effect now follows the mouse to allow aiming the teleport
+            effect.x = window.mousePosition.x;
+            effect.y = window.mousePosition.y;
+            const progress = (now - effect.startTime) / effect.duration;
+            ctx.strokeStyle = `rgba(236, 240, 241, ${1 - progress})`;
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.arc(effect.x, effect.y, Math.max(0, 30 * (1 - progress)), 0, 2 * Math.PI);
+            ctx.stroke();
+        }
         else if (effect.type === 'teleport_indicator') {
             if (now > effect.endTime) { state.effects.splice(i, 1); continue; }
-            const progress = 1 - ((effect.endTime - now) / 500); // Duration is 500ms
+            const progress = 1 - ((effect.endTime - now) / 1000);
             ctx.strokeStyle = `rgba(255, 0, 0, ${1 - progress})`;
             ctx.lineWidth = 5 + (10 * progress);
             ctx.beginPath();
@@ -1358,7 +1383,7 @@ export function gameTick(mx, my) {
                 ctx.beginPath(); ctx.arc(p.x, p.y, 10, 0, 2 * Math.PI); ctx.fill();
                 if(Math.random() < 0.2) spawnParticlesCallback(p.x, p.y, 'rgba(231, 76, 60, 0.7)', 1, 1, 15, Math.random() * 3 + 1);
                 if (Math.hypot(state.player.x - p.x, state.player.y - p.y) < state.player.r + 10) {
-                     if (!state.player.shield && !isCharging) {
+                     if (!state.player.shield && !isImmune) {
                          play('magicDispelSound');
                          state.player.health = 0;
                          if (state.player.health <= 0) state.gameOver = true;
@@ -1374,7 +1399,7 @@ export function gameTick(mx, my) {
                     effect.angle = Math.atan2(state.player.y - source.y, state.player.x - source.x);
                 }
                 const coneAngle = Math.PI / 4;
-                const coneLength = canvas.height * 1.5; // Make sure it covers screen
+                const coneLength = canvas.height * 1.5;
                 const progress = (2500 - remainingTime) / 2500;
                 ctx.save();
                 ctx.globalAlpha = 0.4 * progress;
@@ -1386,19 +1411,17 @@ export function gameTick(mx, my) {
                 ctx.fill();
                 ctx.restore();
             } else if (!effect.hasFired) {
-                effect.hasFired = true; // Prevents firing multiple times
+                effect.hasFired = true;
                 play('syphonFire');
                 const playerAngle = Math.atan2(state.player.y - source.y, state.player.x - source.x);
                 let angleDiff = Math.abs(effect.angle - playerAngle);
                 if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
-                // Check if player is inside the final cone angle
                 if (angleDiff < coneAngle / 2) {
                     const stolenPower = state.offensiveInventory[0];
                     if (stolenPower) {
                         play('powerAbsorb');
                         state.offensiveInventory.shift();
                         state.offensiveInventory.push(null);
-                        // Unleash corrupted power
                         switch (stolenPower) {
                             case 'missile':
                                 state.effects.push({ type: 'shockwave', caster: source, x: state.player.x, y: state.player.y, radius: 0, maxRadius: 400, speed: 1000, startTime: Date.now(), hitEnemies: new Set(), damage: 70, color: 'rgba(155, 89, 182, 0.7)' });
@@ -1427,7 +1450,7 @@ export function gameTick(mx, my) {
                         }
                     }
                 }
-                state.effects.splice(i, 1); // Remove effect after it fires
+                state.effects.splice(i, 1);
             }
         }
         else if (effect.type === 'shrinking_box') {
@@ -1446,7 +1469,7 @@ export function gameTick(mx, my) {
             ctx.fillStyle = 'rgba(211, 84, 0, 0.5)';
             const gapStart = effect.gapPosition * (currentSize - gapSize);
             const playerIsInsideBounds = state.player.x >= left && state.player.x <= right && state.player.y >= top && state.player.y <= bottom;
-            if (playerIsInsideBounds && !isCharging) {
+            if (playerIsInsideBounds && !isImmune) {
                 if (state.player.y - state.player.r < top && (effect.gapSide !== 0 || state.player.x < left + gapStart || state.player.x > left + gapStart + gapSize)) state.player.y = top + state.player.r;
                 if (state.player.y + state.player.r > bottom && (effect.gapSide !== 2 || state.player.x < left + gapStart || state.player.x > left + gapStart + gapSize)) state.player.y = bottom - state.player.r;
                 if (state.player.x - state.player.r < left && (effect.gapSide !== 3 || state.player.y < top + gapStart || state.player.y > top + gapStart + gapSize)) state.player.x = left + state.player.r;
@@ -1519,7 +1542,7 @@ export function gameTick(mx, my) {
             if (progress >= 1) { state.effects.splice(i, 1); continue; }
             const ringRadius = effect.radius * (1 - progress); // Ring shrinks
             ctx.strokeStyle = effect.color || 'rgba(255, 255, 255, 0.8)';
-            ctx.lineWidth = 10 * progress; // Line gets thicker as it shrinks
+            ctx.lineWidth = 15 * progress; // Line gets thicker as it shrinks
             ctx.beginPath();
             ctx.arc(effect.source.x, effect.source.y, ringRadius, 0, 2 * Math.PI);
             ctx.stroke();
