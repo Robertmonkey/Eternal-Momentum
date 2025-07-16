@@ -707,6 +707,24 @@ export function gameTick(mx, my) {
         
         if (e.boss && e.logic) e.logic(e, ctx, state, utils, gameHelpers, null, allFractals);
         
+        // Hybrid Physics: Non-boss enemies collide with each other
+        if (!e.boss) {
+            for (let j = i - 1; j >= 0; j--) {
+                const other = state.enemies[j];
+                if (!other.boss) {
+                    const enemyDist = Math.hypot(e.x - other.x, e.y - other.y);
+                    if (enemyDist < e.r + other.r) {
+                        const angle = Math.atan2(e.y - other.y, e.x - other.x);
+                        const overlap = (e.r + other.r - enemyDist) / 2;
+                        e.x += Math.cos(angle) * overlap;
+                        e.y += Math.sin(angle) * overlap;
+                        other.x -= Math.cos(angle) * overlap;
+                        other.y -= Math.sin(angle) * overlap;
+                    }
+                }
+            }
+        }
+        
         let color = e.customColor || (e.boss ? e.color : "#c0392b"); 
         if(e.isInfected) color = '#55efc4'; 
         if(e.frozen) color = '#add8e6';
