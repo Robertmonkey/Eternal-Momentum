@@ -502,47 +502,72 @@ export const bossData = [{
         b.isCharging = false;
         b.baseDx = (Math.random() - 0.5) * 0.5;
         b.baseDy = (Math.random() - 0.5) * 0.5;
+        b.bouncesLeft = 0;
     },
     logic: (b, ctx, state, utils, gameHelpers) => {
         const speedMultiplier = 1 + (1 - b.hp / b.maxHP) * 2.5;
+
         if (!b.isCharging) {
             b.dx = b.baseDx * speedMultiplier;
             b.dy = b.baseDy * speedMultiplier;
+
             if (Date.now() - b.lastCharge > 7000) {
                 b.isCharging = true;
+                b.bouncesLeft = 2; // It will ricochet twice
                 b.dx = 0;
                 b.dy = 0;
+                
                 state.effects.push({
-                    type: 'juggernaut_charge_ring',
+                    type: 'charge_indicator',
                     source: b,
                     startTime: Date.now(),
-                    duration: 1000
+                    duration: 1000,
+                    radius: 80
                 });
                 gameHelpers.play('chargeUpSound');
+
                 setTimeout(() => {
-                    if (b.hp <= 0) return;
+                    if (b.hp <= 0) {
+                        b.isCharging = false;
+                        return;
+                    }
                     const target = (state.arenaMode && b.target) ? b.target : state.player;
                     const angle = Math.atan2(target.y - b.y, target.x - b.x);
                     b.dx = Math.cos(angle) * 15;
                     b.dy = Math.sin(angle) * 15;
                     utils.triggerScreenShake(150, 3);
                     gameHelpers.play('chargeDashSound');
-                    setTimeout(() => {
-                        b.isCharging = false;
-                        b.lastCharge = Date.now();
-                        b.baseDx = (Math.random() - 0.5) * 0.5;
-                        b.baseDy = (Math.random() - 0.5) * 0.5;
-                    }, 500);
                 }, 1000);
             }
         } else {
+            // Ricochet logic
+            if (b.x < b.r || b.x > ctx.canvas.width - b.r) {
+                b.dx *= -1;
+                b.bouncesLeft--;
+                utils.triggerScreenShake(100, 5);
+            }
+            if (b.y < b.r || b.y > ctx.canvas.height - b.r) {
+                b.dy *= -1;
+                b.bouncesLeft--;
+                utils.triggerScreenShake(100, 5);
+            }
+
+            if (b.bouncesLeft < 0) {
+                b.isCharging = false;
+                b.lastCharge = Date.now();
+                b.baseDx = (Math.random() - 0.5) * 0.5;
+                b.baseDy = (Math.random() - 0.5) * 0.5;
+            }
+
+            // Enemy pinball logic
             state.enemies.forEach(e => {
                 if (e !== b && !e.boss) {
                     const dist = Math.hypot(b.x - e.x, b.y - e.y);
                     if (dist < b.r + e.r) {
                         const angle = Math.atan2(e.y - b.y, e.x - b.x);
-                        e.dx = Math.cos(angle) * 10;
-                        e.dy = Math.sin(angle) * 10;
+                        e.knockbackDx = Math.cos(angle) * 15;
+                        e.knockbackDy = Math.sin(angle) * 15;
+                        e.knockbackUntil = Date.now() + 500;
                     }
                 }
             });
