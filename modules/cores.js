@@ -2,7 +2,7 @@
 import { state } from './state.js';
 import * as utils from './utils.js';
 import { bossData } from './bosses.js';
-import { showUnlockNotification } from './ui.js';
+import { showUnlockNotification, updateUI } from './ui.js';
 import { usePower } from './powers.js';
 
 // Helper function to check for core presence (equipped or via Pantheon)
@@ -31,7 +31,7 @@ export function activateCorePower(mx, my, gameHelpers) {
             coreState.cooldownUntil = now + 8000;
             
             // Stun player and apply immunity for charge-up
-            gameHelpers.addStatusEffect('Charging', '🔋', 1700); // Immunity for charge-up and dash
+            gameHelpers.addStatusEffect('Charging', '🔋', 2700); // Immunity for charge-up and dash
             gameHelpers.addStatusEffect('Stunned', '🛑', 1000); // Stun only for charge-up
 
             // Add the polished charge-up ring effect
@@ -49,7 +49,14 @@ export function activateCorePower(mx, my, gameHelpers) {
             setTimeout(() => {
                 if (state.gameOver) return;
                 const angle = Math.atan2(my - state.player.y, mx - state.player.x);
-                state.effects.push({ type: 'juggernaut_player_charge', startTime: now, duration: 700, angle: angle, hitEnemies: new Set() });
+                state.effects.push({ 
+                    type: 'juggernaut_player_charge', 
+                    startTime: now, 
+                    duration: 1700, // 1.7 seconds of charging
+                    angle: angle, 
+                    hitEnemies: new Set(),
+                    bouncesLeft: 2 // Allow for ricochets
+                });
                 gameHelpers.play('chargeDashSound');
             }, 1000); // 1-second charge-up time
 
@@ -58,7 +65,6 @@ export function activateCorePower(mx, my, gameHelpers) {
         
         case 'syphon':
             coreState.cooldownUntil = now + 5000;
-            gameHelpers.play('syphonFire');
             const syphonAngle = Math.atan2(my - state.player.y, mx - state.player.x);
             state.effects.push({ type: 'syphon_cone', startTime: now, endTime: now + 2500, hasFired: false, angle: syphonAngle, source: state.player });
             abilityTriggered = true;
