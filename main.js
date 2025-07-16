@@ -9,55 +9,6 @@ import * as utils from './modules/utils.js';
 import { renderAscensionGrid, applyAllTalentEffects } from './modules/ascension.js';
 import * as Cores from './modules/cores.js';
 
-// --- CONSOLE COMMANDS FOR TESTING ---
-window.addAP = function(amount) {
-    if (typeof amount !== 'number' || amount <= 0) {
-        console.log("Please provide a positive number of AP to add.");
-        return;
-    }
-    state.player.ascensionPoints += amount;
-    savePlayerState(); 
-    updateUI(); 
-    const apDisplayAscGrid = document.getElementById("ap-total-asc-grid");
-    if(apDisplayAscGrid) {
-        apDisplayAscGrid.innerText = state.player.ascensionPoints;
-    }
-    if (document.getElementById('ascensionGridModal').style.display === 'flex') {
-        renderAscensionGrid();
-    }
-    console.log(`${amount} AP added. Total AP: ${state.player.ascensionPoints}`);
-};
-
-window.setLevel = function(level) {
-    if (typeof level !== 'number' || level <= 0) {
-        console.log("Please provide a positive number for the level.");
-        return;
-    }
-    state.player.level = level;
-    state.player.essence = 0;
-    let nextLevelXP = 100;
-    for (let i = 1; i < level; i++) {
-        nextLevelXP = Math.floor(nextLevelXP * 1.12);
-    }
-    state.player.essenceToNextLevel = nextLevelXP;
-    
-    savePlayerState();
-    updateUI();
-    console.log(`Player level set to ${level}.`);
-};
-
-window.unlockStage = function(stage) {
-    if (typeof stage !== 'number' || stage < 0) {
-        console.log("Please provide a positive stage number.");
-        return;
-    }
-    state.player.highestStageBeaten = stage;
-    savePlayerState();
-    updateUI();
-    console.log(`Unlocked all stages up to ${stage}. Please reopen the Stage Select menu to see the change.`);
-};
-// --- END CONSOLE COMMANDS ---
-
 const loadingScreen = document.getElementById('loading-screen');
 const progressFill = document.getElementById('loading-progress-fill');
 const statusText = document.getElementById('loading-status-text');
@@ -541,6 +492,56 @@ window.addEventListener('load', () => {
             AudioManager.setup(allAudioElements, soundBtn);
             setupEventListeners();
             setupHomeScreen();
+
+            // --- CONSOLE COMMANDS FOR TESTING (Moved here for correct scope) ---
+            window.addAP = function(amount) {
+                if (typeof amount !== 'number' || amount <= 0) {
+                    console.log("Please provide a positive number of AP to add.");
+                    return;
+                }
+                state.player.ascensionPoints += amount;
+                savePlayerState();
+                updateUI();
+                const apDisplayAscGrid = document.getElementById("ap-total-asc-grid");
+                if (apDisplayAscGrid) {
+                    apDisplayAscGrid.innerText = state.player.ascensionPoints;
+                }
+                if (document.getElementById('ascensionGridModal').style.display === 'flex') {
+                    renderAscensionGrid();
+                }
+                console.log(`${amount} AP added. Total AP: ${state.player.ascensionPoints}`);
+            };
+
+            window.setLevel = function(level) {
+                if (typeof level !== 'number' || level <= 0) {
+                    console.log("Please provide a positive number for the level.");
+                    return;
+                }
+                state.player.level = level;
+                state.player.essence = 0;
+                let nextLevelXP = 100;
+                for (let i = 1; i < level; i++) {
+                    nextLevelXP = Math.floor(nextLevelXP * 1.12);
+                }
+                state.player.essenceToNextLevel = nextLevelXP;
+                savePlayerState();
+                updateUI();
+                console.log(`Player level set to ${level}.`);
+            };
+
+            window.unlockStage = function(stage) {
+                if (typeof stage !== 'number' || stage < 0) {
+                    console.log("Please provide a positive stage number.");
+                    return;
+                }
+                state.player.highestStageBeaten = stage;
+                savePlayerState();
+                updateUI();
+                if (document.getElementById("levelSelectModal").style.display === 'flex') {
+                    populateLevelSelect(startSpecificLevel);
+                }
+                console.log(`Unlocked all stages up to ${stage}. Re-open stage select to see changes.`);
+            };
         }
         
         // This is the key change to fix the "stuck on loading" bug
