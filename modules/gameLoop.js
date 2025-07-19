@@ -393,14 +393,15 @@ export function gameTick(mx, my) {
 
     for (let i = state.decoys.length - 1; i >= 0; i--) {
         const decoy = state.decoys[i];
-        
-        // Decoy Pulsing Taunt AI
+
+        // **MODIFIED**: Implement random decoy pulse intervals for Mirror Mirage
         if (decoy.fromCore) {
-            if (now > decoy.lastTauntTime + 10000) { // 10 second cycle
+            if (!decoy.isTaunting && now > decoy.nextTauntTime) {
                 decoy.isTaunting = true;
-                decoy.lastTauntTime = now;
+                decoy.tauntEndTime = now + decoy.tauntDuration;
+                decoy.nextTauntTime = now + 4000 + Math.random() * 3000;
             }
-            if (decoy.isTaunting && now > decoy.lastTauntTime + 4000) { // 4 second taunt duration
+            if (decoy.isTaunting && now > decoy.tauntEndTime) {
                 decoy.isTaunting = false;
             }
         }
@@ -421,7 +422,6 @@ export function gameTick(mx, my) {
             }
         }
         
-        // Render decoy and taunt indicator
         utils.drawCircle(ctx, decoy.x, decoy.y, decoy.r, "#9b59b6");
         if (decoy.isTaunting) {
             const pulse = 0.5 + Math.sin(now / 200) * 0.5;
@@ -707,7 +707,6 @@ export function gameTick(mx, my) {
         
         if (e.boss && e.logic) e.logic(e, ctx, state, utils, gameHelpers, null, allFractals);
         
-        // Hybrid Physics: Non-boss enemies collide with each other
         if (!e.boss) {
             for (let j = i - 1; j >= 0; j--) {
                 const other = state.enemies[j];
@@ -1152,14 +1151,12 @@ export function gameTick(mx, my) {
             utils.drawCircle(ctx, effect.x, effect.y, effect.r, ctx.fillStyle);
 
             if (effect.caster === 'player') {
-                // Affect enemies if the player's core created the zone
                 state.enemies.forEach(e => {
                     if (!e.isFriendly && Math.hypot(e.x - effect.x, e.y - effect.y) < e.r + effect.r) {
                         e.glitchedUntil = now + 3000;
                     }
                 });
             } else {
-                // Affect player if the boss created the zone
                 if (Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < effect.r + state.player.r) {
                     if (!state.player.controlsInverted) {
                         play('systemErrorSound');
@@ -1284,7 +1281,7 @@ export function gameTick(mx, my) {
                         }
                     }
                     if (!isSafe) {
-                        if (enemy.boss) enemy.hp -= 500;
+                        if (enemy.boss) enemy.hp -= 1000;
                         else enemy.hp = 0;
                     }
                 });
@@ -1327,19 +1324,19 @@ export function gameTick(mx, my) {
         else if (effect.type === 'juggernaut_player_charge') {
             const progress = (now - effect.startTime) / effect.duration;
             if (progress >= 1) { state.effects.splice(i, 1); continue; }
-            const chargeSpeed = 35; // Increased speed to feel powerful
+            const chargeSpeed = 35;
             state.player.x += Math.cos(effect.angle) * chargeSpeed;
             state.player.y += Math.sin(effect.angle) * chargeSpeed;
             state.enemies.forEach(e => {
                 if (!e.isFriendly && !effect.hitEnemies.has(e) && Math.hypot(state.player.x - e.x, state.player.y - e.y) < state.player.r + e.r) {
                     if (e.boss) {
                         e.hp -= 500;
-                        const knockbackStrength = 40; // Increased knockback
+                        const knockbackStrength = 40;
                         e.knockbackDx = Math.cos(effect.angle) * knockbackStrength;
                         e.knockbackDy = Math.sin(effect.angle) * knockbackStrength;
                         e.knockbackUntil = now + 500;
                     } else {
-                        e.hp -= 500; // Deals 500 damage, effectively killing them
+                        e.hp = 0;
                     }
                     effect.hitEnemies.add(e);
                     utils.triggerScreenShake(150, 8);
@@ -1348,7 +1345,6 @@ export function gameTick(mx, my) {
             });
         }
         else if (effect.type === 'teleport_locus') {
-             // This effect now follows the mouse to allow aiming the teleport
             effect.x = window.mousePosition.x;
             effect.y = window.mousePosition.y;
             const progress = (now - effect.startTime) / effect.duration;
@@ -1411,14 +1407,14 @@ export function gameTick(mx, my) {
         }
         else if (effect.type === 'syphon_cone') {
             const { source, endTime } = effect;
-            const remainingTime = endTime - Date.now();
+            const remainingTime = endTime - now;
             if (remainingTime > 0) {
-                if (remainingTime > 250) { // Lock angle in the last 0.25s
-                    effect.angle = Math.atan2(state.player.y - source.y, state.player.x - source.x);
+                if (source === state.player || remainingTime > 250) {
+                    effect.angle = Math.atan2(my - source.y, mx - source.x);
                 }
-                const coneAngle = Math.PI / 4;
+                const coneAngle = effect.coneAngle || Math.PI / 4;
                 const coneLength = canvas.height * 1.5;
-                const progress = (2500 - remainingTime) / 2500;
+                const progress = (1000 - remainingTime) / 1000;
                 ctx.save();
                 ctx.globalAlpha = 0.4 * progress;
                 ctx.fillStyle = '#9b59b6';
@@ -1430,41 +1426,27 @@ export function gameTick(mx, my) {
                 ctx.restore();
             } else if (!effect.hasFired) {
                 effect.hasFired = true;
-                play('syphonFire');
-                const playerAngle = Math.atan2(state.player.y - source.y, state.player.x - source.x);
-                let angleDiff = Math.abs(effect.angle - playerAngle);
-                if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
-                if (angleDiff < coneAngle / 2) {
-                    const stolenPower = state.offensiveInventory[0];
-                    if (stolenPower) {
-                        play('powerAbsorb');
-                        state.offensiveInventory.shift();
-                        state.offensiveInventory.push(null);
-                        switch (stolenPower) {
-                            case 'missile':
-                                state.effects.push({ type: 'shockwave', caster: source, x: state.player.x, y: state.player.y, radius: 0, maxRadius: 400, speed: 1000, startTime: Date.now(), hitEnemies: new Set(), damage: 70, color: 'rgba(155, 89, 182, 0.7)' });
-                                break;
-                            case 'chain':
-                                state.effects.push({ type: 'chain_lightning', targets: [state.player], links: [], startTime: Date.now(), durationPerLink: 80, damage: 75, caster: source, color: '#9b59b6' });
-                                break;
-                            case 'shockwave':
-                                state.effects.push({ type: 'shockwave', caster: source, x: source.x, y: source.y, radius: 0, maxRadius: canvas.width, speed: 1000, startTime: Date.now(), hitEnemies: new Set(), damage: 60, color: 'rgba(155, 89, 182, 0.7)' });
-                                break;
-                            case 'black_hole':
-                                state.effects.push({ type: 'black_hole', x: source.x, y: source.y, radius: 30, maxRadius: 400, damageRate: 200, lastDamage: new Map(), startTime: Date.now(), duration: 5000, endTime: Date.now() + 5000, damage: 65, caster: source, color: '#9b59b6' });
-                                break;
-                             case 'orbitalStrike':
-                                state.effects.push({ type: 'orbital_target', x: state.player.x, y: state.player.y, startTime: Date.now(), caster: source, damage: 80, radius: 200, color: 'rgba(155, 89, 182, 0.8)' });
-                                break;
-                             case 'ricochetShot':
-                                 for(let j = -1; j <= 1; j++) {
-                                     const angle = effect.angle + j * 0.3;
-                                     state.effects.push({ type: 'ricochet_projectile', x: source.x, y: source.y, dx: Math.cos(angle) * 12, dy: Math.sin(angle) * 12, r: 15, damage: 50, bounces: 5, initialBounces: 5, hitEnemies: new Set(), caster: source, color: '#9b59b6' });
-                                 }
-                                 break;
-                             case 'bulletNova':
-                                 state.effects.push({ type: 'nova_controller', startTime: Date.now(), duration: 2500, lastShot: 0, angle: Math.random() * Math.PI * 2, caster: source, color: '#9b59b6', r: 8 });
-                                 break;
+                if (source === state.player) {
+                    state.pickups.forEach(p => {
+                        const dx = state.player.x - p.x;
+                        const dy = state.player.y - p.y;
+                        const dist = Math.hypot(dx, dy);
+                        if (dist < canvas.height * 0.4) {
+                            p.vx += (dx / dist) * 2.5;
+                            p.vy += (dy / dist) * 2.5;
+                        }
+                    });
+                    play('syphonFire');
+                } else {
+                    play('powerAbsorb');
+                    const playerAngle = Math.atan2(state.player.y - source.y, state.player.x - source.x);
+                    let angleDiff = Math.abs(effect.angle - playerAngle);
+                    if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
+                    if (angleDiff < (effect.coneAngle || Math.PI / 4) / 2) {
+                        const stolenPower = state.offensiveInventory[0];
+                        if (stolenPower) {
+                            state.offensiveInventory.shift();
+                            state.offensiveInventory.push(null);
                         }
                     }
                 }
