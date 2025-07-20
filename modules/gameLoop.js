@@ -117,14 +117,24 @@ function levelUp() {
 export function addEssence(amount) {
     if (state.gameOver) return;
     let modifiedAmount = Math.floor(amount * state.player.talent_modifiers.essence_gain_modifier);
-    if (state.player.purchasedTalents.has('essence-transmutation')) {
+    
+    const rank = state.player.purchasedTalents.get('essence-transmutation');
+    if (rank) {
         const essenceBefore = state.player.essence % 50;
-        const healthGain = Math.floor((essenceBefore + modifiedAmount) / 50);
-        if (healthGain > 0) {
-            state.player.maxHealth += healthGain;
-            state.player.health += healthGain;
+        let gainedHP = Math.floor((essenceBefore + modifiedAmount) / 50);
+        if (gainedHP > 0) {
+            const caps = [1.5, 2.5, 3.0];
+            const cap = state.player.baseMaxHealth * caps[rank - 1];
+            if (state.player.maxHealth + gainedHP > cap) {
+                gainedHP = Math.floor(cap - state.player.maxHealth);
+            }
+            if(gainedHP > 0){
+                state.player.maxHealth += gainedHP;
+                state.player.health += gainedHP;
+            }
         }
     }
+
     state.player.essence += modifiedAmount;
     while (state.player.essence >= state.player.essenceToNextLevel) {
         levelUp();
@@ -585,15 +595,19 @@ export function gameTick(mx, my) {
         if (e.frozenUntil && now > e.frozenUntil) {
             e.frozen = false; e.frozenUntil = null; e.dx = e._dx; e.dy = e._dy;
         }
-        if (e.isInfected && !e.boss) {
-            if (now > e.infectionEnd) e.isInfected = false;
-            else if (now - (e.lastSpore || 0) > 3000) {
-                e.lastSpore = now;
+        
+        if (e.isInfected) {
+            if (!e.spawnedSpores) e.spawnedSpores = 0;
+            if (now > e.infectionEnd) {
+                e.isInfected = false;
+            } else if (e.spawnedSpores < 3 && now - (e.lastSpore || 0) > 5000) {
                 const spore = spawnEnemy(false, null, { x: e.x, y: e.y });
                 if (spore) {
                     spore.r = 6; spore.hp = 1; spore.dx = (Math.random() - 0.5) * 8;
                     spore.dy = (Math.random() - 0.5) * 8; spore.ignoresPlayer = true;
                 }
+                e.lastSpore = now;
+                e.spawnedSpores++;
             }
         }
         
@@ -1350,14 +1364,25 @@ export function gameTick(mx, my) {
             utils.drawLightning(ctx, effect.x1, effect.y1, effect.x2, effect.y2, effect.color, 5);
         }
         else if (effect.type === 'miasma_gas') {
-            if(playerHasCore('miasma')) { /* Immune */ }
-            else {
+            if (effect.fromCore) {
+                const elapsed = now - effect.startTime;
+                const progress = Math.min(1, elapsed / 5000);
+                ctx.globalAlpha = 0.25 * progress;
+                ctx.fillStyle = '#6ab04c';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.globalAlpha = 1.0;
+                const delta = 30 / 60;
+                state.player.health = Math.min(state.player.maxHealth, state.player.health + delta);
+                state.enemies.forEach(e => {
+                    if (!e.isFriendly) e.hp -= delta * state.player.talent_modifiers.damage_multiplier;
+                });
+            } else {
                 ctx.globalAlpha = 0.25;
                 ctx.fillStyle = '#6ab04c';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 ctx.globalAlpha = 1.0;
-                if (!state.player.shield && !isImmune) {
-                    state.player.health -= 0.25; 
+                if (!playerHasCore('miasma') && !state.player.shield && !isImmune) {
+                    state.player.health -= 0.25;
                     if (state.player.health <= 0) state.gameOver = true;
                 }
             }
