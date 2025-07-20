@@ -66,7 +66,8 @@ export function activateCorePower(mx, my, gameHelpers) {
       // here to capture the cursor coordinates at the moment of activation.
       setTimeout(() => {
         if (state.gameOver) return;
-        const angle = Math.atan2(my - state.player.y, mx - state.player.x);
+        const { x: cursorX, y: cursorY } = window.mousePosition;
+        const angle = Math.atan2(cursorY - state.player.y, cursorX - state.player.x);
         state.effects.push({
           type: 'juggernaut_player_charge',
           startTime: Date.now(),
@@ -184,9 +185,11 @@ export function applyCoreTickEffects(gameHelpers) {
     swarmState.tail.forEach(c => {
       c.x += (prev.x - c.x) * 0.2;
       c.y += (prev.y - c.y) * 0.2;
-      const segmentRadius = 6 + Math.sin(now / 200);
-      utils.drawCircle(ctx, c.x, c.y, segmentRadius, 'orange');
-      utils.spawnParticles(state.particles, c.x, c.y, 'rgba(255, 165, 0, 0.5)', 1, 0.5, 10, 2);
+      const segmentRadius = 8;
+      utils.drawCircle(ctx, c.x, c.y, segmentRadius, '#c0392b');
+      if (Math.random() < 0.2) {
+          utils.spawnParticles(state.particles, c.x, c.y, 'rgba(192, 57, 43, 0.5)', 1, 0.5, 10, 2);
+      }
       prev = c;
       state.enemies.forEach(e => {
         if (!e.isFriendly && Math.hypot(e.x - c.x, e.y - c.y) < e.r + segmentRadius) {
@@ -198,36 +201,28 @@ export function applyCoreTickEffects(gameHelpers) {
 
   // --- Miasma passive ---
   if (playerHasCore('miasma')) {
-    const miasmaState = state.player.talent_states.core_states.miasma;
-    const moveDist = Math.hypot(window.mousePosition.x - state.player.x, window.mousePosition.y - state.player.y);
-    // If the player is standing still start timing; otherwise reset.
-    if (moveDist < state.player.r) {
-      if (!miasmaState.stillStartTime) {
-        miasmaState.stillStartTime = now;
+      const miasmaState = state.player.talent_states.core_states.miasma;
+      const moveDist = Math.hypot(window.mousePosition.x - state.player.x, window.mousePosition.y - state.player.y);
+      const isStationary = moveDist < state.player.r;
+      
+      if (isStationary) {
+          if (!miasmaState.stillStartTime) {
+              miasmaState.stillStartTime = now;
+          }
+          const timeStill = now - miasmaState.stillStartTime;
+          
+          if (timeStill > 3000 && !state.effects.some(e => e.fromCore && e.type === 'miasma_gas')) {
+              state.effects.push({
+                  type: 'miasma_gas',
+                  fromCore: true,
+                  startTime: now,
+                  endTime: Infinity 
+              });
+          }
+      } else {
+          miasmaState.stillStartTime = null;
+          state.effects = state.effects.filter(e => !(e.fromCore && e.type === 'miasma_gas'));
       }
-      if (!miasmaState.isPurifying && now - miasmaState.stillStartTime > 3000) {
-        miasmaState.isPurifying = true;
-        // Spawn a gas effect that slowly expands.  The renderer in
-        // gameLoop.js handles drawing and area damage for this effect.
-        state.effects.push({ type: 'miasma_gas', startTime: now, endTime: now + 100000, radius: 50 });
-      }
-    } else {
-      miasmaState.stillStartTime = null;
-      miasmaState.isPurifying = false;
-      // Remove any lingering gas effects when the player moves.  Filtering
-      // rather than splicing avoids invalidating indices in the outer loop.
-      state.effects = state.effects.filter(e => e.type !== 'miasma_gas');
-    }
-    if (miasmaState.isPurifying) {
-      // Heal the player and damage enemies at 30 HP per second.  Because
-      // healing and damage are applied every tick we divide by 60.
-      const ratePerSec = 30;
-      const delta = ratePerSec / 60;
-      state.player.health = Math.min(state.player.maxHealth, state.player.health + delta);
-      state.enemies.forEach(e => {
-        if (!e.isFriendly) e.hp -= delta * state.player.talent_modifiers.damage_multiplier;
-      });
-    }
   }
 
   // --- Puppeteer passive ---
@@ -432,11 +427,9 @@ export function handleCoreOnPlayerDamage(damage, enemy, gameHelpers) {
         isMobile: false,
         isTaunting: false,
         lastTauntTime: now,
-        // Set the next taunt interval randomly between 4 and 7 seconds.
         nextTauntTime: now + 4000 + Math.random() * 3000,
         tauntDuration: 2000,
         tauntEndTime: now,
-        expires: null,
       };
       state.decoys.push(decoy);
       gameHelpers.play('mirrorSwap');
