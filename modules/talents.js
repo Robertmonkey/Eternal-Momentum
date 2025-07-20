@@ -399,14 +399,19 @@ export const TALENT_GRID_CONFIG = {
             costPerRank: [4],
             position: { x: 40, y: 32 },
             prerequisites: ['solar-wind'],
+            color: 'var(--primary-glow)',
         },
         'essence-transmutation': {
             id: 'essence-transmutation',
             name: 'Essence Transmutation',
-            description: () => 'Your core learns from the chaos. Every 50 Essence you collect permanently increases your maximum health by 1 for the current run.',
+            description: (rank) => {
+                const caps = [1.5, 2.5, 3.0];
+                const percent = (caps[rank - 1] || caps[caps.length - 1]) * 100;
+                return `Every 50 Essence increases max health by 1 (cap: ${percent}% of base max health).`;
+            },
             icon: '🧬',
-            maxRanks: 1,
-            costPerRank: [4],
+            maxRanks: 3,
+            costPerRank: [4, 4, 4],
             position: { x: 40, y: 25 },
             prerequisites: ['essence-conduit'],
         },
