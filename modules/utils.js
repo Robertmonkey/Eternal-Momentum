@@ -47,15 +47,16 @@ export function drawPlayer(ctx, player, color) {
  */
 export function drawShadowCone(ctx, sourceX, sourceY, shadowCaster, color) {
   const distToCaster = Math.hypot(shadowCaster.x - sourceX, shadowCaster.y - sourceY);
-  if (distToCaster <= shadowCaster.r) return; // Source is inside the caster
+  const safeRadius = shadowCaster.r * 1.5;
+  if (distToCaster <= safeRadius) return; // Source is inside the caster's safe zone
   const angleToCaster = Math.atan2(shadowCaster.y - sourceY, shadowCaster.x - sourceX);
-  const angleToTangent = Math.asin(shadowCaster.r / distToCaster);
+  const angleToTangent = Math.asin(safeRadius / distToCaster);
   const angle1 = angleToCaster - angleToTangent;
   const angle2 = angleToCaster + angleToTangent;
-  const t1x = shadowCaster.x + shadowCaster.r * Math.cos(angle1);
-  const t1y = shadowCaster.y + shadowCaster.r * Math.sin(angle1);
-  const t2x = shadowCaster.x + shadowCaster.r * Math.cos(angle2);
-  const t2y = shadowCaster.y + shadowCaster.r * Math.sin(angle2);
+  const t1x = shadowCaster.x + safeRadius * Math.cos(angle1);
+  const t1y = shadowCaster.y + safeRadius * Math.sin(angle1);
+  const t2x = shadowCaster.x + safeRadius * Math.cos(angle2);
+  const t2y = shadowCaster.y + safeRadius * Math.sin(angle2);
   const maxDist = Math.hypot(ctx.canvas.width, ctx.canvas.height) * 2;
   const p1x = t1x + maxDist * (t1x - sourceX) / distToCaster;
   const p1y = t1y + maxDist * (t1y - sourceY) / distToCaster;
@@ -76,9 +77,10 @@ export function drawShadowCone(ctx, sourceX, sourceY, shadowCaster, color) {
  */
 export function isPointInShadow(shadowCaster, point, sourceX, sourceY) {
   const distToCaster = Math.hypot(shadowCaster.x - sourceX, shadowCaster.y - sourceY);
-  if (distToCaster <= shadowCaster.r) return false;
+  const safeRadius = shadowCaster.r * 1.5;
+  if (distToCaster <= safeRadius) return false;
   const angleToCaster = Math.atan2(shadowCaster.y - sourceY, shadowCaster.x - sourceX);
-  const angleToTangent = Math.asin(shadowCaster.r / distToCaster);
+  const angleToTangent = Math.asin(safeRadius / distToCaster);
   const pointAngle = Math.atan2(point.y - sourceY, point.x - sourceX);
   let angleDiff = (pointAngle - angleToCaster);
   while (angleDiff <= -Math.PI) angleDiff += 2 * Math.PI;
@@ -183,7 +185,7 @@ export function lineCircleCollision(x1, y1, x2, y2, cx, cy, r) {
 }
 
 /* -------------------------------------------------------------------------- */
-/*                             Additional helpers                             */
+/* Additional helpers                             */
 /*
  * These helpers provide higher level drawing primitives used by the new
  * aberration core effects.  Rings are used for gravity pulses, while fog
