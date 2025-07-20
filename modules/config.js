@@ -1,5 +1,10 @@
 // modules/config.js
 
+export const LEVELING_CONFIG = {
+  BASE_XP: 250,                   // XP needed to go from level 1 to 2
+  ADDITIONAL_XP_PER_LEVEL: 50,    // Extra XP required for each subsequent level
+};
+
 export const THEMATIC_UNLOCKS = {
   // --- UNLOCKS FOR STAGES 1-5 ---
   2: { type: 'power', id: 'shield' },
