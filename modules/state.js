@@ -10,7 +10,6 @@
 // is reset the `resetGame` function reinitialises these fields so that
 // passive cooldowns and flags do not leak across runs.
 
-// **MODIFICATION:** Import the new leveling config
 import { LEVELING_CONFIG } from './config.js';
 import { offensivePowers } from './powers.js';
 
@@ -37,7 +36,6 @@ export const state = {
     statusEffects: [],
     level: 1,
     essence: 0,
-    // **MODIFICATION:** Update initial XP to use the new config value
     essenceToNextLevel: LEVELING_CONFIG.BASE_XP,
     ascensionPoints: 0,
     // By default the player starts with two basic powers unlocked.
@@ -256,5 +254,7 @@ export function resetGame(isArena = false) {
     gravityEnd: 0,
     isPaused: false,
     currentStage: isArena ? 1 : (state.player.highestStageBeaten > 0 ? state.player.highestStageBeaten + 1 : 1),
+    // **FIX:** Set an initial cooldown for the first boss spawn of the stage.
+    bossSpawnCooldownEnd: Date.now() + 3000,
   });
 }
