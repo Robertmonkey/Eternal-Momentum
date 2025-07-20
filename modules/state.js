@@ -27,6 +27,7 @@ export const state = {
     r: 20,
     // Base movement speed multiplier.  Modified by talents and cores.
     speed: 1.0,
+    baseMaxHealth: 100,
     maxHealth: 100,
     health: 100,
     shield: false,
