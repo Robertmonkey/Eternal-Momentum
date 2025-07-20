@@ -1,6 +1,6 @@
 // modules/gameLoop.js
 import { state, savePlayerState } from './state.js';
-import { THEMATIC_UNLOCKS, SPAWN_WEIGHTS, STAGE_CONFIG } from './config.js';
+import { LEVELING_CONFIG, THEMATIC_UNLOCKS, SPAWN_WEIGHTS, STAGE_CONFIG } from './config.js';
 import { powers, offensivePowers, usePower } from './powers.js';
 import { bossData } from './bosses.js';
 import { updateUI, showBossBanner, showUnlockNotification } from './ui.js';
@@ -102,7 +102,10 @@ function handleCoreUnlocks(newLevel) {
 function levelUp() {
     state.player.level++;
     state.player.essence -= state.player.essenceToNextLevel;
-    state.player.essenceToNextLevel = Math.floor(state.player.essenceToNextLevel * 1.12);
+    
+    // **MODIFICATION:** Replaced exponential formula with the new quadratic formula
+    state.player.essenceToNextLevel = LEVELING_CONFIG.BASE_XP + (state.player.level - 1) * LEVELING_CONFIG.ADDITIONAL_XP_PER_LEVEL;
+
     state.player.ascensionPoints += 1;
     utils.spawnParticles(state.particles, state.player.x, state.player.y, '#00ffff', 80, 6, 50, 5);
     if (state.player.level === 10 && state.player.unlockedAberrationCores.size === 0) {
@@ -280,7 +283,6 @@ export function gameTick(mx, my) {
     if (state.isPaused) return true;
     const now = Date.now();
     
-    // **MODIFICATION:** Call passive core logic once per frame
     Cores.applyCoreTickEffects(gameHelpers);
 
     let dynamicDamageMultiplier = 1.0;
@@ -393,7 +395,6 @@ export function gameTick(mx, my) {
         if(history.length > 120) history.shift();
     }
 
-    // **MODIFICATION:** Decoy logic updated for Mirror Mirage core
     for (let i = state.decoys.length - 1; i >= 0; i--) {
         const decoy = state.decoys[i];
         
@@ -403,12 +404,10 @@ export function gameTick(mx, my) {
             continue;
         }
 
-        // Taunt pulse logic for core-spawned decoys: pulse every 4–7 seconds and taunt for 2 seconds
         if (decoy.fromCore) {
             if (!decoy.isTaunting && now > decoy.nextTauntTime) {
                 decoy.isTaunting = true;
                 decoy.tauntEndTime = now + decoy.tauntDuration;
-                // Schedule next pulse randomly between 4 and 7 seconds
                 decoy.nextTauntTime = now + 4000 + Math.random() * 3000;
             }
             if (decoy.isTaunting && now > decoy.tauntEndTime) {
@@ -427,7 +426,6 @@ export function gameTick(mx, my) {
             }
         }
         
-        // Render decoy and taunt indicator
         utils.drawCircle(ctx, decoy.x, decoy.y, decoy.r, "#9b59b6");
         if (decoy.isTaunting) {
             const pulse = 0.5 + Math.sin(now / 200) * 0.5;
@@ -1102,7 +1100,6 @@ export function gameTick(mx, my) {
             });
             state.effects.splice(i, 1);
         }
-        // **MODIFICATION START:** New effect rendering logic for aberration cores
         else if (effect.type === 'player_pull_pulse') {
             const progress = (now - effect.startTime) / effect.duration;
             if (progress >= 1) { state.effects.splice(i, 1); continue; }
@@ -1193,13 +1190,12 @@ export function gameTick(mx, my) {
                         }
                     }
                     if (!isSafe) {
-                        if (enemy.boss) enemy.hp -= 1000; // **MODIFICATION:** Damage increased to 1000
+                        if (enemy.boss) enemy.hp -= 1000; 
                         else enemy.hp = 0;
                     }
                 });
             }
         }
-        // **MODIFICATION END:** New effect rendering logic
         else if (effect.type === 'repulsion_field') {
             if (Date.now() > effect.endTime) { state.effects.splice(i, 1); continue; }
             effect.x = state.player.x; effect.y = state.player.y;
@@ -1222,14 +1218,12 @@ export function gameTick(mx, my) {
             utils.drawCircle(ctx, effect.x, effect.y, effect.r, ctx.fillStyle);
 
             if (effect.caster === 'player') {
-                // Affect enemies if the player's core created the zone
                 state.enemies.forEach(e => {
                     if (!e.isFriendly && Math.hypot(e.x - effect.x, e.y - effect.y) < e.r + effect.r) {
                         e.glitchedUntil = now + 3000;
                     }
                 });
             } else {
-                // Affect player if the boss created the zone
                 if (Math.hypot(state.player.x - effect.x, state.player.y - effect.y) < effect.r + state.player.r) {
                     if (!state.player.controlsInverted) {
                         play('systemErrorSound');
@@ -1412,18 +1406,17 @@ export function gameTick(mx, my) {
             });
         }
         else if (effect.type === 'syphon_cone') {
-             // **MODIFICATION:** Syphon cone logic fixed and updated
             const { source, endTime } = effect;
             const remainingTime = endTime - now;
-            const coneAngle = effect.coneAngle || Math.PI / 4; // Fix: Hoist coneAngle or get from effect
+            const coneAngle = effect.coneAngle || Math.PI / 4; 
             const coneLength = canvas.height * 1.5;
 
             if (remainingTime > 0) {
-                if (source.boss) { // Boss logic
+                if (source.boss) { 
                     if (remainingTime > 250) {
                         effect.angle = Math.atan2(state.player.y - source.y, state.player.x - source.x);
                     }
-                } else { // Player logic
+                } else { 
                     effect.angle = Math.atan2(my - source.y, mx - source.x);
                 }
 
@@ -1440,7 +1433,7 @@ export function gameTick(mx, my) {
             } else if (!effect.hasFired) {
                 effect.hasFired = true;
                 play('syphonFire');
-                if (source.boss) { // Boss logic
+                if (source.boss) { 
                     const playerAngle = Math.atan2(state.player.y - source.y, state.player.x - source.x);
                     let angleDiff = Math.abs(effect.angle - playerAngle);
                     if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
@@ -1450,10 +1443,9 @@ export function gameTick(mx, my) {
                             play('powerAbsorb');
                             state.offensiveInventory.shift();
                             state.offensiveInventory.push(null);
-                            // ... (rest of boss syphon logic)
                         }
                     }
-                } else { // Player logic: pull pickups
+                } else { 
                     state.pickups.forEach(p => {
                         const dx = state.player.x - p.x;
                         const dy = state.player.y - p.y;
