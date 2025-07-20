@@ -559,7 +559,7 @@ export function gameTick(mx, my) {
                     }
                 }
             } else {
-                addEssence(75);
+                addEssence(20);
                 Cores.handleCoreOnEnemyDeath(e, gameHelpers);
                 if (state.player.purchasedTalents.has('thermal-runaway') && state.player.berserkUntil > now) {
                     state.player.berserkUntil += 100;
