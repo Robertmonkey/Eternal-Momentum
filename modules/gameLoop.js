@@ -103,7 +103,6 @@ function levelUp() {
     state.player.level++;
     state.player.essence -= state.player.essenceToNextLevel;
     
-    // **MODIFICATION:** Replaced exponential formula with the new quadratic formula
     state.player.essenceToNextLevel = LEVELING_CONFIG.BASE_XP + (state.player.level - 1) * LEVELING_CONFIG.ADDITIONAL_XP_PER_LEVEL;
 
     state.player.ascensionPoints += 1;
@@ -300,7 +299,15 @@ export function gameTick(mx, my) {
                 state.bossHasSpawnedThisRun = true;
             }
         } else {
-            if (!state.bossActive && state.bossSpawnCooldownEnd > 0 && now > state.bossSpawnCooldownEnd) {
+            // **FIX START:** This logic block ensures the first boss wave of a stage always spawns.
+            // It checks if the first spawn has been scheduled. If not, it sets the timer.
+            if (!state.bossHasSpawnedThisRun) {
+                state.bossSpawnCooldownEnd = now + 3000; // Schedule first spawn for 3 seconds after level start
+                state.bossHasSpawnedThisRun = true;    // Mark as scheduled to prevent this from running again
+            }
+
+            // This check now works for both the first spawn and subsequent spawns after a boss is defeated.
+            if (!state.bossActive && now > state.bossSpawnCooldownEnd && state.bossSpawnCooldownEnd > 0) {
                 state.bossSpawnCooldownEnd = 0;
                 spawnBossesForStage(state.currentStage);
                 if (playerHasCore('shaper_of_fate') && !state.player.talent_states.core_states.shaper_of_fate.isDisabled) {
@@ -314,6 +321,7 @@ export function gameTick(mx, my) {
                     state.player.talent_states.core_states.shaper_of_fate.isDisabled = true;
                 }
             }
+            // **FIX END**
         }
         if (state.bossActive) {
             if (Math.random() < (0.007 + state.player.level * 0.001)) spawnEnemy(false);
