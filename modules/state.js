@@ -10,6 +10,8 @@
 // is reset the `resetGame` function reinitialises these fields so that
 // passive cooldowns and flags do not leak across runs.
 
+// **MODIFICATION:** Import the new leveling config
+import { LEVELING_CONFIG } from './config.js';
 import { offensivePowers } from './powers.js';
 
 // The central state object.  Most other modules import this to read or
@@ -35,7 +37,8 @@ export const state = {
     statusEffects: [],
     level: 1,
     essence: 0,
-    essenceToNextLevel: 100,
+    // **MODIFICATION:** Update initial XP to use the new config value
+    essenceToNextLevel: LEVELING_CONFIG.BASE_XP,
     ascensionPoints: 0,
     // By default the player starts with two basic powers unlocked.
     unlockedPowers: new Set(['heal', 'missile']),
