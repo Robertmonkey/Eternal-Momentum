@@ -185,9 +185,10 @@ export const powers={
     const isMobile = state.player.purchasedTalents.has('quantum-duplicate');
     
     // This creates a decoy specifically from the power-up
+    const rand = (min, max) => Math.random() * (max - min) + min;
     state.decoys.push({
-        x: state.player.x,
-        y: state.player.y,
+        x: state.player.x + rand(-100, 100),
+        y: state.player.y + rand(-100, 100),
         r: 20,
         expires: Date.now() + 5000,
         isTaunting: true,
