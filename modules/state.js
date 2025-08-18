@@ -211,6 +211,7 @@ export function resetGame(isArena = false) {
   state.player.activePantheonBuffs = [];
   state.player.shield = false;
   state.player.berserkUntil = 0;
+  state.player.talent_states.phaseMomentum.active = false;
   state.player.talent_states.phaseMomentum.lastDamageTime = Date.now();
   state.player.talent_states.reactivePlating.cooldownUntil = 0;
   state.player.infected = false;

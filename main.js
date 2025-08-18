@@ -1,5 +1,6 @@
 // modules/main.js
 import { state, resetGame, loadPlayerState, savePlayerState } from './modules/state.js';
+import { LEVELING_CONFIG } from './modules/config.js';
 import { bossData } from './modules/bosses.js';
 import { AudioManager } from './modules/audio.js';
 import { updateUI, populateLevelSelect, showCustomConfirm, populateOrreryMenu, populateAberrationCoreMenu, showUnlockNotification } from './modules/ui.js';
@@ -35,11 +36,9 @@ window.setLevel = function(level) {
     }
     state.player.level = level;
     state.player.essence = 0;
-    let nextLevelXP = 100;
-    for (let i = 1; i < level; i++) {
-        nextLevelXP = Math.floor(nextLevelXP * 1.12);
-    }
-    state.player.essenceToNextLevel = nextLevelXP;
+    // Use the same linear formula as the main game to avoid mismatched XP requirements.
+    state.player.essenceToNextLevel =
+        LEVELING_CONFIG.BASE_XP + (level - 1) * LEVELING_CONFIG.ADDITIONAL_XP_PER_LEVEL;
     savePlayerState();
     updateUI();
     console.log(`Player level set to ${level}.`);
