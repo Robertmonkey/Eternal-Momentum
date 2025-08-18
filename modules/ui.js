@@ -48,8 +48,8 @@ function updatePantheonUI() {
         const coreData = bossData.find(b => b.id === buff.coreId);
         if (!coreData) return;
 
-        const remaining = (buff.endTime - now) / 1000;
-        
+        const remaining = Math.max(0, (buff.endTime - now) / 1000);
+
         const iconEl = document.createElement('div');
         iconEl.className = 'pantheon-buff-icon';
         iconEl.setAttribute('data-tooltip-text', `${coreData.name} (${remaining.toFixed(1)}s)`);
@@ -77,7 +77,7 @@ function updateStatusEffectsUI() {
     state.player.statusEffects.forEach(effect => {
         const remaining = effect.endTime - now;
         const duration = effect.endTime - effect.startTime;
-        const progress = Math.max(0, remaining) / duration;
+        const progress = duration > 0 ? Math.max(0, remaining) / duration : 0;
         const iconEl = document.createElement('div');
         iconEl.className = 'status-icon';
         iconEl.setAttribute('data-tooltip-text', `${effect.name} (${(remaining / 1000).toFixed(1)}s)`);
@@ -165,7 +165,7 @@ function updateAberrationCoreUI() {
         }
     } else {
         aberrationCoreSocket.classList.remove('active');
-        aberrationCoreSocket.style.setProperty('--nexus-glow', 'var(--nexus-glow)'); // Reset to default CSS variable
+        aberrationCoreSocket.style.removeProperty('--nexus-glow'); // Reset to default CSS variable
         aberrationCoreIcon.style.backgroundColor = 'transparent';
         if (aberrationCoreIcon.firstChild?.id !== 'aberration-core-cooldown') {
             aberrationCoreIcon.innerHTML = `<div id="aberration-core-cooldown" class="cooldown-overlay"></div>◎`;

@@ -37,9 +37,9 @@ export const powers={
       }, duration);
     }
   },
-  heal:{emoji:"❤️",desc:"+30 HP",apply:()=>{
+  heal:{emoji:"❤️",desc:"+30 HP",apply:(utils, game)=>{
       state.player.health=Math.min(state.player.maxHealth,state.player.health+30);
-      window.gameHelpers.play('pickupSound');
+      game.play('pickupSound');
   }},
   shockwave:{emoji:"💥",desc:"Expanding wave damages enemies.",apply:(utils, game, mx, my, options = {})=>{
       const { damageModifier = 1.0, origin = state.player } = options;
@@ -134,20 +134,21 @@ export const powers={
     emoji:"🌀",
     desc:"Pulls enemies for 1s",
     apply:(utils, game)=>{
-        game.play('gravitySound'); 
-        state.gravityActive=true; 
-        state.gravityEnd=Date.now()+1000; 
-        utils.spawnParticles(state.particles, innerWidth/2, innerHeight/2,"#9b59b6",100,4,40,5); 
-        
+        game.play('gravitySound');
+        state.gravityActive=true;
+        state.gravityEnd=Date.now()+1000;
+        const { x, y } = state.player;
+        utils.spawnParticles(state.particles, x, y,"#9b59b6",100,4,40,5);
+
         if (state.player.purchasedTalents.has('temporal-collapse')) {
             setTimeout(() => {
                 if(state.gameOver) return;
-                state.effects.push({ 
-                    type: 'slow_zone', 
-                    x: innerWidth / 2, 
-                    y: innerHeight / 2, 
-                    r: 250, 
-                    endTime: Date.now() + 4000 
+                state.effects.push({
+                    type: 'slow_zone',
+                    x,
+                    y,
+                    r: 250,
+                    endTime: Date.now() + 4000
                 });
             }, 1000);
         }
