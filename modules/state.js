@@ -175,17 +175,22 @@ export function savePlayerState() {
 export function loadPlayerState() {
   const savedData = localStorage.getItem('eternalMomentumSave');
   if (savedData) {
-    const parsedData = JSON.parse(savedData);
-    const playerData = {
-      unlockedOffensiveSlots: 1,
-      unlockedDefensiveSlots: 1,
-      ...parsedData,
-      unlockedPowers: new Set(parsedData.unlockedPowers || []),
-      purchasedTalents: new Map(parsedData.purchasedTalents || []),
-      unlockedAberrationCores: new Set(parsedData.unlockedAberrationCores || []),
-      equippedAberrationCore: parsedData.equippedAberrationCore || null,
-    };
-    Object.assign(state.player, playerData);
+    try {
+      const parsedData = JSON.parse(savedData);
+      const playerData = {
+        unlockedOffensiveSlots: 1,
+        unlockedDefensiveSlots: 1,
+        ...parsedData,
+        unlockedPowers: new Set(parsedData.unlockedPowers || []),
+        purchasedTalents: new Map(parsedData.purchasedTalents || []),
+        unlockedAberrationCores: new Set(parsedData.unlockedAberrationCores || []),
+        equippedAberrationCore: parsedData.equippedAberrationCore || null,
+      };
+      Object.assign(state.player, playerData);
+    } catch (e) {
+      console.warn('Failed to parse saved player data, clearing save.', e);
+      localStorage.removeItem('eternalMomentumSave');
+    }
   }
 }
 
