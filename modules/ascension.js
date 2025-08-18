@@ -33,11 +33,12 @@ function isTalentVisible(talent) {
         return false;
     }
 
-    if (talent.prerequisites.length === 0) {
+    const prerequisites = talent.prerequisites || [];
+    if (prerequisites.length === 0) {
         return true;
     }
 
-    return talent.prerequisites.every(prereqId => {
+    return prerequisites.every(prereqId => {
         const prereqTalent = allTalents[prereqId];
         if (!prereqTalent) return false;
 

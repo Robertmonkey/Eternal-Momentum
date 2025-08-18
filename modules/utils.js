@@ -161,6 +161,8 @@ export function drawLightning(ctx, x1, y1, x2, y2, color, width = 2) {
 }
 
 export function randomInRange(min, max) {
+  // Guard against callers accidentally passing arguments in the wrong order.
+  if (min > max) [min, max] = [max, min];
   return Math.random() * (max - min) + min;
 }
 
@@ -173,7 +175,8 @@ export function lineCircleCollision(x1, y1, x2, y2, cx, cy, r) {
   const onSegment = () => {
     const d1 = Math.hypot(closestX - x1, closestY - y1);
     const d2 = Math.hypot(closestX - x2, closestY - y2);
-    return d1 + d2 >= len - 0.1 && d1 + d2 <= len + 0.1;
+    // Compare using an absolute tolerance to avoid floating point drift.
+    return Math.abs(d1 + d2 - len) <= 0.1;
   };
   if (!onSegment()) {
     const dist1 = Math.hypot(cx - x1, cy - y1);
