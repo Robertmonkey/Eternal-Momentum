@@ -950,7 +950,7 @@ export function gameTick(mx, my) {
 
         const isImmune = state.player.statusEffects.some(e => e.name === 'Charging' || e.name === 'Warping') || state.effects.some(eff => eff.type === 'juggernaut_player_charge');
         const hasReflectiveWard = playerHasCore('reflector') && state.player.statusEffects.some(eff => eff.name === 'Reflective Ward');
-        if (effect.type === 'nova_bullet' || effect.type === 'ricochet_projectile' || effect.type === 'seeking_shrapnel' || effect.type === 'helix_bolt' || effect.type === 'player_fragment') {
+        if (effect.type === 'nova_bullet' || effect.type === 'ricochet_projectile' || effect.type === 'seeking_shrapnel' || effect.type === 'player_fragment') {
             let speedMultiplier = 1.0;
             allSlowZones.forEach(zone => {
                 if (Math.hypot(effect.x - zone.x, effect.y - zone.y) < zone.r) speedMultiplier = 0.2;
@@ -1134,7 +1134,7 @@ export function gameTick(mx, my) {
             ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(effect.x, effect.y, Math.max(0, currentPullRadius), 0, 2*Math.PI); ctx.stroke();
         }
         else if (effect.type === 'seeking_shrapnel' || effect.type === 'player_fragment') {
-            let closest = null; 
+            let closest = null;
             const sortedEnemies = [...state.enemies].filter(e => !e.isFriendly).sort((a,b) => Math.hypot(a.x-effect.x, a.y-effect.y) - Math.hypot(b.x-effect.x, b.y-effect.y));
             if(sortedEnemies[effect.targetIndex]) closest = sortedEnemies[effect.targetIndex]; else if (sortedEnemies.length > 0) closest = sortedEnemies[0];
             if(closest){ const angle = Math.atan2(closest.y - effect.y, closest.x - effect.x); const turnSpeed = 0.1; effect.dx = effect.dx * (1-turnSpeed) + (Math.cos(angle) * effect.speed) * turnSpeed; effect.dy = effect.dy * (1-turnSpeed) + (Math.sin(angle) * effect.speed) * turnSpeed; }
@@ -1142,6 +1142,59 @@ export function gameTick(mx, my) {
             else utils.drawCircle(ctx, effect.x, effect.y, effect.r, '#ff9944');
             state.enemies.forEach(e => { if(!e.isFriendly && Math.hypot(e.x - effect.x, e.y - effect.y) < e.r + effect.r) { e.hp -= (effect.damage * dynamicDamageMultiplier); Cores.handleCoreOnDamageDealt(e); state.effects.splice(i, 1); }});
             if(now > effect.startTime + effect.life) state.effects.splice(i, 1);
+        }
+        else if (effect.type === 'helix_bolt') {
+            const anchor = (effect.anchor && typeof effect.anchor.x === 'number') ? effect.anchor : state.player;
+            const deltaSeconds = Math.min((now - (effect.lastUpdate || effect.startTime)) / 1000, 0.1);
+            effect.lastUpdate = now;
+            const angularVelocity = effect.angularVelocity || 0;
+            effect.angle += angularVelocity * deltaSeconds;
+            const elapsedSeconds = (now - effect.startTime) / 1000;
+            const baseRadius = effect.baseRadius || 60;
+            const radiusSwing = effect.radiusSwing || 30;
+            const pulseSpeed = effect.pulseSpeed || 3;
+            const orbitRadius = baseRadius + Math.sin(elapsedSeconds * pulseSpeed) * radiusSwing;
+            const anchorX = anchor.x;
+            const anchorY = anchor.y;
+            const hitRadius = effect.hitRadius || 10;
+            effect.x = anchorX + Math.cos(effect.angle) * orbitRadius;
+            effect.y = anchorY + Math.sin(effect.angle) * orbitRadius;
+
+            if (!Array.isArray(effect.trail)) effect.trail = [];
+            effect.trail.push({ x: effect.x, y: effect.y, lifeEnd: now + 250 });
+            effect.trail = effect.trail.filter(point => point.lifeEnd > now);
+
+            effect.trail.forEach(point => {
+                const lifePct = Math.max(0, (point.lifeEnd - now) / 250);
+                ctx.globalAlpha = lifePct * 0.6;
+                utils.drawCircle(ctx, point.x, point.y, hitRadius * 0.6, effect.color || '#81ecec');
+            });
+            ctx.globalAlpha = 1.0;
+            utils.drawCircle(ctx, effect.x, effect.y, hitRadius, effect.color || '#81ecec');
+
+            if (!effect.hitCooldowns || typeof effect.hitCooldowns.get !== 'function') {
+                effect.hitCooldowns = new Map();
+            }
+            const hitInterval = effect.hitInterval || 150;
+            state.enemies.forEach(enemy => {
+                if (enemy.isFriendly || enemy.hp <= 0) return;
+                const dist = Math.hypot(enemy.x - effect.x, enemy.y - effect.y);
+                if (dist < enemy.r + hitRadius) {
+                    const availableAt = effect.hitCooldowns.get(enemy) || 0;
+                    if (now >= availableAt) {
+                        let damage = (effect.damageBase || 8) * state.player.talent_modifiers.damage_multiplier;
+                        if (state.player.berserkUntil > now) damage *= 1.5;
+                        if (playerHasCore('aethel_and_umbra') && state.player.health <= state.player.maxHealth * 0.5) {
+                            damage *= 1.10;
+                        }
+                        enemy.hp -= damage;
+                        Cores.handleCoreOnDamageDealt(enemy);
+                        utils.spawnParticles(state.particles, enemy.x, enemy.y, effect.color || '#81ecec', 6, 1.5, 15, hitRadius * 0.8);
+                        effect.hitCooldowns.set(enemy, now + hitInterval);
+                    }
+                }
+            });
+            ctx.globalAlpha = 1.0;
         }
         else if (effect.type === 'small_freeze') {
             state.enemies.forEach(e => {
@@ -1197,8 +1250,47 @@ export function gameTick(mx, my) {
                 continue;
             }
             const chargeSpeed = 35;
-            state.player.x += Math.cos(effect.angle) * chargeSpeed;
-            state.player.y += Math.sin(effect.angle) * chargeSpeed;
+            let angle = effect.angle;
+            const consumeBounce = () => {
+                if (effect.bouncesLeft && effect.bouncesLeft > 0) {
+                    effect.bouncesLeft -= 1;
+                    return true;
+                }
+                return false;
+            };
+            const minX = state.player.r;
+            const maxX = canvas.width - state.player.r;
+            const minY = state.player.r;
+            const maxY = canvas.height - state.player.r;
+
+            const applyStep = () => {
+                const vx = Math.cos(angle) * chargeSpeed;
+                const vy = Math.sin(angle) * chargeSpeed;
+                let nextX = state.player.x + vx;
+                let nextY = state.player.y + vy;
+
+                if ((nextX < minX && vx < 0) || (nextX > maxX && vx > 0)) {
+                    if (consumeBounce()) {
+                        angle = Math.PI - angle;
+                        return applyStep();
+                    }
+                    nextX = Math.min(Math.max(nextX, minX), maxX);
+                }
+                if ((nextY < minY && vy < 0) || (nextY > maxY && vy > 0)) {
+                    if (consumeBounce()) {
+                        angle = -angle;
+                        return applyStep();
+                    }
+                    nextY = Math.min(Math.max(nextY, minY), maxY);
+                }
+                state.player.x = nextX;
+                state.player.y = nextY;
+            };
+
+            applyStep();
+            state.player.x = Math.min(Math.max(state.player.x, minX), maxX);
+            state.player.y = Math.min(Math.max(state.player.y, minY), maxY);
+            effect.angle = angle;
             state.enemies.forEach(e => {
                 if (!e.isFriendly && !effect.hitEnemies.has(e) && Math.hypot(state.player.x - e.x, state.player.y - e.y) < state.player.r + e.r) {
                     if (e.boss) {

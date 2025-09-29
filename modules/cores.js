@@ -265,7 +265,38 @@ export function applyCoreTickEffects(gameHelpers) {
     if (moveDist < state.player.r) {
       if (now > (helixState.lastBolt || 0) + 1000) {
         helixState.lastBolt = now;
-        state.effects.push({ type: 'helix_bolt', x: state.player.x, y: state.player.y, r: 8, speed: 2, angle: Math.random() * 2 * Math.PI, lifeEnd: now + 10000, caster: state.player });
+        const baseAngle = Math.random() * Math.PI * 2;
+        const boltConfigs = [
+          { direction: 1, color: '#74b9ff' },
+          { direction: -1, color: '#a29bfe' },
+        ];
+        boltConfigs.forEach(({ direction, color }, index) => {
+          const angle = baseAngle + index * Math.PI;
+          const baseRadius = 60;
+          const anchorX = state.player.x + Math.cos(angle) * baseRadius;
+          const anchorY = state.player.y + Math.sin(angle) * baseRadius;
+          state.effects.push({
+            type: 'helix_bolt',
+            caster: state.player,
+            anchor: state.player,
+            startTime: now,
+            endTime: now + 6000,
+            angle,
+            angularVelocity: direction * 4,
+            baseRadius,
+            radiusSwing: 35,
+            pulseSpeed: 3,
+            hitRadius: 10,
+            damageBase: 8,
+            lastUpdate: now,
+            x: anchorX,
+            y: anchorY,
+            trail: [],
+            hitCooldowns: new Map(),
+            hitInterval: 140,
+            color,
+          });
+        });
         play('weaverCast');
       }
     }
