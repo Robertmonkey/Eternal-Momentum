@@ -1,5 +1,5 @@
 // modules/gameLoop.js
-import { state, savePlayerState } from './state.js';
+import { state, savePlayerState, ensureStageStats } from './state.js';
 import { LEVELING_CONFIG, THEMATIC_UNLOCKS, SPAWN_WEIGHTS, STAGE_CONFIG } from './config.js';
 import { powers, offensivePowers, usePower } from './powers.js';
 import { bossData } from './bosses.js';
@@ -207,6 +207,17 @@ export function spawnBossesForStage(stageNum) {
         ? state.customOrreryBosses
         : getBossesForStage(stageNum);
     if (bossIdsToSpawn && bossIdsToSpawn.length > 0) {
+        if (!state.arenaMode) {
+            const stats = ensureStageStats(stageNum);
+            stats.attempts += 1;
+            stats.lastTimeMs = null;
+            state.stageStartTime = Date.now();
+            state.stageInProgress = stageNum;
+            savePlayerState();
+        } else {
+            state.stageStartTime = Date.now();
+            state.stageInProgress = null;
+        }
         bossIdsToSpawn.forEach(bossId => {
             spawnEnemy(true, bossId, getSafeSpawnLocation());
         });
@@ -346,6 +357,8 @@ export function gameTick(mx, my) {
         const gameOverMenu = document.getElementById('gameOverMenu');
         const aberrationBtn = document.getElementById('aberrationCoreMenuBtn');
         aberrationBtn.style.display = state.player.level >= 10 ? 'block' : 'none';
+        state.stageStartTime = null;
+        state.stageInProgress = null;
         if (gameOverMenu.style.display !== 'flex') gameOverMenu.style.display = 'flex';
         return false;
     }
@@ -549,6 +562,7 @@ export function gameTick(mx, my) {
                 if (e.onDeath) e.onDeath(e, state, spawnEnemy, spawnParticlesCallback, play, stopLoopingSfx);
                 state.enemies.splice(i, 1);
                 if (!state.enemies.some(en => en.boss)) {
+                    const clearedStage = state.currentStage;
                     state.bossActive = false;
                     AudioManager.playSfx('bossDefeatSound');
                     AudioManager.fadeOutMusic();
@@ -556,6 +570,17 @@ export function gameTick(mx, my) {
                         showUnlockNotification("Timeline Forged!", "Victory");
                         setTimeout(() => { state.gameOver = true; }, 2000);
                     } else {
+                        if (state.stageStartTime) {
+                            const clearDuration = Date.now() - state.stageStartTime;
+                            const stats = ensureStageStats(clearedStage);
+                            stats.clears += 1;
+                            stats.lastTimeMs = clearDuration;
+                            if (!stats.bestTimeMs || clearDuration < stats.bestTimeMs) {
+                                stats.bestTimeMs = clearDuration;
+                            }
+                        }
+                        state.stageStartTime = null;
+                        state.stageInProgress = null;
                         state.bossSpawnCooldownEnd = now + 4000;
                         if (state.currentStage > state.player.highestStageBeaten) {
                             state.player.highestStageBeaten = state.currentStage;

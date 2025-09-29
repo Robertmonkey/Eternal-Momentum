@@ -13,6 +13,34 @@
 import { LEVELING_CONFIG } from './config.js';
 import { offensivePowers } from './powers.js';
 
+function createEmptyStageStats() {
+  return { attempts: 0, clears: 0, bestTimeMs: null, lastTimeMs: null };
+}
+
+function normaliseStageStats(rawStats) {
+  if (!rawStats || typeof rawStats !== 'object') return {};
+  const normalised = {};
+  for (const [stageKey, value] of Object.entries(rawStats)) {
+    const stageNumber = Number(stageKey);
+    if (!Number.isInteger(stageNumber) || stageNumber <= 0) continue;
+    if (!value || typeof value !== 'object') {
+      normalised[stageNumber] = createEmptyStageStats();
+      continue;
+    }
+    const attempts = Number.isFinite(value.attempts) ? Math.max(0, Math.floor(value.attempts)) : 0;
+    const clears = Number.isFinite(value.clears) ? Math.max(0, Math.floor(value.clears)) : 0;
+    const bestTime = Number.isFinite(value.bestTimeMs) && value.bestTimeMs > 0 ? value.bestTimeMs : null;
+    const lastTime = Number.isFinite(value.lastTimeMs) && value.lastTimeMs > 0 ? value.lastTimeMs : null;
+    normalised[stageNumber] = {
+      attempts,
+      clears,
+      bestTimeMs: bestTime,
+      lastTimeMs: lastTime,
+    };
+  }
+  return normalised;
+}
+
 // The central state object.  Most other modules import this to read or
 // mutate game state.  New fields can be safely added here as long as
 // they are replicated in resetGame.
@@ -65,6 +93,7 @@ export const state = {
     unlockedAberrationCores: new Set(),
     equippedAberrationCore: null,
     activePantheonBuffs: [],
+    stageStats: {},
     // Talent modifiers modify base stats on the fly.  Each entry should be
     // treated as multiplicative.
     talent_modifiers: {
@@ -141,7 +170,18 @@ export const state = {
   gravityEnd: 0,
   bossSpawnCooldownEnd: 0,
   customOrreryBosses: [],
+  stageStartTime: null,
+  stageInProgress: null,
 };
+
+export function ensureStageStats(stageNumber) {
+  const key = Number(stageNumber);
+  if (!Number.isInteger(key) || key <= 0) return createEmptyStageStats();
+  if (!state.player.stageStats[key]) {
+    state.player.stageStats[key] = createEmptyStageStats();
+  }
+  return state.player.stageStats[key];
+}
 
 /**
  * Persist the player's essential data to localStorage.  Only a subset of
@@ -162,6 +202,7 @@ export function savePlayerState() {
     unlockedDefensiveSlots: state.player.unlockedDefensiveSlots,
     unlockedAberrationCores: [...state.player.unlockedAberrationCores],
     equippedAberrationCore: state.player.equippedAberrationCore,
+    stageStats: state.player.stageStats,
   };
   localStorage.setItem('eternalMomentumSave', JSON.stringify(persistentData));
 }
@@ -185,6 +226,7 @@ export function loadPlayerState() {
         purchasedTalents: new Map(parsedData.purchasedTalents || []),
         unlockedAberrationCores: new Set(parsedData.unlockedAberrationCores || []),
         equippedAberrationCore: parsedData.equippedAberrationCore || null,
+        stageStats: normaliseStageStats(parsedData.stageStats),
       };
       Object.assign(state.player, playerData);
     } catch (e) {
@@ -263,5 +305,8 @@ export function resetGame(isArena = false) {
     currentStage: isArena ? 1 : (state.player.highestStageBeaten > 0 ? state.player.highestStageBeaten + 1 : 1),
     // **FIX:** Set an initial cooldown for the first boss spawn of the stage.
     bossSpawnCooldownEnd: Date.now() + 3000,
+    arenaMode: isArena,
+    stageStartTime: null,
+    stageInProgress: null,
   });
 }

@@ -19,6 +19,8 @@ const statusBar = document.getElementById('status-effects-bar');
 const pantheonBar = document.getElementById('pantheon-buffs-bar');
 const bossBannerEl = document.getElementById("bossBanner");
 const levelSelectList = document.getElementById("level-select-list");
+const stageSearchInput = document.getElementById('stageSearchInput');
+const stageClearedToggle = document.getElementById('stageShowCleared');
 const notificationBanner = document.getElementById('unlock-notification');
 const customConfirm = document.getElementById('custom-confirm');
 const confirmTitle = document.getElementById('custom-confirm-title');
@@ -35,6 +37,142 @@ const aberrationCoreSocket = document.getElementById('aberration-core-socket');
 const aberrationCoreIcon = document.getElementById('aberration-core-icon');
 const aberrationCoreListContainer = document.getElementById('aberration-core-list-container');
 const equippedCoreNameEl = document.getElementById('aberration-core-equipped-name');
+
+let stageStartHandler = null;
+
+function getStageStats(stageNumber) {
+    if (!state.player.stageStats) return null;
+    return state.player.stageStats[stageNumber] || state.player.stageStats[stageNumber.toString()] || null;
+}
+
+function formatDuration(ms) {
+    if (!Number.isFinite(ms) || ms <= 0) return '—';
+    const totalMs = Math.floor(ms);
+    const minutes = Math.floor(totalMs / 60000);
+    const seconds = Math.floor((totalMs % 60000) / 1000);
+    const tenths = Math.floor((totalMs % 1000) / 100);
+    if (minutes > 0) {
+        return `${minutes}:${seconds.toString().padStart(2, '0')}.${tenths}`;
+    }
+    const displaySeconds = (totalMs / 1000).toFixed(1);
+    return `${displaySeconds}s`;
+}
+
+function renderStageSelectList() {
+    if (!levelSelectList || !stageStartHandler) return;
+
+    levelSelectList.innerHTML = '';
+
+    const maxStage = Math.max(1, state.player.highestStageBeaten + 1);
+    const query = (stageSearchInput?.value || '').trim().toLowerCase();
+    const showClearedOnly = stageClearedToggle?.checked ?? false;
+    let renderedCount = 0;
+
+    for (let i = 1; i <= maxStage; i++) {
+        const bossIds = getBossesForStage(i);
+        if (!bossIds || bossIds.length === 0) continue;
+
+        const stageInfo = STAGE_CONFIG.find(s => s.stage === i);
+        const stageName = stageInfo?.displayName || `Stage ${i}`;
+        const bossNames = bossIds.map(id => {
+            const boss = bossData.find(b => b.id === id);
+            return boss ? boss.name : 'Unknown';
+        }).join(' & ');
+
+        const stats = getStageStats(i) || { attempts: 0, clears: 0, bestTimeMs: null };
+        const attempts = stats.attempts ?? 0;
+        const clears = stats.clears ?? 0;
+        const bestTime = stats.bestTimeMs ?? null;
+
+        const isCleared = clears > 0 || i <= state.player.highestStageBeaten;
+        const isFrontier = i === state.player.highestStageBeaten + 1;
+
+        if (showClearedOnly && !isCleared) continue;
+
+        const searchTarget = `${stageName} stage ${i} ${bossNames}`.toLowerCase();
+        if (query && !searchTarget.includes(query)) continue;
+
+        const item = document.createElement('div');
+        item.className = 'stage-select-item';
+        if (isCleared) item.classList.add('stage-cleared');
+        if (isFrontier) item.classList.add('stage-frontier');
+
+        const statusBadge = isFrontier
+            ? '<span class="stage-status frontier">Frontier</span>'
+            : (isCleared ? '<span class="stage-status cleared">Cleared</span>' : '');
+
+        const metaBadges = [];
+        if (bestTime) {
+            metaBadges.push(`<span class="stage-badge time" title="Best clear time">Best ${formatDuration(bestTime)}</span>`);
+        }
+        if (clears > 0) {
+            metaBadges.push(`<span class="stage-badge clears" title="Total clears">${clears} Clears</span>`);
+        }
+        if (attempts > 0) {
+            const winRate = clears > 0 ? Math.round((clears / attempts) * 100) : 0;
+            metaBadges.push(`<span class="stage-badge winrate" title="${clears}/${attempts} clears">${winRate}% Win</span>`);
+        }
+
+        item.innerHTML = `
+            <div class="stage-item-main">
+                <div class="stage-item-header">
+                    <span class="stage-select-number">STAGE ${i}</span>
+                    ${statusBadge}
+                </div>
+                <span class="stage-select-name">${stageName}</span>
+                <span class="stage-select-bosses">${bossNames}</span>
+                ${metaBadges.length ? `<div class="stage-item-meta">${metaBadges.join('')}</div>` : ''}
+            </div>
+            <div class="stage-item-actions">
+                <button class="info-btn mechanics-btn" title="Mechanics">❔</button>
+                <button class="info-btn lore-btn" title="Lore">ℹ️</button>
+            </div>
+        `;
+
+        const mainArea = item.querySelector('.stage-item-main');
+        mainArea.onclick = () => stageStartHandler(i);
+
+        const mechanicsBtn = item.querySelector('.mechanics-btn');
+        const loreBtn = item.querySelector('.lore-btn');
+        mechanicsBtn.onclick = (e) => {
+            e.stopPropagation();
+            showBossInfo(bossIds, 'mechanics');
+        };
+        loreBtn.onclick = (e) => {
+            e.stopPropagation();
+            showBossInfo(bossIds, 'lore');
+        };
+
+        const bossNameElement = item.querySelector('.stage-select-bosses');
+        item.addEventListener('mouseenter', () => {
+            if (bossNameElement && bossNameElement.scrollWidth > bossNameElement.clientWidth) {
+                bossNameElement.classList.add('is-scrolling');
+            }
+        });
+        item.addEventListener('mouseleave', () => {
+            if (bossNameElement) bossNameElement.classList.remove('is-scrolling');
+        });
+
+        levelSelectList.appendChild(item);
+        renderedCount++;
+    }
+
+    if (renderedCount === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'stage-empty-state';
+        empty.innerText = query ? 'No stages match your search.' : 'Clear stages to unlock new encounters.';
+        levelSelectList.appendChild(empty);
+    }
+
+    const container = levelSelectList.parentElement;
+    if (container) {
+        if (query || showClearedOnly) {
+            container.scrollTop = 0;
+        } else {
+            container.scrollTop = container.scrollHeight;
+        }
+    }
+}
 
 function updatePantheonUI() {
     if (!pantheonBar) return;
@@ -348,60 +486,19 @@ export function showUnlockNotification(text, subtext = '') {
 
 export function populateLevelSelect(startSpecificLevel) {
     if (!levelSelectList) return;
-    levelSelectList.innerHTML = '';
 
-    const maxStage = state.player.highestStageBeaten + 1;
+    stageStartHandler = startSpecificLevel;
 
-    for (let i = 1; i <= maxStage; i++) {
-        const bossIds = getBossesForStage(i);
-        if (!bossIds || bossIds.length === 0) continue;
-        
-        let bossNames = bossIds.map(id => {
-            const boss = bossData.find(b => b.id === id);
-            return boss ? boss.name : 'Unknown';
-        }).join(' & ');
-        
-        const item = document.createElement('div');
-        item.className = 'stage-select-item';
-        
-        item.innerHTML = `
-            <div class="stage-item-main">
-                <span class="stage-select-number">STAGE ${i}</span>
-                <span class="stage-select-bosses">${bossNames}</span>
-            </div>
-            <div class="stage-item-actions">
-                <button class="info-btn mechanics-btn" title="Mechanics">❔</button>
-                <button class="info-btn lore-btn" title="Lore">ℹ️</button>
-            </div>
-        `;
-        
-        item.querySelector('.stage-item-main').onclick = () => {
-            startSpecificLevel(i);
-        };
-
-        item.querySelector('.mechanics-btn').onclick = (e) => {
-            e.stopPropagation();
-            showBossInfo(bossIds, 'mechanics');
-        };
-
-        item.querySelector('.lore-btn').onclick = (e) => {
-            e.stopPropagation();
-            showBossInfo(bossIds, 'lore');
-        };
-
-        const bossNameElement = item.querySelector('.stage-select-bosses');
-        item.addEventListener('mouseenter', () => {
-            if (bossNameElement.scrollWidth > bossNameElement.clientWidth) {
-                bossNameElement.classList.add('is-scrolling');
-            }
-        });
-        item.addEventListener('mouseleave', () => {
-            bossNameElement.classList.remove('is-scrolling');
-        });
-
-        levelSelectList.appendChild(item);
+    if (stageSearchInput && !stageSearchInput.dataset.bound) {
+        stageSearchInput.addEventListener('input', () => renderStageSelectList());
+        stageSearchInput.dataset.bound = 'true';
     }
-    levelSelectList.parentElement.scrollTop = levelSelectList.parentElement.scrollHeight;
+    if (stageClearedToggle && !stageClearedToggle.dataset.bound) {
+        stageClearedToggle.addEventListener('change', () => renderStageSelectList());
+        stageClearedToggle.dataset.bound = 'true';
+    }
+
+    renderStageSelectList();
 }
 
 export function showCustomConfirm(title, text, onConfirm) {
