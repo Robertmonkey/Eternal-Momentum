@@ -1,5 +1,5 @@
 // modules/ui.js
-import { state, savePlayerState } from './state.js';
+import { state, savePlayerState, resetStageStats } from './state.js';
 import { powers } from './powers.js';
 import { bossData } from './bosses.js';
 import { STAGE_CONFIG } from './config.js';
@@ -38,7 +38,21 @@ const aberrationCoreIcon = document.getElementById('aberration-core-icon');
 const aberrationCoreListContainer = document.getElementById('aberration-core-list-container');
 const equippedCoreNameEl = document.getElementById('aberration-core-equipped-name');
 
+const stageDetailsPanel = document.getElementById('stage-details-panel');
+const stageDetailsTitle = document.getElementById('stage-details-title');
+const stageDetailsSubtitle = document.getElementById('stage-details-subtitle');
+const stageDetailsStatsList = document.getElementById('stage-details-stats');
+const stageDetailsLastRun = document.getElementById('stage-details-last-run');
+const stageDetailsEmpty = document.getElementById('stage-details-empty');
+const stageDetailsContent = document.getElementById('stage-details-content');
+const stageDetailsResetBtn = document.getElementById('stage-details-reset');
+
 let stageStartHandler = null;
+let activeStageNumber = null;
+
+function getDefaultStageStats() {
+    return { attempts: 0, clears: 0, bestTimeMs: null, lastTimeMs: null, lastOutcome: null };
+}
 
 function getStageStats(stageNumber) {
     if (!state.player.stageStats) return null;
@@ -58,6 +72,92 @@ function formatDuration(ms) {
     return `${displaySeconds}s`;
 }
 
+function formatWinRate(clears, attempts) {
+    if (!attempts) return '—';
+    if (!clears) return '0%';
+    return `${Math.round((clears / attempts) * 100)}%`;
+}
+
+function describeLastAttempt(stats) {
+    if (!stats || !stats.lastOutcome) {
+        return 'No attempts recorded.';
+    }
+    if (!stats.lastTimeMs) {
+        return `Last outcome: ${stats.lastOutcome}.`;
+    }
+    const duration = formatDuration(stats.lastTimeMs);
+    if (stats.lastOutcome === 'Victory') {
+        return `Last clear achieved in ${duration}.`;
+    }
+    if (stats.lastOutcome === 'Defeat') {
+        return `Timeline collapsed after ${duration}.`;
+    }
+    return `Last attempt lasted ${duration}.`;
+}
+
+function updateStageDetailsPanel(stageNumber) {
+    if (!stageDetailsPanel) return;
+    const isValidStage = Number.isInteger(stageNumber) && stageNumber > 0;
+    stageDetailsPanel.dataset.stage = isValidStage ? stageNumber : '';
+
+    if (!isValidStage) {
+        if (stageDetailsContent) stageDetailsContent.hidden = true;
+        if (stageDetailsEmpty) stageDetailsEmpty.hidden = false;
+        if (stageDetailsResetBtn) stageDetailsResetBtn.disabled = true;
+        return;
+    }
+
+    const stageInfo = STAGE_CONFIG.find(s => s.stage === stageNumber);
+    const stageName = stageInfo?.displayName || `Stage ${stageNumber}`;
+    const bossIds = stageInfo?.bosses || [];
+    const bossNames = bossIds.map(id => {
+        const boss = bossData.find(b => b.id === id);
+        return boss ? boss.name : 'Unknown';
+    }).join(' & ');
+
+    const stats = getStageStats(stageNumber) || getDefaultStageStats();
+
+    if (stageDetailsTitle) stageDetailsTitle.innerText = `Stage ${stageNumber}: ${stageName}`;
+    if (stageDetailsSubtitle) stageDetailsSubtitle.innerText = bossNames ? `Encounter: ${bossNames}` : 'Unknown encounter';
+
+    if (stageDetailsStatsList) {
+        const attempts = stats.attempts ?? 0;
+        const clears = stats.clears ?? 0;
+        const bestClear = stats.bestTimeMs ? formatDuration(stats.bestTimeMs) : '—';
+        const winRate = formatWinRate(clears, attempts);
+        stageDetailsStatsList.innerHTML = `
+            <li><span>Attempts</span><span>${attempts}</span></li>
+            <li><span>Clears</span><span>${clears}</span></li>
+            <li><span>Win Rate</span><span>${winRate}</span></li>
+            <li><span>Best Clear</span><span>${bestClear}</span></li>
+        `;
+    }
+
+    if (stageDetailsLastRun) stageDetailsLastRun.innerText = describeLastAttempt(stats);
+
+    if (stageDetailsContent) stageDetailsContent.hidden = false;
+    if (stageDetailsEmpty) stageDetailsEmpty.hidden = true;
+    if (stageDetailsResetBtn) {
+        const hasAttempts = !!stats.attempts;
+        stageDetailsResetBtn.disabled = !hasAttempts;
+        stageDetailsResetBtn.title = hasAttempts ? 'Clear recorded stats for this stage' : 'No attempts recorded yet';
+    }
+}
+
+function setActiveStage(stageNumber) {
+    activeStageNumber = Number.isInteger(stageNumber) ? stageNumber : null;
+    if (!levelSelectList) {
+        updateStageDetailsPanel(activeStageNumber);
+        return;
+    }
+    const items = levelSelectList.querySelectorAll('.stage-select-item');
+    items.forEach(item => {
+        const itemStage = Number(item.dataset.stage);
+        item.classList.toggle('stage-active', activeStageNumber === itemStage);
+    });
+    updateStageDetailsPanel(activeStageNumber);
+}
+
 function renderStageSelectList() {
     if (!levelSelectList || !stageStartHandler) return;
 
@@ -67,6 +167,7 @@ function renderStageSelectList() {
     const query = (stageSearchInput?.value || '').trim().toLowerCase();
     const showClearedOnly = stageClearedToggle?.checked ?? false;
     let renderedCount = 0;
+    let firstRenderableStage = null;
 
     for (let i = 1; i <= maxStage; i++) {
         const bossIds = getBossesForStage(i);
@@ -79,10 +180,12 @@ function renderStageSelectList() {
             return boss ? boss.name : 'Unknown';
         }).join(' & ');
 
-        const stats = getStageStats(i) || { attempts: 0, clears: 0, bestTimeMs: null };
+        const stats = getStageStats(i) || getDefaultStageStats();
         const attempts = stats.attempts ?? 0;
         const clears = stats.clears ?? 0;
         const bestTime = stats.bestTimeMs ?? null;
+        const lastOutcome = stats.lastOutcome ?? null;
+        const lastDuration = stats.lastTimeMs ?? null;
 
         const isCleared = clears > 0 || i <= state.player.highestStageBeaten;
         const isFrontier = i === state.player.highestStageBeaten + 1;
@@ -96,6 +199,10 @@ function renderStageSelectList() {
         item.className = 'stage-select-item';
         if (isCleared) item.classList.add('stage-cleared');
         if (isFrontier) item.classList.add('stage-frontier');
+        item.dataset.stage = i;
+        item.tabIndex = 0;
+        item.setAttribute('role', 'button');
+        item.setAttribute('aria-label', `Stage ${i}: ${stageName}. ${bossNames || 'Unknown encounter'}.`);
 
         const statusBadge = isFrontier
             ? '<span class="stage-status frontier">Frontier</span>'
@@ -109,8 +216,13 @@ function renderStageSelectList() {
             metaBadges.push(`<span class="stage-badge clears" title="Total clears">${clears} Clears</span>`);
         }
         if (attempts > 0) {
-            const winRate = clears > 0 ? Math.round((clears / attempts) * 100) : 0;
-            metaBadges.push(`<span class="stage-badge winrate" title="${clears}/${attempts} clears">${winRate}% Win</span>`);
+            const winRate = formatWinRate(clears, attempts);
+            metaBadges.push(`<span class="stage-badge winrate" title="${clears}/${attempts} clears">${winRate} Win</span>`);
+        }
+        if (lastOutcome) {
+            const outcomeClass = lastOutcome.toLowerCase();
+            const outcomeTitle = lastDuration ? `${lastOutcome} after ${formatDuration(lastDuration)}` : lastOutcome;
+            metaBadges.push(`<span class="stage-badge outcome ${outcomeClass}" title="${outcomeTitle}">Last: ${lastOutcome}</span>`);
         }
 
         item.innerHTML = `
@@ -131,6 +243,14 @@ function renderStageSelectList() {
 
         const mainArea = item.querySelector('.stage-item-main');
         mainArea.onclick = () => stageStartHandler(i);
+        item.addEventListener('mouseenter', () => setActiveStage(i));
+        item.addEventListener('focus', () => setActiveStage(i));
+        item.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                stageStartHandler(i);
+            }
+        });
 
         const mechanicsBtn = item.querySelector('.mechanics-btn');
         const loreBtn = item.querySelector('.lore-btn');
@@ -155,6 +275,7 @@ function renderStageSelectList() {
 
         levelSelectList.appendChild(item);
         renderedCount++;
+        if (firstRenderableStage === null) firstRenderableStage = i;
     }
 
     if (renderedCount === 0) {
@@ -162,6 +283,7 @@ function renderStageSelectList() {
         empty.className = 'stage-empty-state';
         empty.innerText = query ? 'No stages match your search.' : 'Clear stages to unlock new encounters.';
         levelSelectList.appendChild(empty);
+        setActiveStage(null);
     }
 
     const container = levelSelectList.parentElement;
@@ -170,6 +292,18 @@ function renderStageSelectList() {
             container.scrollTop = 0;
         } else {
             container.scrollTop = container.scrollHeight;
+        }
+    }
+
+    if (renderedCount > 0) {
+        const activeExists = activeStageNumber && levelSelectList.querySelector(`.stage-select-item[data-stage="${activeStageNumber}"]`);
+        if (activeExists) {
+            setActiveStage(activeStageNumber);
+        } else {
+            const frontierStage = Math.min(maxStage, state.player.highestStageBeaten + 1);
+            let stageToActivate = levelSelectList.querySelector(`.stage-select-item[data-stage="${frontierStage}"]`) ? frontierStage : null;
+            if (!stageToActivate) stageToActivate = firstRenderableStage;
+            setActiveStage(stageToActivate ?? null);
         }
     }
 }
@@ -488,6 +622,7 @@ export function populateLevelSelect(startSpecificLevel) {
     if (!levelSelectList) return;
 
     stageStartHandler = startSpecificLevel;
+    activeStageNumber = null;
 
     if (stageSearchInput && !stageSearchInput.dataset.bound) {
         stageSearchInput.addEventListener('input', () => renderStageSelectList());
@@ -496,6 +631,24 @@ export function populateLevelSelect(startSpecificLevel) {
     if (stageClearedToggle && !stageClearedToggle.dataset.bound) {
         stageClearedToggle.addEventListener('change', () => renderStageSelectList());
         stageClearedToggle.dataset.bound = 'true';
+    }
+
+    if (stageDetailsResetBtn && !stageDetailsResetBtn.dataset.bound) {
+        stageDetailsResetBtn.addEventListener('click', () => {
+            const stageValue = Number(stageDetailsPanel?.dataset.stage);
+            if (!Number.isInteger(stageValue)) return;
+            const stageInfo = STAGE_CONFIG.find(s => s.stage === stageValue);
+            const stageName = stageInfo?.displayName || `Stage ${stageValue}`;
+            showCustomConfirm(
+                '|| PURGE STAGE RECORDS? ||',
+                `Erase recorded attempts for Stage ${stageValue}: ${stageName}?`,
+                () => {
+                    resetStageStats(stageValue);
+                    renderStageSelectList();
+                }
+            );
+        });
+        stageDetailsResetBtn.dataset.bound = 'true';
     }
 
     renderStageSelectList();

@@ -354,6 +354,12 @@ export function gameTick(mx, my) {
     
     if (state.gameOver) {
         stopAllLoopingSounds();
+        if (state.stageInProgress && state.stageStartTime) {
+            const stats = ensureStageStats(state.stageInProgress);
+            stats.lastTimeMs = Date.now() - state.stageStartTime;
+            stats.lastOutcome = 'Defeat';
+            savePlayerState();
+        }
         const gameOverMenu = document.getElementById('gameOverMenu');
         const aberrationBtn = document.getElementById('aberrationCoreMenuBtn');
         aberrationBtn.style.display = state.player.level >= 10 ? 'block' : 'none';
@@ -575,6 +581,7 @@ export function gameTick(mx, my) {
                             const stats = ensureStageStats(clearedStage);
                             stats.clears += 1;
                             stats.lastTimeMs = clearDuration;
+                            stats.lastOutcome = 'Victory';
                             if (!stats.bestTimeMs || clearDuration < stats.bestTimeMs) {
                                 stats.bestTimeMs = clearDuration;
                             }

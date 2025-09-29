@@ -125,9 +125,21 @@
                 <span class="filter-label">Cleared Only</span>
             </label>
         </div>
-        <div id="level-select-list-container">
-            <div id="level-select-list">
+        <div id="level-select-main">
+            <div id="level-select-list-container">
+                <div id="level-select-list">
                 </div>
+            </div>
+            <aside id="stage-details-panel" aria-live="polite">
+                <div id="stage-details-empty">Hover a stage to review timeline intel.</div>
+                <div id="stage-details-content" hidden>
+                    <h3 id="stage-details-title">Stage Intel</h3>
+                    <p id="stage-details-subtitle"></p>
+                    <ul id="stage-details-stats"></ul>
+                    <p id="stage-details-last-run"></p>
+                </div>
+                <button id="stage-details-reset" class="btn-secondary" disabled>Reset Stage Stats</button>
+            </aside>
         </div>
         <div id="modal-actions">
             <button id="arenaBtn">WEAVER'S ORRERY</button>

@@ -14,7 +14,13 @@ import { LEVELING_CONFIG } from './config.js';
 import { offensivePowers } from './powers.js';
 
 function createEmptyStageStats() {
-  return { attempts: 0, clears: 0, bestTimeMs: null, lastTimeMs: null };
+  return {
+    attempts: 0,
+    clears: 0,
+    bestTimeMs: null,
+    lastTimeMs: null,
+    lastOutcome: null,
+  };
 }
 
 function normaliseStageStats(rawStats) {
@@ -31,11 +37,13 @@ function normaliseStageStats(rawStats) {
     const clears = Number.isFinite(value.clears) ? Math.max(0, Math.floor(value.clears)) : 0;
     const bestTime = Number.isFinite(value.bestTimeMs) && value.bestTimeMs > 0 ? value.bestTimeMs : null;
     const lastTime = Number.isFinite(value.lastTimeMs) && value.lastTimeMs > 0 ? value.lastTimeMs : null;
+    const lastOutcome = typeof value.lastOutcome === 'string' ? value.lastOutcome : null;
     normalised[stageNumber] = {
       attempts,
       clears,
       bestTimeMs: bestTime,
       lastTimeMs: lastTime,
+      lastOutcome,
     };
   }
   return normalised;
@@ -181,6 +189,13 @@ export function ensureStageStats(stageNumber) {
     state.player.stageStats[key] = createEmptyStageStats();
   }
   return state.player.stageStats[key];
+}
+
+export function resetStageStats(stageNumber) {
+  const key = Number(stageNumber);
+  if (!Number.isInteger(key) || key <= 0) return;
+  state.player.stageStats[key] = createEmptyStageStats();
+  savePlayerState();
 }
 
 /**
