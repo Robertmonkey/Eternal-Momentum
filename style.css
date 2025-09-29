@@ -319,7 +319,7 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     border: 2px solid var(--border-color); 
     border-radius: 15px;
     width: 90%;
-    max-width: 600px;
+    max-width: 780px;
     height: 80vh;
     display: flex;
     flex-direction: column;
@@ -333,13 +333,20 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     font-size: 1.8rem;
     letter-spacing: 2px;
 }
+#level-select-main {
+    display: flex;
+    gap: 18px;
+    flex: 1 1 auto;
+    min-height: 0;
+}
 #level-select-list-container {
-    flex-grow: 1;
+    flex: 1 1 60%;
     overflow-y: auto;
     border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 10px;
     background: rgba(0,0,0,0.3);
+    min-height: 0;
 }
 #level-select-list { 
     display: flex;
@@ -370,6 +377,71 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     outline: none;
     border-color: var(--primary-glow);
     box-shadow: 0 0 8px rgba(0, 255, 255, 0.35);
+}
+#stage-details-panel {
+    flex: 0 0 35%;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 16px;
+    background: linear-gradient(160deg, rgba(0,0,0,0.45), rgba(0,40,60,0.45));
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 0;
+}
+#stage-details-panel h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--primary-glow);
+}
+#stage-details-subtitle {
+    margin: 0;
+    font-size: 0.9rem;
+    color: rgba(255,255,255,0.75);
+}
+#stage-details-stats {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+#stage-details-stats li {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: 6px;
+    padding: 6px 10px;
+}
+#stage-details-last-run {
+    margin: 0;
+    font-size: 0.9rem;
+    color: rgba(255,255,255,0.8);
+}
+#stage-details-empty {
+    color: rgba(255,255,255,0.6);
+    font-size: 0.9rem;
+    text-align: center;
+    margin: auto 0;
+}
+#stage-details-reset {
+    margin-top: auto;
+    align-self: flex-start;
+}
+#stage-details-panel button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+@media (max-width: 900px) {
+    #level-select-main {
+        flex-direction: column;
+    }
+    #stage-details-panel {
+        flex: 1 1 auto;
+    }
 }
 .stage-filter-toggle {
     position: relative;
@@ -454,6 +526,15 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     overflow: hidden;
     cursor: var(--cursor-link);
 }
+.stage-select-item.stage-active {
+    border-color: rgba(0, 255, 255, 0.6);
+    box-shadow: 0 0 12px rgba(0, 200, 255, 0.25);
+}
+.stage-select-item:focus-visible {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 0 12px rgba(0, 255, 255, 0.35);
+}
 .stage-select-item:hover {
     background: rgba(0, 255, 255, 0.2);
     border-color: #fff;
@@ -531,6 +612,9 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
 .stage-badge.time { border-color: rgba(46, 204, 113, 0.65); color: #2ecc71; }
 .stage-badge.clears { border-color: rgba(52, 152, 219, 0.65); color: #3498db; }
 .stage-badge.winrate { border-color: rgba(241, 196, 15, 0.6); color: #f1c40f; }
+.stage-badge.outcome { border-color: rgba(255, 255, 255, 0.3); }
+.stage-badge.outcome.victory { background: rgba(46, 204, 113, 0.18); color: #2ecc71; border-color: rgba(46, 204, 113, 0.65); }
+.stage-badge.outcome.defeat { background: rgba(231, 76, 60, 0.18); color: #e74c3c; border-color: rgba(231, 76, 60, 0.65); }
 .stage-status {
     font-size: 0.65rem;
     letter-spacing: 0.12em;
@@ -563,6 +647,22 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
     padding: 40px 20px;
     color: rgba(255, 255, 255, 0.6);
     font-size: 0.95rem;
+}
+.btn-secondary {
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(0, 255, 255, 0.4);
+    color: var(--font-color);
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: var(--cursor-link);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+.btn-secondary:hover:enabled {
+    border-color: rgba(0, 255, 255, 0.8);
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.25);
+    transform: translateY(-1px);
 }
 #level-select-list-container::-webkit-scrollbar {
     width: 8px;
