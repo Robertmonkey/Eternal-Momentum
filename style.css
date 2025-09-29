@@ -1276,29 +1276,29 @@ button:hover { background: rgba(0, 255, 255, 0.4); }
 }
 
 #bossHpContainer.grid-layout {
-  flex-direction: row;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 4px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 6px;
   width: 90%;
   max-width: 600px;
   background-color: rgba(0, 0, 0, 0.4);
-  padding: 4px;
+  padding: 6px;
   border-radius: 8px;
   border: 1px solid var(--border-color);
   backdrop-filter: blur(5px);
 }
 
 #bossHpContainer.grid-layout .boss-hp-bar-wrapper {
-  width: auto;
-  flex-grow: 1;
-  flex-basis: 120px;
-  max-width: 200px;
+  width: 100%;
+  min-width: 0;
   border-width: 1px;
 }
 
 #bossHpContainer.grid-layout .boss-hp-label {
   font-size: 0.7rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 #bossHpContainer.grid-layout .boss-hp-bar {
