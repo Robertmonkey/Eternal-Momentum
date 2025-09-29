@@ -115,6 +115,16 @@
     <div id="modal-content" class="modal-background">
         <button id="loreCodexBtn" class="top-right-btn">LORE CODEX</button>
         <h2 class="modal-title">SELECT STAGE</h2>
+        <div id="level-select-controls">
+            <input type="search" id="stageSearchInput" placeholder="Search stage or boss..." aria-label="Search stages">
+            <label class="stage-filter-toggle">
+                <input type="checkbox" id="stageShowCleared">
+                <span class="filter-switch" aria-hidden="true">
+                    <span class="filter-switch-knob"></span>
+                </span>
+                <span class="filter-label">Cleared Only</span>
+            </label>
+        </div>
         <div id="level-select-list-container">
             <div id="level-select-list">
                 </div>
