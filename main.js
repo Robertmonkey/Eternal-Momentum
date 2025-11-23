@@ -3,7 +3,7 @@ import { state, resetGame, loadPlayerState, savePlayerState } from './modules/st
 import { LEVELING_CONFIG } from './modules/config.js';
 import { bossData } from './modules/bosses.js';
 import { AudioManager } from './modules/audio.js';
-import { updateUI, populateLevelSelect, showCustomConfirm, populateOrreryMenu, populateAberrationCoreMenu, showUnlockNotification } from './modules/ui.js';
+import { updateUI, populateLevelSelect, showCustomConfirm, populateOrreryMenu, populateAberrationCoreMenu, showUnlockNotification, startSelectedStage } from './modules/ui.js';
 import { gameTick, spawnBossesForStage, addStatusEffect, addEssence } from './modules/gameLoop.js';
 import { usePower } from './modules/powers.js';
 import * as utils from './modules/utils.js';
@@ -166,7 +166,7 @@ window.addEventListener('load', () => {
         const closeLevelSelectBtn = document.getElementById("closeLevelSelectBtn");
         const arenaBtn = document.getElementById("arenaBtn");
         const storyBtn = document.getElementById("loreCodexBtn");
-        const jumpToFrontierBtn = document.getElementById("jumpToFrontierBtn");
+        const jumpTimelineBtn = document.getElementById("jumpTimelineBtn");
         
         const ascensionGridModal = document.getElementById("ascensionGridModal");
         const closeAscensionBtn = document.getElementById("closeAscensionBtn");
@@ -463,9 +463,8 @@ window.addEventListener('load', () => {
                 AudioManager.playSfx('uiModalClose');
             });
 
-            jumpToFrontierBtn.addEventListener("click", () => {
-                let frontierStage = (state.player.highestStageBeaten > 0 ? state.player.highestStageBeaten + 1 : 1);
-                startSpecificLevel(frontierStage);
+            jumpTimelineBtn.addEventListener("click", () => {
+                startSelectedStage();
             });
 
             clearSaveBtn.addEventListener("click", () => {
