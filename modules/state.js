@@ -128,7 +128,7 @@ export const state = {
         // Architect: last pillar spawn time (unused in the new design but
         // retained for backwards compatibility).
         architect: { lastPillarTime: 0 },
-        mirror_mirage: { lastDecoyTime: 0 },
+        mirror: { lastDecoyTime: 0 },
         puppeteer: { lastConversion: 0 },
         splitter: { cooldownUntil: 0 },
         swarm: { tail: [], enemiesForNextSegment: 0 },
@@ -244,6 +244,16 @@ export function loadPlayerState() {
         stageStats: normaliseStageStats(parsedData.stageStats),
       };
       Object.assign(state.player, playerData);
+      const coreStates = state.player.talent_states?.core_states;
+      if (coreStates) {
+        if (coreStates.mirror_mirage && !coreStates.mirror) {
+          coreStates.mirror = { ...coreStates.mirror_mirage };
+        }
+        if (!coreStates.mirror) {
+          coreStates.mirror = { lastDecoyTime: 0 };
+        }
+        delete coreStates.mirror_mirage;
+      }
     } catch (e) {
       console.warn('Failed to parse saved player data, clearing save.', e);
       localStorage.removeItem('eternalMomentumSave');
@@ -279,7 +289,7 @@ export function resetGame(isArena = false) {
   // Recreate the core state container to wipe out any lingering cooldowns.
   state.player.talent_states.core_states = {
     architect: { lastPillarTime: 0 },
-    mirror_mirage: { lastDecoyTime: 0 },
+    mirror: { lastDecoyTime: 0 },
     puppeteer: { lastConversion: 0 },
     splitter: { cooldownUntil: 0 },
     swarm: { tail: [], enemiesForNextSegment: 0 },
