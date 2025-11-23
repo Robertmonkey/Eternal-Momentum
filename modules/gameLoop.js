@@ -39,14 +39,15 @@ window.gameHelpers = gameHelpers;
 
 export function addStatusEffect(name, emoji, duration) {
     const now = Date.now();
+    const isBerserk = state.player.berserkUntil > now;
+    const hasUnstoppableTalent = state.player.purchasedTalents.has('unstoppable-frenzy');
+
+    if (hasUnstoppableTalent && isBerserk && (name === 'Stunned' || name === 'Petrified' || name === 'Slowed' || name === 'Epoch-Slow')) {
+        return; // Unstoppable Frenzy prevents these crowd-control effects while berserk is active
+    }
     // Setting stunnedUntil is the key to stopping player movement
     if (name === 'Stunned' || name === 'Petrified' || name === 'Charging' || name === 'Warping') {
         state.player.stunnedUntil = Math.max(state.player.stunnedUntil, now + duration);
-    }
-    if (name === 'Stunned' || name === 'Petrified' || name === 'Slowed' || name === 'Epoch-Slow') {
-        const isBerserk = state.player.berserkUntil > now;
-        const hasTalent = state.player.purchasedTalents.has('unstoppable-frenzy');
-        if (isBerserk && hasTalent) return;
     }
     const existing = state.player.statusEffects.find(e => e.name === name);
     if(existing) {
