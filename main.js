@@ -261,13 +261,13 @@ window.addEventListener('load', () => {
         function setupHomeScreen() {
             const hasSaveData = localStorage.getItem('eternalMomentumSave') !== null;
             if (hasSaveData) {
-                continueGameBtn.style.display = 'block';
-                eraseGameBtn.style.display = 'block';
-                newGameBtn.style.display = 'none';
+                continueGameBtn.classList.remove('is-hidden');
+                eraseGameBtn.classList.remove('is-hidden');
+                newGameBtn.classList.add('is-hidden');
             } else {
-                continueGameBtn.style.display = 'none';
-                eraseGameBtn.style.display = 'none';
-                newGameBtn.style.display = 'block';
+                continueGameBtn.classList.add('is-hidden');
+                eraseGameBtn.classList.add('is-hidden');
+                newGameBtn.classList.remove('is-hidden');
             }
         }
         
