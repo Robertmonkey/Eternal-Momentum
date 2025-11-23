@@ -37,6 +37,9 @@ export function activateCorePower(mx, my, gameHelpers) {
   const now = Date.now();
   const coreId = state.player.equippedAberrationCore;
   if (!coreId) return;
+  if (!state.player.talent_states.core_states[coreId]) {
+    state.player.talent_states.core_states[coreId] = {};
+  }
   const coreState = state.player.talent_states.core_states[coreId];
   if (coreState && now < (coreState.cooldownUntil || 0)) {
     gameHelpers.play('talentError');
@@ -126,9 +129,23 @@ export function activateCorePower(mx, my, gameHelpers) {
       abilityTriggered = true;
       break;
     }
+    case 'gravity': {
+      coreState.cooldownUntil = now + 2500; // 2.5 second cooldown
+      state.effects.push({
+        type: 'player_pull_pulse',
+        x: state.player.x,
+        y: state.player.y,
+        maxRadius: 600,
+        startTime: now,
+        duration: 500,
+      });
+      gameHelpers.play('gravitySound');
+      abilityTriggered = true;
+      break;
+    }
     default:
-      // Cores without active abilities fall through.  Syphon and gravity
-      // trigger passively and do not respond to LMB+RMB.
+      // Cores without active abilities fall through.  Syphon triggers
+      // passively and does not respond to LMB+RMB.
       break;
   }
   if (abilityTriggered) {
@@ -138,9 +155,9 @@ export function activateCorePower(mx, my, gameHelpers) {
 
 /**
  * Execute all passive behaviours each frame.  This includes healing,
- * spawning projectiles, converting enemies, pulsing taunts, gravity
- * pulses and other timed effects.  It also drives the Pantheon core's
- * rotation through the player's unlocked aberration cores.
+ * spawning projectiles, converting enemies, pulsing taunts, and other
+ * timed effects.  It also drives the Pantheon core's rotation through
+ * the player's unlocked aberration cores.
  */
 export function applyCoreTickEffects(gameHelpers) {
   const now = Date.now();
@@ -315,18 +332,6 @@ export function applyCoreTickEffects(gameHelpers) {
         });
         play('weaverCast');
       }
-    }
-  }
-
-  // --- Gravity passive ---
-  if (playerHasCore('gravity')) {
-    const gravityState = state.player.talent_states.core_states.gravity;
-    if (now > (gravityState.lastPulseTime || 0) + 5000) {
-      gravityState.lastPulseTime = now;
-      // Spawn an expanding ring that repels enemies and pulls pickups.  The
-      // rendering logic in gameLoop.js handles motion and drawing.
-      state.effects.push({ type: 'player_pull_pulse', x: state.player.x, y: state.player.y, maxRadius: 600, startTime: now, duration: 500 });
-      play('gravitySound');
     }
   }
 

@@ -139,7 +139,7 @@ export const bossData = [{
     difficulty_tier: 1,
     archetype: 'field_control',
     unlock_level: 25,
-    core_desc: "Every 5 seconds, your presence emits a gravitational anomaly, forcefully repelling lesser timelines while drawing stable reality fragments (power-ups) toward you.",
+    core_desc: "Activate with both mouse buttons to emit a gravitational anomaly, forcefully repelling lesser timelines while drawing stable reality fragments (power-ups) toward you. 2.5 second cooldown.",
     description: "Warps the battlefield with a ring of gravitational wells that impede movement.",
     lore: "The tormented ghost of a lead scientist who, in a desperate attempt to halt the Unraveling, tried to anchor their reality by creating a supermassive black hole. The experiment failed catastrophically, collapsing their universe and binding the scientist's consciousness to the resulting gravitational anomalies.",
     mechanics_desc: "Constantly surrounded by a ring of gravitational wells. These wells will significantly slow your movement and pull you towards their center if you enter their radius.",
