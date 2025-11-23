@@ -144,6 +144,7 @@ export const state = {
         obelisk: {},
         gravity: { lastPulseTime: 0 },
         looper: { isShifting: false },
+        emp: { lastPulse: 0 },
         // New aberration cores begin here
         vampire: { },
         glitch: { },
