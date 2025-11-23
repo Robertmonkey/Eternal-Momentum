@@ -237,7 +237,6 @@ function renderStageSelectList() {
                     <span class="stage-select-number">TIMELINE ${i}</span>
                     ${statusBadge}
                 </div>
-                ${hasCodename ? `<span class="stage-select-name">${stageName}</span>` : ''}
                 <span class="stage-select-bosses">${bossNames}</span>
                 ${metaBadges.length ? `<div class="stage-item-meta">${metaBadges.join('')}</div>` : ''}
             </div>
