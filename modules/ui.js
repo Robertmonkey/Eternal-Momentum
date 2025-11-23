@@ -385,7 +385,7 @@ function updateCoreCooldownUI() {
         syphon: 5000,
         mirror: 12000,
         looper: 10000,
-        gravity: 6000,
+        gravity: 2500,
         architect: 15000,
         annihilator: 25000,
         // Passive cores can have cooldowns too

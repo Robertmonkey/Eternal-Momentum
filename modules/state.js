@@ -142,7 +142,7 @@ export const state = {
         helix_weaver: { lastBolt: 0 },
         temporal_paradox: { lastEcho: 0 },
         obelisk: {},
-        gravity: { lastPulseTime: 0 },
+        gravity: { cooldownUntil: 0 },
         looper: { isShifting: false },
         emp: { lastPulse: 0 },
         // New aberration cores begin here
@@ -304,7 +304,7 @@ export function resetGame(isArena = false) {
     helix_weaver: { lastBolt: 0 },
     temporal_paradox: { lastEcho: 0 },
     obelisk: {},
-    gravity: { lastPulseTime: 0 },
+    gravity: { cooldownUntil: 0 },
     looper: { isShifting: false },
     vampire: { },
     glitch: { },
