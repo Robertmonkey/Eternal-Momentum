@@ -541,18 +541,27 @@ window.addEventListener('load', () => {
             setupHomeScreen();
         }
         
-        // This is the key change to fix the "stuck on loading" bug
+        let homeScreenShown = false;
+
+        function showHomeScreen() {
+            if (homeScreenShown) return;
+            homeScreenShown = true;
+            loadingScreen.style.display = 'none';
+            homeScreen.style.display = 'flex';
+            requestAnimationFrame(() => {
+                homeScreen.classList.add('visible');
+            });
+            // Initialize the game's logic AFTER the screen has faded out
+            initialize();
+        }
+
+        // Fade out the loader, then reveal the home screen. If the CSS
+        // transition fails to fire (e.g. a browser quirk), fall back to a
+        // timed reveal so players never get stuck behind the loader.
         setTimeout(() => {
             loadingScreen.style.opacity = '0';
-            loadingScreen.addEventListener('transitionend', () => {
-                loadingScreen.style.display = 'none';
-                homeScreen.style.display = 'flex';
-                requestAnimationFrame(() => {
-                     homeScreen.classList.add('visible');
-                });
-                // Initialize the game's logic AFTER the screen has faded out
-                initialize();
-            }, { once: true });
+            loadingScreen.addEventListener('transitionend', showHomeScreen, { once: true });
+            setTimeout(showHomeScreen, 800);
         }, 500);
     });
 });
