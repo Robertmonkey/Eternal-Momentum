@@ -541,7 +541,7 @@ window.addEventListener('load', () => {
             setupHomeScreen();
         }
         
-        // This is the key change to fix the "stuck on loading" bug
+        // Fade out the loader, then reveal the home screen.
         setTimeout(() => {
             loadingScreen.style.opacity = '0';
             loadingScreen.addEventListener('transitionend', () => {
