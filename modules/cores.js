@@ -185,10 +185,18 @@ export function applyCoreTickEffects(gameHelpers) {
     swarmState.tail.forEach(c => {
       c.x += (prev.x - c.x) * 0.2;
       c.y += (prev.y - c.y) * 0.2;
-      const segmentRadius = 8;
-      utils.drawCircle(ctx, c.x, c.y, segmentRadius, '#c0392b');
-      if (Math.random() < 0.2) {
-          utils.spawnParticles(state.particles, c.x, c.y, 'rgba(192, 57, 43, 0.5)', 1, 0.5, 10, 2);
+      const segmentRadius = 10;
+      const coreGlowRadius = segmentRadius + 2;
+      const highlightRadius = Math.max(5, segmentRadius - 3);
+      ctx.save();
+      ctx.shadowColor = 'rgba(255, 120, 80, 0.55)';
+      ctx.shadowBlur = 18;
+      utils.drawCircle(ctx, c.x, c.y, coreGlowRadius, 'rgba(255, 120, 80, 0.9)');
+      ctx.shadowBlur = 0;
+      utils.drawCircle(ctx, c.x, c.y, highlightRadius, 'rgba(255, 218, 185, 0.95)');
+      ctx.restore();
+      if (Math.random() < 0.35) {
+          utils.spawnParticles(state.particles, c.x, c.y, 'rgba(255, 160, 120, 0.7)', 2, 0.5, 12, 3);
       }
       prev = c;
       state.enemies.forEach(e => {
