@@ -18,22 +18,22 @@ function playerHasCore(coreId) {
 }
 
 function calculatePlayerAnnihilationDamage(target) {
-    const level = Math.max(1, state.player.level);
-    const damageMultiplier = state.player.talent_modifiers.damage_multiplier || 1;
+  const level = Math.max(1, state.player.level);
+  const damageMultiplier = state.player.talent_modifiers.damage_multiplier || 1;
 
-    if (target.boss) {
-        const bossMaxHp = target.maxHP || 0;
-        const healthWeightedComponent = bossMaxHp * (0.12 + Math.min(0.18, Math.log10(bossMaxHp + 10) * 0.02));
-        const talentWeightedComponent = (120 + level * 10);
-        const tunedDamage = (healthWeightedComponent + talentWeightedComponent) * damageMultiplier;
-        const percentCap = bossMaxHp * 0.40;
-        return Math.min(tunedDamage, percentCap);
-    }
+  if (target.boss) {
+    const bossMaxHp = target.maxHP || 0;
+    const healthWeightedComponent = bossMaxHp * (0.06 + Math.min(0.12, Math.log10(bossMaxHp + 10) * 0.015));
+    const talentWeightedComponent = (80 + level * 6);
+    const tunedDamage = (healthWeightedComponent + talentWeightedComponent) * damageMultiplier;
+    const percentCap = Math.max(150, bossMaxHp * 0.18);
+    return Math.min(tunedDamage, percentCap);
+  }
 
-    const baseDamage = (80 + level * 12) * damageMultiplier;
-    const maxHp = target.maxHP || 0;
-    const scaledByTarget = maxHp * (0.8 + level * 0.01) * damageMultiplier;
-    return Math.max(baseDamage, scaledByTarget);
+  const baseDamage = (70 + level * 10) * damageMultiplier;
+  const maxHp = target.maxHP || 0;
+  const scaledByTarget = maxHp * (0.35 + level * 0.005) * damageMultiplier;
+  return Math.max(baseDamage, scaledByTarget);
 }
 
 // --- Audio Helpers ---
@@ -251,7 +251,7 @@ export function spawnBossesForStage(stageNum) {
                 {x: 100, y: canvas.height - 100}, {x: canvas.width - 100, y: canvas.height - 100}
             ];
             corners.forEach(pos => {
-                state.effects.push({ type: 'containment_pylon', x: pos.x, y: pos.y, r: 25, endTime: Infinity });
+                state.effects.push({ type: 'containment_pylon', fromCenturionCore: true, x: pos.x, y: pos.y, r: 28, slowRadius: 230, endTime: Infinity });
             });
             play('architectBuild');
         }
@@ -945,16 +945,17 @@ export function gameTick(mx, my) {
         ctx.fillText(p.type === 'rune_of_fate' ? '⭐' : (p.emoji || powers[p.type]?.emoji || '?'), p.x, p.y+6);
         ctx.textAlign = "left";
         
-        if(Math.hypot(state.player.x - p.x, state.player.y - p.y) < state.player.r + p.r){
-            play('pickupSound'); 
-            if (p.type === 'rune_of_fate') {
-                 addStatusEffect('Shaper\'s Boon', '⭐', 999999);
-                 state.player.talent_modifiers.damage_multiplier *= 1.05;
-                 state.player.talent_modifiers.pickup_radius_bonus += 20;
-                 play('shaperAttune');
-                 state.pickups.splice(i, 1);
-                 continue;
-            }
+            if(Math.hypot(state.player.x - p.x, state.player.y - p.y) < state.player.r + p.r){
+                play('pickupSound');
+                if (p.type === 'rune_of_fate') {
+                     addStatusEffect('Shaper\'s Boon', '⭐', 999999);
+                     state.player.talent_modifiers.damage_multiplier *= 1.05;
+                     state.player.talent_modifiers.pickup_radius_bonus += 20;
+                     state.player.talent_states.core_states.shaper_of_fate.isDisabled = false;
+                     state.pickups = state.pickups.filter(other => other.type !== 'rune_of_fate');
+                     play('shaperAttune');
+                     break;
+                }
             if (state.player.purchasedTalents.has('essence-weaving')) {
                 state.player.health = Math.min(state.player.maxHealth, state.player.health + state.player.maxHealth * 0.02);
             }
@@ -1295,6 +1296,33 @@ export function gameTick(mx, my) {
                 }
             });
         }
+        else if (effect.type === 'containment_pylon') {
+            const pylons = state.effects.filter(e => e.type === 'containment_pylon');
+            if (pylons.length >= 2 && pylons[0] === effect) {
+                const pairs = pylons.length === 4 ? [[pylons[0], pylons[1]], [pylons[0], pylons[2]], [pylons[1], pylons[3]], [pylons[2], pylons[3]]] : [];
+                ctx.save();
+                ctx.strokeStyle = 'rgba(211, 84, 0, 0.35)';
+                ctx.lineWidth = 8;
+                pairs.forEach(([a, b]) => {
+                    ctx.beginPath();
+                    ctx.moveTo(a.x, a.y);
+                    ctx.lineTo(b.x, b.y);
+                    ctx.stroke();
+                });
+                ctx.restore();
+            }
+            ctx.save();
+            ctx.shadowColor = 'rgba(255, 140, 0, 0.6)';
+            ctx.shadowBlur = 18;
+            utils.drawCircle(ctx, effect.x, effect.y, effect.r, '#d35400');
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = 'rgba(211, 84, 0, 0.4)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(effect.x, effect.y, effect.slowRadius || effect.r + 30, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
         else if (effect.type === 'architect_pillar') {
             utils.drawCircle(ctx, effect.x, effect.y, effect.r, '#7f8c8d');
         }
@@ -1420,20 +1448,23 @@ export function gameTick(mx, my) {
                     utils.drawShadowCone(ctx, state.player.x, state.player.y, e, 'white');
                 });
                 ctx.restore();
-                state.enemies.forEach(enemy => {
-                    if (enemy.isFriendly) return;
-                    let isSafe = false;
-                    for (const boss of state.enemies.filter(e => e.boss)) {
-                        if (utils.isPointInShadow(boss, enemy, state.player.x, state.player.y)) {
-                            isSafe = true;
-                            break;
+                if (!effect.hasAppliedDamage) {
+                    state.enemies.forEach(enemy => {
+                        if (enemy.isFriendly) return;
+                        let isSafe = false;
+                        for (const boss of state.enemies.filter(e => e.boss)) {
+                            if (utils.isPointInShadow(boss, enemy, state.player.x, state.player.y)) {
+                                isSafe = true;
+                                break;
+                            }
                         }
-                    }
-                    if (!isSafe) {
-                        const damage = calculatePlayerAnnihilationDamage(enemy);
-                        enemy.hp -= damage;
-                    }
-                });
+                        if (!isSafe) {
+                            const damage = calculatePlayerAnnihilationDamage(enemy);
+                            enemy.hp -= damage;
+                        }
+                    });
+                    effect.hasAppliedDamage = true;
+                }
             }
         }
         else if (effect.type === 'repulsion_field') {

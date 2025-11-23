@@ -387,7 +387,7 @@ function updateCoreCooldownUI() {
         // Passive cores can have cooldowns too
         puppeteer: 8000,
         helix_weaver: 5000,
-        epoch_ender: 120000,
+        epoch_ender: 12000,
         splitter: 500
     };
     const duration = cooldowns[coreId];

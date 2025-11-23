@@ -112,7 +112,7 @@ export function activateCorePower(mx, my, gameHelpers) {
     // Annihilator: channel for 4 seconds then fire a screen‑wide beam.
     case 'annihilator': {
       coreState.cooldownUntil = now + 25000; // 25 second cooldown
-      state.effects.push({ type: 'player_annihilation_beam', startTime: now, endTime: now + 4000 });
+      state.effects.push({ type: 'player_annihilation_beam', startTime: now, endTime: now + 4000, hasAppliedDamage: false });
       gameHelpers.play('powerSirenSound');
       abilityTriggered = true;
       break;
@@ -327,22 +327,109 @@ export function applyCoreTickEffects(gameHelpers) {
     }
   }
 
+  // --- Centurion passive ---
+  if (playerHasCore('centurion')) {
+    const centurionState = state.player.talent_states.core_states.centurion
+      || (state.player.talent_states.core_states.centurion = {});
+    const canvas = ctx.canvas;
+    let pylons = state.effects.filter(e => e.type === 'containment_pylon' && e.fromCenturionCore);
+    if (pylons.length < 4) {
+      state.effects = state.effects.filter(e => !(e.type === 'containment_pylon' && e.fromCenturionCore));
+      const margin = 100;
+      const positions = [
+        { x: margin, y: margin },
+        { x: canvas.width - margin, y: margin },
+        { x: margin, y: canvas.height - margin },
+        { x: canvas.width - margin, y: canvas.height - margin },
+      ];
+      positions.forEach(pos => {
+        state.effects.push({
+          type: 'containment_pylon',
+          fromCenturionCore: true,
+          x: pos.x,
+          y: pos.y,
+          r: 28,
+          slowRadius: 230,
+          endTime: Infinity,
+        });
+      });
+      pylons = state.effects.filter(e => e.type === 'containment_pylon' && e.fromCenturionCore);
+    }
+
+    const deltaSeconds = Math.min(0.25, centurionState.lastPulse ? (now - centurionState.lastPulse) / 1000 : 1 / 60);
+    centurionState.lastPulse = now;
+    const damagePerSecond = 16 * state.player.talent_modifiers.damage_multiplier;
+    const beamWidth = 26;
+
+    const distToSegment = (point, a, b) => {
+      const abx = b.x - a.x;
+      const aby = b.y - a.y;
+      const apx = point.x - a.x;
+      const apy = point.y - a.y;
+      const abLenSq = abx * abx + aby * aby;
+      const t = abLenSq === 0 ? 0 : Math.max(0, Math.min(1, (apx * abx + apy * aby) / abLenSq));
+      const projX = a.x + abx * t;
+      const projY = a.y + aby * t;
+      return Math.hypot(point.x - projX, point.y - projY);
+    };
+
+    const beamPairs = pylons.length === 4
+      ? [[pylons[0], pylons[1]], [pylons[0], pylons[2]], [pylons[1], pylons[3]], [pylons[2], pylons[3]]]
+      : [];
+
+    state.enemies.forEach(enemy => {
+      if (enemy.isFriendly) return;
+      let slowed = false;
+      pylons.forEach(pylon => {
+        const dist = Math.hypot(enemy.x - pylon.x, enemy.y - pylon.y);
+        if (dist < (pylon.slowRadius || 0) + enemy.r) {
+          slowed = true;
+          if (!enemy.boss) {
+            enemy.hp -= damagePerSecond * deltaSeconds;
+          } else {
+            enemy.hp -= damagePerSecond * 0.35 * deltaSeconds;
+          }
+        }
+      });
+
+      beamPairs.forEach(([a, b]) => {
+        const dist = distToSegment(enemy, a, b) - enemy.r;
+        if (dist < beamWidth) {
+          slowed = true;
+          enemy.hp -= damagePerSecond * 0.65 * deltaSeconds;
+        }
+      });
+
+      if (slowed) {
+        enemy.dx *= 0.8;
+        enemy.dy *= 0.8;
+        enemy.stunnedUntil = Math.max(enemy.stunnedUntil || 0, now + 40);
+      }
+    });
+  } else {
+    state.effects = state.effects.filter(e => !(e.type === 'containment_pylon' && e.fromCenturionCore));
+  }
+
   // --- Helix Weaver passive ---
   if (playerHasCore('helix_weaver')) {
     const helixState = state.player.talent_states.core_states.helix_weaver;
     // Only spawn bolts when the player is stationary; movement cancels the effect.
     const moveDist = Math.hypot(window.mousePosition.x - state.player.x, window.mousePosition.y - state.player.y);
     if (moveDist < state.player.r) {
+      helixState.stationarySince = helixState.stationarySince || now;
       if (now > (helixState.lastBolt || 0) + 1000) {
         helixState.lastBolt = now;
         const baseAngle = Math.random() * Math.PI * 2;
+        const stillDuration = Math.min(6, (now - helixState.stationarySince) / 1000);
+        const baseOrbit = 90 + stillDuration * 20;
+        const swingRange = 45 + stillDuration * 10;
         const boltConfigs = [
           { direction: 1, color: '#74b9ff' },
           { direction: -1, color: '#a29bfe' },
         ];
         boltConfigs.forEach(({ direction, color }, index) => {
           const angle = baseAngle + index * Math.PI;
-          const baseRadius = 60;
+          const baseRadius = baseOrbit;
           const anchorX = state.player.x + Math.cos(angle) * baseRadius;
           const anchorY = state.player.y + Math.sin(angle) * baseRadius;
           state.effects.push({
@@ -354,7 +441,7 @@ export function applyCoreTickEffects(gameHelpers) {
             angle,
             angularVelocity: direction * 4,
             baseRadius,
-            radiusSwing: 35,
+            radiusSwing: swingRange,
             pulseSpeed: 3,
             hitRadius: 10,
             damageBase: 8,
@@ -369,6 +456,8 @@ export function applyCoreTickEffects(gameHelpers) {
         });
         play('weaverCast');
       }
+    } else {
+      helixState.stationarySince = null;
     }
   }
 
@@ -652,7 +741,7 @@ export function handleCoreOnFatalDamage(enemy, gameHelpers) {
         state.player.x = rewindState.x;
         state.player.y = rewindState.y;
         state.player.health = rewindState.health;
-        epochState.cooldownUntil = now + 120000; // 120 second cooldown
+        epochState.cooldownUntil = now + 12000; // 12 second cooldown
         gameHelpers.play('timeRewind');
         utils.spawnParticles(state.particles, state.player.x, state.player.y, '#bdc3c7', 80, 6, 40, 5);
         return true;
