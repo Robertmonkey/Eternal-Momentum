@@ -380,10 +380,10 @@ function updateCoreCooldownUI() {
     }
     
     // This map must contain the cooldown duration for any core ability that sets 'cooldownUntil'
-    const cooldowns = { 
-        juggernaut: 8000, 
+    const cooldowns = {
+        juggernaut: 8000,
         syphon: 5000,
-        mirror_mirage: 12000,
+        mirror: 12000,
         looper: 10000,
         gravity: 6000,
         architect: 15000,
@@ -424,7 +424,10 @@ function updateAberrationCoreUI() {
     if (coreData) {
         aberrationCoreSocket.classList.add('active');
         aberrationCoreSocket.style.setProperty('--nexus-glow', coreData.color);
-        aberrationCoreIcon.style.backgroundColor = 'transparent';
+        aberrationCoreSocket.style.setProperty('--core-accent', coreData.color);
+        aberrationCoreIcon.style.setProperty('--core-accent', coreData.color);
+        aberrationCoreIcon.style.backgroundColor = '';
+        aberrationCoreIcon.classList.add('core-equipped');
         if (!document.getElementById('aberration-core-cooldown')) {
              aberrationCoreIcon.innerHTML = `<div id="aberration-core-cooldown" class="cooldown-overlay"></div>`;
         }
@@ -438,7 +441,9 @@ function updateAberrationCoreUI() {
     } else {
         aberrationCoreSocket.classList.remove('active');
         aberrationCoreSocket.style.removeProperty('--nexus-glow'); // Reset to default CSS variable
-        aberrationCoreIcon.style.backgroundColor = 'transparent';
+        aberrationCoreSocket.style.removeProperty('--core-accent');
+        aberrationCoreIcon.style.removeProperty('--core-accent');
+        aberrationCoreIcon.style.backgroundColor = '';
         if (aberrationCoreIcon.firstChild?.id !== 'aberration-core-cooldown') {
             aberrationCoreIcon.innerHTML = `<div id="aberration-core-cooldown" class="cooldown-overlay"></div>◎`;
         } else {
@@ -446,6 +451,7 @@ function updateAberrationCoreUI() {
         }
         aberrationCoreSocket.setAttribute('data-tooltip-text', 'No Core Attuned');
         aberrationCoreIcon.classList.remove('pantheon-icon-bg');
+        aberrationCoreIcon.classList.remove('core-equipped');
     }
 }
 

@@ -441,7 +441,7 @@ export function handleCoreOnPlayerDamage(damage, enemy, gameHelpers) {
     // Mirror Mirage: spawn a decoy.  Limit to three decoys by removing the
     // oldest on overflow.  Decoys created by the core pulse every 4–7
     // seconds to taunt nearby enemies.  See gameLoop.js for rendering.
-    if (playerHasCore('mirror_mirage')) {
+    if (playerHasCore('mirror')) {
       const coreDecoys = state.decoys.filter(d => d.fromCore);
       if (coreDecoys.length >= 3) {
         const oldestIndex = state.decoys.findIndex(d => d.fromCore);
