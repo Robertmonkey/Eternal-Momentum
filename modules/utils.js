@@ -47,7 +47,7 @@ export function drawPlayer(ctx, player, color) {
  */
 export function drawShadowCone(ctx, sourceX, sourceY, shadowCaster, color) {
   const distToCaster = Math.hypot(shadowCaster.x - sourceX, shadowCaster.y - sourceY);
-  const safeRadius = shadowCaster.r * 1.5;
+  const safeRadius = Math.max(shadowCaster.r * 2.2, shadowCaster.r + 80);
   if (distToCaster <= safeRadius) return; // Source is inside the caster's safe zone
   const angleToCaster = Math.atan2(shadowCaster.y - sourceY, shadowCaster.x - sourceX);
   const angleToTangent = Math.asin(safeRadius / distToCaster);
@@ -77,7 +77,7 @@ export function drawShadowCone(ctx, sourceX, sourceY, shadowCaster, color) {
  */
 export function isPointInShadow(shadowCaster, point, sourceX, sourceY) {
   const distToCaster = Math.hypot(shadowCaster.x - sourceX, shadowCaster.y - sourceY);
-  const safeRadius = shadowCaster.r * 1.5;
+  const safeRadius = Math.max(shadowCaster.r * 2.2, shadowCaster.r + 80);
   if (distToCaster <= safeRadius) return false;
   const angleToCaster = Math.atan2(shadowCaster.y - sourceY, shadowCaster.x - sourceX);
   const angleToTangent = Math.asin(safeRadius / distToCaster);
