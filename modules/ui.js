@@ -20,7 +20,6 @@ const pantheonBar = document.getElementById('pantheon-buffs-bar');
 const bossBannerEl = document.getElementById("bossBanner");
 const levelSelectList = document.getElementById("level-select-list");
 const stageSearchInput = document.getElementById('stageSearchInput');
-const stageClearedToggle = document.getElementById('stageShowCleared');
 const notificationBanner = document.getElementById('unlock-notification');
 const customConfirm = document.getElementById('custom-confirm');
 const confirmTitle = document.getElementById('custom-confirm-title');
@@ -80,19 +79,19 @@ function formatWinRate(clears, attempts) {
 
 function describeLastAttempt(stats) {
     if (!stats || !stats.lastOutcome) {
-        return 'No attempts recorded.';
+        return 'No runs have been logged for this timeline.';
     }
     if (!stats.lastTimeMs) {
-        return `Last outcome: ${stats.lastOutcome}.`;
+        return `Last pulse: ${stats.lastOutcome}.`;
     }
     const duration = formatDuration(stats.lastTimeMs);
     if (stats.lastOutcome === 'Victory') {
-        return `Last clear achieved in ${duration}.`;
+        return `Stabilized in ${duration}.`;
     }
     if (stats.lastOutcome === 'Defeat') {
-        return `Timeline collapsed after ${duration}.`;
+        return `Collapse after ${duration}.`;
     }
-    return `Last attempt lasted ${duration}.`;
+    return `Last incursion lasted ${duration}.`;
 }
 
 function updateStageDetailsPanel(stageNumber) {
@@ -108,7 +107,9 @@ function updateStageDetailsPanel(stageNumber) {
     }
 
     const stageInfo = STAGE_CONFIG.find(s => s.stage === stageNumber);
-    const stageName = stageInfo?.displayName || `Stage ${stageNumber}`;
+    const stageName = stageInfo?.displayName?.trim();
+    const normalizedName = stageName?.toLowerCase();
+    const hasCodename = stageName && normalizedName !== `stage ${stageNumber}`;
     const bossIds = stageInfo?.bosses || [];
     const bossNames = bossIds.map(id => {
         const boss = bossData.find(b => b.id === id);
@@ -117,8 +118,13 @@ function updateStageDetailsPanel(stageNumber) {
 
     const stats = getStageStats(stageNumber) || getDefaultStageStats();
 
-    if (stageDetailsTitle) stageDetailsTitle.innerText = `Stage ${stageNumber}: ${stageName}`;
-    if (stageDetailsSubtitle) stageDetailsSubtitle.innerText = bossNames ? `Encounter: ${bossNames}` : 'Unknown encounter';
+    if (stageDetailsTitle) stageDetailsTitle.innerText = `Timeline ${stageNumber}`;
+    if (stageDetailsSubtitle) {
+        const subtitleParts = [];
+        if (hasCodename) subtitleParts.push(stageName);
+        if (bossNames) subtitleParts.push(`Encounter: ${bossNames}`);
+        stageDetailsSubtitle.innerText = subtitleParts.join(' • ') || 'Unknown encounter';
+    }
 
     if (stageDetailsStatsList) {
         const attempts = stats.attempts ?? 0;
@@ -140,7 +146,7 @@ function updateStageDetailsPanel(stageNumber) {
     if (stageDetailsResetBtn) {
         const hasAttempts = !!stats.attempts;
         stageDetailsResetBtn.disabled = !hasAttempts;
-        stageDetailsResetBtn.title = hasAttempts ? 'Clear recorded stats for this stage' : 'No attempts recorded yet';
+        stageDetailsResetBtn.title = hasAttempts ? 'Wipe telemetry for this timeline' : 'No attempts recorded yet';
     }
 }
 
@@ -165,7 +171,6 @@ function renderStageSelectList() {
 
     const maxStage = Math.max(1, state.player.highestStageBeaten + 1);
     const query = (stageSearchInput?.value || '').trim().toLowerCase();
-    const showClearedOnly = stageClearedToggle?.checked ?? false;
     let renderedCount = 0;
     let firstRenderableStage = null;
 
@@ -174,7 +179,9 @@ function renderStageSelectList() {
         if (!bossIds || bossIds.length === 0) continue;
 
         const stageInfo = STAGE_CONFIG.find(s => s.stage === i);
-        const stageName = stageInfo?.displayName || `Stage ${i}`;
+        const stageName = stageInfo?.displayName?.trim();
+        const normalizedName = stageName?.toLowerCase();
+        const hasCodename = stageName && normalizedName !== `stage ${i}`;
         const bossNames = bossIds.map(id => {
             const boss = bossData.find(b => b.id === id);
             return boss ? boss.name : 'Unknown';
@@ -190,19 +197,18 @@ function renderStageSelectList() {
         const isCleared = clears > 0 || i <= state.player.highestStageBeaten;
         const isFrontier = i === state.player.highestStageBeaten + 1;
 
-        if (showClearedOnly && !isCleared) continue;
-
-        const searchTarget = `${stageName} stage ${i} ${bossNames}`.toLowerCase();
+        const searchTarget = `${stageName || ''} stage ${i} ${bossNames}`.toLowerCase();
         if (query && !searchTarget.includes(query)) continue;
 
         const item = document.createElement('div');
         item.className = 'stage-select-item';
         if (isCleared) item.classList.add('stage-cleared');
         if (isFrontier) item.classList.add('stage-frontier');
+        const ariaName = hasCodename ? stageName : `Timeline ${i}`;
         item.dataset.stage = i;
         item.tabIndex = 0;
         item.setAttribute('role', 'button');
-        item.setAttribute('aria-label', `Stage ${i}: ${stageName}. ${bossNames || 'Unknown encounter'}.`);
+        item.setAttribute('aria-label', `${ariaName}: ${bossNames || 'Unknown encounter'}.`);
 
         const statusBadge = isFrontier
             ? '<span class="stage-status frontier">Frontier</span>'
@@ -228,10 +234,10 @@ function renderStageSelectList() {
         item.innerHTML = `
             <div class="stage-item-main">
                 <div class="stage-item-header">
-                    <span class="stage-select-number">STAGE ${i}</span>
+                    <span class="stage-select-number">TIMELINE ${i}</span>
                     ${statusBadge}
                 </div>
-                <span class="stage-select-name">${stageName}</span>
+                ${hasCodename ? `<span class="stage-select-name">${stageName}</span>` : ''}
                 <span class="stage-select-bosses">${bossNames}</span>
                 ${metaBadges.length ? `<div class="stage-item-meta">${metaBadges.join('')}</div>` : ''}
             </div>
@@ -242,15 +248,16 @@ function renderStageSelectList() {
         `;
 
         const mainArea = item.querySelector('.stage-item-main');
-        mainArea.onclick = () => stageStartHandler(i);
+        mainArea.onclick = () => setActiveStage(i);
         item.addEventListener('mouseenter', () => setActiveStage(i));
         item.addEventListener('focus', () => setActiveStage(i));
         item.addEventListener('keydown', (event) => {
             if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault();
-                stageStartHandler(i);
+                setActiveStage(i);
             }
         });
+        item.addEventListener('dblclick', () => stageStartHandler(i));
 
         const mechanicsBtn = item.querySelector('.mechanics-btn');
         const loreBtn = item.querySelector('.lore-btn');
@@ -263,16 +270,6 @@ function renderStageSelectList() {
             showBossInfo(bossIds, 'lore');
         };
 
-        const bossNameElement = item.querySelector('.stage-select-bosses');
-        item.addEventListener('mouseenter', () => {
-            if (bossNameElement && bossNameElement.scrollWidth > bossNameElement.clientWidth) {
-                bossNameElement.classList.add('is-scrolling');
-            }
-        });
-        item.addEventListener('mouseleave', () => {
-            if (bossNameElement) bossNameElement.classList.remove('is-scrolling');
-        });
-
         levelSelectList.appendChild(item);
         renderedCount++;
         if (firstRenderableStage === null) firstRenderableStage = i;
@@ -281,14 +278,14 @@ function renderStageSelectList() {
     if (renderedCount === 0) {
         const empty = document.createElement('div');
         empty.className = 'stage-empty-state';
-        empty.innerText = query ? 'No stages match your search.' : 'Clear stages to unlock new encounters.';
+        empty.innerText = query ? 'No timelines match your scan.' : 'Stabilize timelines to unlock new encounters.';
         levelSelectList.appendChild(empty);
         setActiveStage(null);
     }
 
     const container = levelSelectList.parentElement;
     if (container) {
-        if (query || showClearedOnly) {
+        if (query) {
             container.scrollTop = 0;
         } else {
             container.scrollTop = container.scrollHeight;
@@ -634,20 +631,16 @@ export function populateLevelSelect(startSpecificLevel) {
         stageSearchInput.addEventListener('input', () => renderStageSelectList());
         stageSearchInput.dataset.bound = 'true';
     }
-    if (stageClearedToggle && !stageClearedToggle.dataset.bound) {
-        stageClearedToggle.addEventListener('change', () => renderStageSelectList());
-        stageClearedToggle.dataset.bound = 'true';
-    }
 
     if (stageDetailsResetBtn && !stageDetailsResetBtn.dataset.bound) {
         stageDetailsResetBtn.addEventListener('click', () => {
             const stageValue = Number(stageDetailsPanel?.dataset.stage);
             if (!Number.isInteger(stageValue)) return;
             const stageInfo = STAGE_CONFIG.find(s => s.stage === stageValue);
-            const stageName = stageInfo?.displayName || `Stage ${stageValue}`;
+            const stageName = stageInfo?.displayName || `Timeline ${stageValue}`;
             showCustomConfirm(
-                '|| PURGE STAGE RECORDS? ||',
-                `Erase recorded attempts for Stage ${stageValue}: ${stageName}?`,
+                '|| SANITIZE FIELD DATA? ||',
+                `Erase recorded telemetry for Timeline ${stageValue}: ${stageName}?`,
                 () => {
                     resetStageStats(stageValue);
                     renderStageSelectList();
@@ -658,6 +651,14 @@ export function populateLevelSelect(startSpecificLevel) {
     }
 
     renderStageSelectList();
+}
+
+export function startSelectedStage() {
+    if (!stageStartHandler) return;
+    const chosenStage = Number.isInteger(activeStageNumber) && activeStageNumber > 0
+        ? activeStageNumber
+        : (state.player.highestStageBeaten > 0 ? state.player.highestStageBeaten + 1 : 1);
+    stageStartHandler(chosenStage);
 }
 
 export function showCustomConfirm(title, text, onConfirm) {
