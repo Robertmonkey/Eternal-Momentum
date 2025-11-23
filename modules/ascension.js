@@ -50,6 +50,26 @@ function isTalentVisible(talent) {
 }
 
 
+function getTotalPurchasedRanks() {
+    let total = 0;
+    state.player.purchasedTalents.forEach(rank => total += rank);
+    return total;
+}
+
+function calculateTalentCost(talent, purchasedRank) {
+    if (!talent) return Infinity;
+
+    const baseCost = talent.isInfinite
+        ? talent.costPerRank[0]
+        : talent.costPerRank[purchasedRank];
+
+    if (!Number.isFinite(baseCost)) return baseCost;
+
+    const progressionMultiplier = 1 + Math.max(0, getTotalPurchasedRanks() - 10) * 0.08;
+    return Math.ceil(baseCost * progressionMultiplier);
+}
+
+
 function drawConnectorLines() {
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.style.position = 'absolute';
@@ -116,10 +136,8 @@ function createTalentNode(talent, constellationColor) {
     let cost;
     if (isMaxRank) {
         cost = Infinity;
-    } else if (talent.isInfinite) {
-        cost = talent.costPerRank[0];
     } else {
-        cost = talent.costPerRank[purchasedRank] || Infinity;
+        cost = calculateTalentCost(talent, purchasedRank);
     }
     
     const prereqsMetForPurchase = talent.prerequisites.every(p => {
@@ -207,12 +225,7 @@ function purchaseTalent(talentId) {
     const currentRank = state.player.purchasedTalents.get(talent.id) || 0;
     if (currentRank >= talent.maxRanks) return;
 
-    let cost;
-    if (talent.isInfinite) {
-        cost = talent.costPerRank[0];
-    } else {
-        cost = talent.costPerRank[currentRank];
-    }
+    const cost = calculateTalentCost(talent, currentRank);
     
     const prereqsMet = talent.prerequisites.every(p => {
         const prereqTalent = allTalents[p];
