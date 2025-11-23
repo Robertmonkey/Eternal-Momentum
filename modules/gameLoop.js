@@ -17,6 +17,22 @@ function playerHasCore(coreId) {
     return state.player.activePantheonBuffs.some(buff => buff.coreId === coreId);
 }
 
+function calculatePlayerAnnihilationDamage(target) {
+    const level = Math.max(1, state.player.level);
+    const damageMultiplier = state.player.talent_modifiers.damage_multiplier || 1;
+
+    if (target.boss) {
+        const baseBossDamage = (120 + level * 8) * damageMultiplier;
+        const percentCap = target.maxHP ? target.maxHP * 0.35 : baseBossDamage;
+        return Math.min(baseBossDamage, percentCap);
+    }
+
+    const baseDamage = (80 + level * 12) * damageMultiplier;
+    const maxHp = target.maxHP || 0;
+    const scaledByTarget = maxHp * (0.8 + level * 0.01) * damageMultiplier;
+    return Math.max(baseDamage, scaledByTarget);
+}
+
 // --- Audio Helpers ---
 function play(soundId) { AudioManager.playSfx(soundId); }
 function playLooping(soundId) { AudioManager.playLoopingSfx(soundId); }
@@ -1411,8 +1427,8 @@ export function gameTick(mx, my) {
                         }
                     }
                     if (!isSafe) {
-                        if (enemy.boss) enemy.hp -= 1000; 
-                        else enemy.hp = 0;
+                        const damage = calculatePlayerAnnihilationDamage(enemy);
+                        enemy.hp -= damage;
                     }
                 });
             }
