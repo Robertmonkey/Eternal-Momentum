@@ -1,6 +1,22 @@
 // modules/bosses.js
 import { STAGE_CONFIG } from './config.js';
 import * as utils from './utils.js';
+import { powers } from './powers.js';
+
+function castCorruptedPower(powerKey, source, state, utilsRef, gameHelpers) {
+    const power = powers[powerKey];
+    if (!power || typeof power.apply !== 'function') return false;
+    const mx = state.player.x;
+    const my = state.player.y;
+    const options = { origin: source, damageModifier: 0.75 };
+    try {
+        power.apply(utilsRef, gameHelpers, mx, my, options);
+        return true;
+    } catch (err) {
+        console.error('Failed to cast corrupted power:', err);
+        return false;
+    }
+}
 
 export const bossData = [{
     id: "splitter",
@@ -1374,7 +1390,18 @@ export const bossData = [{
     mechanics_desc: "Targets you with a telegraphed cone attack. If you are hit, it will steal your primary offensive power-up and unleash a powerful, corrupted version of it. Evade the cone to protect your abilities.",
     init: (b) => { b.lastSyphon = Date.now(); b.isCharging = false; },
     logic: (b, ctx, state, utils, gameHelpers) => {
-        if (!b.isCharging && Date.now() - b.lastSyphon > 7500) {
+        const now = Date.now();
+        if (b.stolenPowerKey) {
+            if (b.stolenPowerExpires && now > b.stolenPowerExpires) {
+                b.stolenPowerKey = null;
+            } else if (now > (b.nextStolenCast || 0)) {
+                const casted = castCorruptedPower(b.stolenPowerKey, b, state, utils, gameHelpers);
+                b.nextStolenCast = now + 6000;
+                if (!casted) b.stolenPowerKey = null;
+            }
+        }
+
+        if (!b.isCharging && now - b.lastSyphon > 7500) {
             b.isCharging = true;
             b.lastSyphon = Date.now();
             gameHelpers.play('chargeUpSound');

@@ -22,9 +22,12 @@ function calculatePlayerAnnihilationDamage(target) {
     const damageMultiplier = state.player.talent_modifiers.damage_multiplier || 1;
 
     if (target.boss) {
-        const baseBossDamage = (120 + level * 8) * damageMultiplier;
-        const percentCap = target.maxHP ? target.maxHP * 0.35 : baseBossDamage;
-        return Math.min(baseBossDamage, percentCap);
+        const bossMaxHp = target.maxHP || 0;
+        const healthWeightedComponent = bossMaxHp * (0.12 + Math.min(0.18, Math.log10(bossMaxHp + 10) * 0.02));
+        const talentWeightedComponent = (120 + level * 10);
+        const tunedDamage = (healthWeightedComponent + talentWeightedComponent) * damageMultiplier;
+        const percentCap = bossMaxHp * 0.40;
+        return Math.min(tunedDamage, percentCap);
     }
 
     const baseDamage = (80 + level * 12) * damageMultiplier;
@@ -1691,9 +1694,12 @@ export function gameTick(mx, my) {
                             play('powerAbsorb');
                             state.offensiveInventory.shift();
                             state.offensiveInventory.push(null);
+                            source.stolenPowerKey = stolenPower;
+                            source.stolenPowerExpires = Date.now() + 15000;
+                            source.nextStolenCast = Date.now() + 1200;
                         }
                     }
-                } else { 
+                } else {
                     state.pickups.forEach(p => {
                         const dx = state.player.x - p.x;
                         const dy = state.player.y - p.y;

@@ -14,7 +14,8 @@ import { state } from './state.js';
 import * as utils from './utils.js';
 import { bossData } from './bosses.js';
 import { showUnlockNotification, updateUI } from './ui.js';
-import { usePower } from './powers.js';
+
+const CORES_WITH_ACTIVE_ABILITIES = new Set(['juggernaut', 'syphon', 'gravity', 'architect', 'annihilator', 'looper']);
 
 /**
  * Returns true if the player currently has the specified core equipped or
@@ -35,7 +36,12 @@ export function playerHasCore(coreId) {
  */
 export function activateCorePower(mx, my, gameHelpers) {
   const now = Date.now();
-  const coreId = state.player.equippedAberrationCore;
+  let coreId = state.player.equippedAberrationCore;
+  if (coreId === 'pantheon') {
+    const activeBuff = state.player.activePantheonBuffs.find(buff => buff.role === 'active' && CORES_WITH_ACTIVE_ABILITIES.has(buff.coreId));
+    if (!activeBuff) return;
+    coreId = activeBuff.coreId;
+  }
   if (!coreId) return;
   if (!state.player.talent_states.core_states[coreId]) {
     state.player.talent_states.core_states[coreId] = {};
@@ -163,25 +169,56 @@ export function applyCoreTickEffects(gameHelpers) {
   const now = Date.now();
   const { play } = gameHelpers;
   const ctx = document.getElementById('gameCanvas').getContext('2d');
+  // Filter expired buffs and normalise legacy entries without a role.
+  state.player.activePantheonBuffs = state.player.activePantheonBuffs
+    .map(buff => buff.role ? buff : { ...buff, role: CORES_WITH_ACTIVE_ABILITIES.has(buff.coreId) ? 'active' : 'passive' })
+    .filter(buff => now < buff.endTime);
   // --- Pantheon rotation ---
   if (state.player.equippedAberrationCore === 'pantheon') {
     const pantheonState = state.player.talent_states.core_states.pantheon;
-    if (now > (pantheonState.lastCycleTime || 0) + 10000) {
+    const unlockedCores = Array.from(state.player.unlockedAberrationCores).filter(id => id !== 'pantheon');
+    const buffIds = state.player.activePantheonBuffs.map(b => b.coreId);
+    let existingActive = state.player.activePantheonBuffs.find(buff => buff.role === 'active' && CORES_WITH_ACTIVE_ABILITIES.has(buff.coreId));
+    let passiveBuffs = state.player.activePantheonBuffs.filter(buff => buff.role === 'passive');
+
+    const addBuff = (coreId, role) => {
+      const coreData = bossData.find(b => b.id === coreId);
+      const endTime = now + 30000;
+      state.player.activePantheonBuffs.push({ coreId, endTime, role });
+      showUnlockNotification(`Pantheon Attuned: ${coreData.name}`, role === 'active' ? 'Aspect (Active)' : 'Aspect (Passive)');
+      play('shaperAttune');
       pantheonState.lastCycleTime = now;
-      const unlockedCores = Array.from(state.player.unlockedAberrationCores);
-      const activeBuffIds = state.player.activePantheonBuffs.map(b => b.coreId);
-      const availablePool = unlockedCores.filter(id => id !== 'pantheon' && !activeBuffIds.includes(id));
-      if (availablePool.length > 0) {
-        const newCoreId = availablePool[Math.floor(Math.random() * availablePool.length)];
-        const coreData = bossData.find(b => b.id === newCoreId);
-        state.player.activePantheonBuffs.push({ coreId: newCoreId, endTime: now + 30000 });
-        showUnlockNotification(`Pantheon Attuned: ${coreData.name}`, 'Aspect Gained');
-        play('shaperAttune');
+      if (role === 'passive') passiveBuffs.push({ coreId, endTime, role });
+      if (role === 'active') existingActive = { coreId, endTime, role };
+      buffIds.push(coreId);
+    };
+
+    if (!existingActive) {
+      const availableActive = unlockedCores.filter(id => CORES_WITH_ACTIVE_ABILITIES.has(id) && !buffIds.includes(id));
+      const activePool = availableActive.length > 0 ? availableActive : unlockedCores.filter(id => CORES_WITH_ACTIVE_ABILITIES.has(id));
+      if (activePool.length > 0) {
+        const chosen = activePool[Math.floor(Math.random() * activePool.length)];
+        addBuff(chosen, 'active');
       }
     }
+
+    const readyForPassive = now > (pantheonState.lastCycleTime || 0) + 10000 || passiveBuffs.length < 2;
+    while (readyForPassive && passiveBuffs.length < 2) {
+      let availablePassive = unlockedCores.filter(id => !CORES_WITH_ACTIVE_ABILITIES.has(id) && !buffIds.includes(id));
+      if (availablePassive.length === 0) {
+        availablePassive = unlockedCores.filter(id => !buffIds.includes(id) && (!existingActive || id !== existingActive.coreId));
+      }
+      if (availablePassive.length === 0) break;
+      const chosen = availablePassive[Math.floor(Math.random() * availablePassive.length)];
+      addBuff(chosen, 'passive');
+    }
+
+    if (passiveBuffs.length > 2) {
+      const ordered = state.player.activePantheonBuffs.filter(b => b.role === 'passive').sort((a, b) => a.endTime - b.endTime);
+      const toKeep = ordered.slice(-2).map(b => b.coreId);
+      state.player.activePantheonBuffs = state.player.activePantheonBuffs.filter(b => b.role !== 'passive' || toKeep.includes(b.coreId));
+    }
   }
-  // Filter expired buffs.
-  state.player.activePantheonBuffs = state.player.activePantheonBuffs.filter(buff => now < buff.endTime);
 
   // --- Vampire passive ---
   if (playerHasCore('vampire')) {
