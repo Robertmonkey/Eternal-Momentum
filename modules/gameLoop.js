@@ -455,7 +455,7 @@ export function gameTick(mx, my) {
             if (!decoy.isTaunting && now > decoy.nextTauntTime) {
                 decoy.isTaunting = true;
                 decoy.tauntEndTime = now + decoy.tauntDuration;
-                decoy.nextTauntTime = now + 4000 + Math.random() * 3000;
+                decoy.nextTauntTime = now + 2000 + Math.random() * 1000;
             }
             if (decoy.isTaunting && now > decoy.tauntEndTime) {
                 decoy.isTaunting = false;
@@ -690,26 +690,32 @@ export function gameTick(mx, my) {
                 e.y = Math.max(e.r, Math.min(canvas.height - e.r, e.y)); e.knockbackDy *= -0.8;
             }
         } else if(!e.frozen && !e.hasCustomMovement){ 
-             let tgt = null;
-             if (e.isFriendly) {
-                let closestEnemy = null, minDist = Infinity;
-                state.enemies.forEach(other => {
-                    if (!other.isFriendly && !other.boss) {
-                        const dist = Math.hypot(e.x - other.x, e.y - other.y);
-                        if (dist < minDist) { minDist = dist; closestEnemy = other; }
-                    }
-                });
-                tgt = closestEnemy;
-             } else if (tauntingDecoys.length > 0) {
+         let tgt = null;
+         if (e.isFriendly) {
+                const hostileBosses = state.enemies.filter(other => other.boss && !other.isFriendly);
+                if (hostileBosses.length > 0) {
+                    tgt = hostileBosses.sort((a, b) => Math.hypot(e.x - a.x, e.y - a.y) - Math.hypot(e.x - b.x, e.y - b.y))[0];
+                } else {
+                    let closestEnemy = null, minDist = Infinity;
+                    state.enemies.forEach(other => {
+                        if (!other.isFriendly) {
+                            const dist = Math.hypot(e.x - other.x, e.y - other.y);
+                            if (dist < minDist) { minDist = dist; closestEnemy = other; }
+                        }
+                    });
+                    tgt = closestEnemy;
+                }
+         } else if (tauntingDecoys.length > 0) {
                 let closestDecoy = null, minDist = Infinity;
                 tauntingDecoys.forEach(decoy => {
                     const dist = Math.hypot(e.x - decoy.x, e.y - decoy.y);
-                    if (dist < minDist) { minDist = dist; closestDecoy = decoy; }
+                    const tauntRange = decoy.tauntRange ?? Infinity;
+                    if (dist < minDist && dist < tauntRange) { minDist = dist; closestDecoy = decoy; }
                 });
                 tgt = closestDecoy;
-             } else {
+         } else {
                 tgt = state.player;
-             }
+         }
             
             let enemySpeedMultiplier = 1;
             let isInSlowZone = false;
@@ -859,6 +865,20 @@ export function gameTick(mx, my) {
                     other.hp -= 0.5; e.hp -= 0.5;
                 }
             });
+        }
+
+        if (e.isPuppet) {
+            const puppetDamageCooldown = 400;
+            const canDamage = !e.lastPuppetHit || now - e.lastPuppetHit > puppetDamageCooldown;
+            if (canDamage) {
+                state.enemies.forEach(other => {
+                    if (!other.isFriendly && Math.hypot(e.x - other.x, e.y - other.y) < e.r + other.r) {
+                        other.hp -= 12 * state.player.talent_modifiers.damage_multiplier;
+                        Cores.handleCoreOnDamageDealt(other);
+                        e.lastPuppetHit = now;
+                    }
+                });
+            }
         }
     }
 
@@ -1338,6 +1358,19 @@ export function gameTick(mx, my) {
                     } else {
                         e.hp = 0;
                     }
+                    state.effects.push({
+                        type: 'shockwave',
+                        caster: state.player,
+                        x: e.x,
+                        y: e.y,
+                        radius: 0,
+                        maxRadius: 140,
+                        speed: 900,
+                        startTime: now,
+                        hitEnemies: new Set(),
+                        damage: 25 * state.player.talent_modifiers.damage_multiplier,
+                        color: 'rgba(230, 126, 34, 0.65)'
+                    });
                     effect.hitEnemies.add(e);
                     utils.triggerScreenShake(150, 8);
                     play('chargeDashSound');

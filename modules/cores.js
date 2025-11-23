@@ -178,6 +178,13 @@ export function applyCoreTickEffects(gameHelpers) {
     }
   }
 
+  // --- EMP Overlord passive ---
+  if (playerHasCore('emp')) {
+    // Grant a persistent shield so the player can safely trigger the discharge.
+    state.player.shield = true;
+    state.player.shield_end_time = Infinity;
+  }
+
   // --- Swarm passive ---
   if (playerHasCore('swarm')) {
     const swarmState = state.player.talent_states.core_states.swarm;
@@ -255,6 +262,7 @@ export function applyCoreTickEffects(gameHelpers) {
         farthestEnemy.isPuppet = true;
         farthestEnemy.id = 'puppet';
         farthestEnemy.customColor = '#a29bfe';
+        farthestEnemy.r *= 1.2;
         // Give puppets modest health so they can survive a few hits.
         farthestEnemy.hp = 104;
         farthestEnemy.maxHP = 104;
@@ -450,6 +458,11 @@ export function handleCoreOnPlayerDamage(damage, enemy, gameHelpers) {
     // oldest on overflow.  Decoys created by the core pulse every 4–7
     // seconds to taunt nearby enemies.  See gameLoop.js for rendering.
     if (playerHasCore('mirror')) {
+      const mirrorState = state.player.talent_states.core_states.mirror;
+      if (now < (mirrorState.lastDecoyTime || 0) + 250) {
+        return damageTaken;
+      }
+      mirrorState.lastDecoyTime = now;
       const coreDecoys = state.decoys.filter(d => d.fromCore);
       if (coreDecoys.length >= 3) {
         const oldestIndex = state.decoys.findIndex(d => d.fromCore);
@@ -466,9 +479,10 @@ export function handleCoreOnPlayerDamage(damage, enemy, gameHelpers) {
         isMobile: false,
         isTaunting: false,
         lastTauntTime: now,
-        nextTauntTime: now + 4000 + Math.random() * 3000,
+        nextTauntTime: now + 2000 + Math.random() * 1000,
         tauntDuration: 2000,
         tauntEndTime: now,
+        tauntRange: 260,
       };
       state.decoys.push(decoy);
       gameHelpers.play('mirrorSwap');
@@ -489,16 +503,19 @@ export function handleCoreOnPlayerDamage(damage, enemy, gameHelpers) {
 export function handleCoreOnCollision(enemy, gameHelpers) {
   const now = Date.now();
   if (enemy.isFriendly) return;
+  const isCollidingWithPlayer = Math.hypot(state.player.x - enemy.x, state.player.y - enemy.y) < state.player.r + enemy.r;
   // Parasite: infect any enemy touched by the player.
-  if (playerHasCore('parasite')) {
+  if (playerHasCore('parasite') && isCollidingWithPlayer) {
     if (!enemy.boss && !enemy.isInfected) {
       enemy.isInfected = true;
       enemy.infectionEnd = now + 10000;
     }
   }
   // Glitch: 25% chance to delete an enemy on contact and spawn a pickup.
-  if (playerHasCore('glitch')) {
-    if (!enemy.boss && Math.random() < 0.25) {
+  if (playerHasCore('glitch') && isCollidingWithPlayer) {
+    const glitchState = state.player.talent_states.core_states.glitch;
+    if (now > (glitchState.lastProc || 0) + 250 && !enemy.boss && Math.random() < 0.25) {
+      glitchState.lastProc = now;
       // Kill the enemy immediately.
       enemy.hp = 0;
       // Spawn a random pickup using the built‑in helper.  Note that this
@@ -508,6 +525,22 @@ export function handleCoreOnCollision(enemy, gameHelpers) {
       // Flashy glitch particles.
       utils.spawnParticles(state.particles, enemy.x, enemy.y, '#fd79a8', 30, 3, 30, 5);
       gameHelpers.play('glitchSound');
+    }
+  }
+  // EMP Overlord: on contact, discharge to clear projectiles and weak foes.
+  if (playerHasCore('emp') && isCollidingWithPlayer) {
+    const empState = state.player.talent_states.core_states.emp;
+    if (now > (empState.lastPulse || 0) + 1000) {
+      empState.lastPulse = now;
+      const projectileTypes = ['nova_bullet', 'ricochet_projectile', 'seeking_shrapnel', 'player_fragment', 'helix_bolt'];
+      state.effects = state.effects.filter(eff => !projectileTypes.includes(eff.type));
+      state.enemies.forEach(e => {
+        if (!e.isFriendly && !e.boss && e.hp <= 20) {
+          e.hp = 0;
+        }
+      });
+      utils.spawnParticles(state.particles, state.player.x, state.player.y, '#3498db', 50, 4, 30, 5);
+      window.gameHelpers.play('empDischarge');
     }
   }
 }
