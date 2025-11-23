@@ -949,10 +949,26 @@ export function gameTick(mx, my) {
                 state.effects.push({ type: 'shockwave', caster: state.player, x: effect.x, y: effect.y, radius: 0, maxRadius: 200, speed: 800, startTime: now, hitEnemies: new Set(), damage: 25 * state.player.talent_modifiers.damage_multiplier * dynamicDamageMultiplier, color: 'rgba(155, 89, 182, 0.7)' });
             }
             if (effect.type === 'teleport_locus') {
-                state.player.x = effect.x;
-                state.player.y = effect.y;
+                const clampedX = Math.min(Math.max(effect.x, state.player.r), canvas.width - state.player.r);
+                const clampedY = Math.min(Math.max(effect.y, state.player.r), canvas.height - state.player.r);
+                state.player.x = clampedX;
+                state.player.y = clampedY;
+                addStatusEffect('Warping', '🌀', 400);
                 play('mirrorSwap');
-                utils.spawnParticles(state.particles, effect.x, effect.y, '#ecf0f1', 40, 4, 30, 5);
+                utils.spawnParticles(state.particles, clampedX, clampedY, '#ecf0f1', 40, 4, 30, 5);
+                state.effects.push({
+                    type: 'shockwave',
+                    caster: state.player,
+                    x: clampedX,
+                    y: clampedY,
+                    radius: 0,
+                    maxRadius: 220,
+                    speed: 900,
+                    startTime: now,
+                    hitEnemies: new Set(),
+                    damage: 10 * state.player.talent_modifiers.damage_multiplier * dynamicDamageMultiplier,
+                    color: 'rgba(236, 240, 241, 0.6)'
+                });
             }
             state.effects.splice(i, 1);
             continue;
@@ -1261,6 +1277,16 @@ export function gameTick(mx, my) {
             }
             const chargeSpeed = 35;
             let angle = effect.angle;
+            const reflectAngle = (incoming, normal) => {
+                const vx = Math.cos(incoming);
+                const vy = Math.sin(incoming);
+                const nx = Math.cos(normal);
+                const ny = Math.sin(normal);
+                const dot = vx * nx + vy * ny;
+                const rx = vx - 2 * dot * nx;
+                const ry = vy - 2 * dot * ny;
+                return Math.atan2(ry, rx);
+            };
             const consumeBounce = () => {
                 if (effect.bouncesLeft && effect.bouncesLeft > 0) {
                     effect.bouncesLeft -= 1;
@@ -1300,14 +1326,14 @@ export function gameTick(mx, my) {
             applyStep();
             state.player.x = Math.min(Math.max(state.player.x, minX), maxX);
             state.player.y = Math.min(Math.max(state.player.y, minY), maxY);
-            effect.angle = angle;
+            let bouncedOffEnemy = false;
             state.enemies.forEach(e => {
                 if (!e.isFriendly && !effect.hitEnemies.has(e) && Math.hypot(state.player.x - e.x, state.player.y - e.y) < state.player.r + e.r) {
                     if (e.boss) {
                         e.hp -= 500;
                         const knockbackStrength = 40;
-                        e.knockbackDx = Math.cos(effect.angle) * knockbackStrength;
-                        e.knockbackDy = Math.sin(effect.angle) * knockbackStrength;
+                        e.knockbackDx = Math.cos(angle) * knockbackStrength;
+                        e.knockbackDy = Math.sin(angle) * knockbackStrength;
                         e.knockbackUntil = now + 500;
                     } else {
                         e.hp = 0;
@@ -1315,8 +1341,14 @@ export function gameTick(mx, my) {
                     effect.hitEnemies.add(e);
                     utils.triggerScreenShake(150, 8);
                     play('chargeDashSound');
+                    if (!bouncedOffEnemy && consumeBounce()) {
+                        const normal = Math.atan2(state.player.y - e.y, state.player.x - e.x);
+                        angle = reflectAngle(angle, normal);
+                        bouncedOffEnemy = true;
+                    }
                 }
             });
+            effect.angle = angle;
         }
         else if (effect.type === 'player_annihilation_beam') {
             const progress = (now - effect.startTime) / (effect.endTime - effect.startTime);
