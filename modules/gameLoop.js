@@ -118,7 +118,11 @@ function levelUp() {
 export function addEssence(amount) {
     if (state.gameOver) return;
     let modifiedAmount = Math.floor(amount * state.player.talent_modifiers.essence_gain_modifier);
-    
+
+    if (state.player.level < 6 && state.currentStage <= 5) {
+        modifiedAmount = Math.ceil(modifiedAmount * 1.2);
+    }
+
     const rank = state.player.purchasedTalents.get('essence-transmutation');
     if (rank) {
         const essenceBefore = state.player.essence % 50;
@@ -259,7 +263,7 @@ export function spawnEnemy(isBoss = false, bossId = null, location = null) {
         let difficultyIndex = state.arenaMode
             ? state.customOrreryBosses.reduce((sum, bId) => sum + (bossData.find(b => b.id === bId)?.difficulty_tier || 0), 0) * 2.5
             : (state.currentStage - 1);
-        const scalingFactor = 12;
+        const scalingFactor = state.currentStage <= 5 ? 9 : 12;
         const finalHp = baseHp + (Math.pow(difficultyIndex, 1.5) * scalingFactor);
         e.maxHP = Math.round(finalHp);
         e.hp = e.maxHP;
@@ -324,7 +328,8 @@ export function gameTick(mx, my) {
             // **FIX START:** This logic block ensures the first boss wave of a stage always spawns.
             // It checks if the first spawn has been scheduled. If not, it sets the timer.
             if (!state.bossHasSpawnedThisRun) {
-                state.bossSpawnCooldownEnd = now + 3000; // Schedule first spawn for 3 seconds after level start
+                const initialSpawnDelay = state.currentStage <= 5 ? 1500 : 3000;
+                state.bossSpawnCooldownEnd = now + initialSpawnDelay; // Schedule first spawn after level start
                 state.bossHasSpawnedThisRun = true;    // Mark as scheduled to prevent this from running again
             }
 
@@ -348,7 +353,11 @@ export function gameTick(mx, my) {
         if (state.bossActive) {
             if (Math.random() < (0.007 + state.player.level * 0.001)) spawnEnemy(false);
             const baseSpawnChance = 0.02 + state.player.level * 0.0002;
-            const finalSpawnChance = baseSpawnChance * state.player.talent_modifiers.power_spawn_rate_modifier;
+            const earlyStageBoost = state.currentStage <= 5 ? 1.4 : 1;
+            const finalSpawnChance = Math.min(
+                0.12,
+                baseSpawnChance * earlyStageBoost * state.player.talent_modifiers.power_spawn_rate_modifier
+            );
             if (Math.random() < finalSpawnChance) spawnPickup();
         }
     }
