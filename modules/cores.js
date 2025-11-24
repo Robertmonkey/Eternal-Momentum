@@ -660,7 +660,9 @@ export function handleCoreOnCollision(enemy, gameHelpers) {
   }
   // EMP Overlord: on contact, discharge to clear projectiles and weak foes.
   if (playerHasCore('emp') && isCollidingWithPlayer) {
-    const empState = state.player.talent_states.core_states.emp;
+    const empState =
+      state.player.talent_states.core_states.emp ||
+      (state.player.talent_states.core_states.emp = { lastPulse: 0 });
     if (now > (empState.lastPulse || 0) + 1000) {
       empState.lastPulse = now;
       const projectileTypes = ['nova_bullet', 'ricochet_projectile', 'seeking_shrapnel', 'player_fragment', 'helix_bolt'];

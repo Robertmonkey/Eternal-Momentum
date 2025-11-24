@@ -308,6 +308,7 @@ export function resetGame(isArena = false) {
     obelisk: {},
     gravity: { cooldownUntil: 0 },
     looper: { isShifting: false },
+    emp: { lastPulse: 0 },
     vampire: { },
     glitch: { },
     fractal_horror: { applied: false, originalR: null, originalSpeed: null, killCount: 0 },
