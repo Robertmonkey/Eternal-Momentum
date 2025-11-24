@@ -8,7 +8,7 @@ function castCorruptedPower(powerKey, source, state, utilsRef, gameHelpers) {
     if (!power || typeof power.apply !== 'function') return false;
     const mx = state.player.x;
     const my = state.player.y;
-    const options = { origin: source, damageModifier: 0.75 };
+    const options = { origin: source, damageModifier: 1.35 };
     try {
         power.apply(utilsRef, gameHelpers, mx, my, options);
         return true;
@@ -1406,7 +1406,16 @@ export const bossData = [{
             b.lastSyphon = Date.now();
             gameHelpers.play('chargeUpSound');
             const targetAngle = Math.atan2(state.player.y - b.y, state.player.x - b.x);
-            state.effects.push({ type: 'syphon_cone', source: b, angle: targetAngle, endTime: Date.now() + 2500 });
+            const startTime = Date.now();
+            state.effects.push({
+                type: 'syphon_cone',
+                source: b,
+                angle: targetAngle,
+                startTime,
+                endTime: startTime + 2500,
+                hasFired: false,
+                coneAngle: Math.PI / 3
+            });
             setTimeout(() => {
                 if (b.hp <= 0) return;
                 b.isCharging = false;

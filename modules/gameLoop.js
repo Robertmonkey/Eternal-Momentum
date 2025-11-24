@@ -1689,42 +1689,71 @@ export function gameTick(mx, my) {
         }
         else if (effect.type === 'syphon_cone') {
             const { source, endTime } = effect;
+            const startTime = effect.startTime || (effect.startTime = now);
             const remainingTime = endTime - now;
-            const coneAngle = effect.coneAngle || Math.PI / 4; 
+            const coneAngle = effect.coneAngle || Math.PI / 4;
             const coneLength = canvas.height * 1.5;
+            const duration = Math.max(1, effect.endTime - startTime);
+            const progress = Math.min(1, Math.max(0, (now - startTime) / duration));
 
             if (remainingTime > 0) {
-                if (source.boss) { 
+                if (source.boss) {
                     if (remainingTime > 250) {
                         effect.angle = Math.atan2(state.player.y - source.y, state.player.x - source.x);
                     }
-                } else { 
+                } else {
                     effect.angle = Math.atan2(my - source.y, mx - source.x);
                 }
 
-                const progress = (effect.endTime - effect.startTime - remainingTime) / (effect.endTime - effect.startTime);
+                const pulse = 0.25 + 0.35 * progress;
+                const gradient = ctx.createRadialGradient(source.x, source.y, source.r * 0.6, source.x, source.y, coneLength);
+                gradient.addColorStop(0, 'rgba(155, 89, 182, 0)');
+                gradient.addColorStop(0.15, `rgba(155, 89, 182, ${0.08 + 0.12 * pulse})`);
+                gradient.addColorStop(0.45, `rgba(155, 89, 182, ${0.05 + 0.25 * pulse})`);
+                gradient.addColorStop(1, 'rgba(155, 89, 182, 0.04)');
+
                 ctx.save();
-                ctx.globalAlpha = 0.4 * progress;
-                ctx.fillStyle = '#9b59b6';
+                ctx.fillStyle = gradient;
                 ctx.beginPath();
                 ctx.moveTo(source.x, source.y);
                 ctx.arc(source.x, source.y, coneLength, effect.angle - coneAngle / 2, effect.angle + coneAngle / 2);
-                ctx.lineTo(source.x, source.y);
+                ctx.closePath();
                 ctx.fill();
+
+                ctx.globalAlpha = 0.4 * pulse;
+                ctx.lineWidth = 2 + 3 * pulse;
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
+                ctx.beginPath();
+                ctx.moveTo(source.x, source.y);
+                ctx.arc(source.x, source.y, coneLength * 0.98, effect.angle - coneAngle / 2, effect.angle + coneAngle / 2);
+                ctx.closePath();
+                ctx.stroke();
+
+                ctx.strokeStyle = 'rgba(236, 240, 241, 0.5)';
+                ctx.lineWidth = 1.5;
+                for (let stripe = 0; stripe < 4; stripe++) {
+                    const stripeProgress = ((now / 220) + stripe * 0.22) % 1;
+                    const stripeRadius = coneLength * stripeProgress;
+                    const fade = (1 - stripeProgress) * progress;
+                    ctx.globalAlpha = 0.25 * fade;
+                    ctx.beginPath();
+                    ctx.arc(source.x, source.y, stripeRadius, effect.angle - coneAngle / 2 + 0.08, effect.angle + coneAngle / 2 - 0.08);
+                    ctx.stroke();
+                }
                 ctx.restore();
             } else if (!effect.hasFired) {
                 effect.hasFired = true;
                 play('syphonFire');
-                if (source.boss) { 
+                if (source.boss) {
                     const playerAngle = Math.atan2(state.player.y - source.y, state.player.x - source.x);
                     let angleDiff = Math.abs(effect.angle - playerAngle);
                     if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
                     if (angleDiff < coneAngle / 2) {
-                        const stolenPower = state.offensiveInventory[0];
+                        const stolenIndex = state.offensiveInventory.findIndex(Boolean);
+                        const stolenPower = stolenIndex >= 0 ? state.offensiveInventory[stolenIndex] : null;
                         if (stolenPower) {
                             play('powerAbsorb');
-                            state.offensiveInventory.shift();
-                            state.offensiveInventory.push(null);
+                            state.offensiveInventory[stolenIndex] = null;
                             source.stolenPowerKey = stolenPower;
                             source.stolenPowerExpires = Date.now() + 15000;
                             source.nextStolenCast = Date.now() + 1200;
